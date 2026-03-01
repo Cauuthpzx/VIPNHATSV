@@ -11,8 +11,12 @@ export async function loginHandler(
   request: FastifyRequest,
   reply: FastifyReply,
 ) {
+  request.log.info({ body: request.body, contentType: request.headers["content-type"] }, "LOGIN_DEBUG");
   const parsed = loginSchema.safeParse(request.body);
-  if (!parsed.success) throw new ValidationError(parsed.error.errors[0].message);
+  if (!parsed.success) {
+    request.log.warn({ errors: parsed.error.errors, body: request.body }, "LOGIN_VALIDATION_FAILED");
+    throw new ValidationError(parsed.error.errors[0].message);
+  }
 
   const result = await authService.login(this, parsed.data);
   return sendSuccess(reply, result, HTTP_STATUS.OK);
