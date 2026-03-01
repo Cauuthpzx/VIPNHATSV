@@ -28,6 +28,21 @@ const CACHE_TTL: Record<string, number> = {
 const MAX_CONCURRENCY = 6;
 
 // ---------------------------------------------------------------------------
+// Natural sort keys — the field each endpoint uses for default ordering.
+// After merging multi-agent results we sort by this field so the combined
+// dataset looks exactly like it came from a single source.
+// ---------------------------------------------------------------------------
+const NATURAL_SORT_KEY: Record<string, string> = {
+  "/agent/user.html": "register_time",
+  "/agent/inviteList.html": "create_time",
+  "/agent/reportFunds.html": "date",
+  "/agent/depositAndWithdrawal.html": "create_time",
+  "/agent/withdrawalsRecord.html": "create_time",
+  "/agent/bet.html": "create_time",
+  "/agent/betOrder.html": "bet_time",
+};
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -107,6 +122,25 @@ async function promisePool<TItem, TResult>(
   const workerCount = Math.min(concurrency, items.length);
   await Promise.all(Array.from({ length: workerCount }, () => worker()));
   return results;
+}
+
+// ---------------------------------------------------------------------------
+// Sort merged items — unified natural ordering across agents
+// ---------------------------------------------------------------------------
+
+function sortMergedItems<T>(items: T[], path: string): T[] {
+  const sortKey = NATURAL_SORT_KEY[path];
+  if (!sortKey || items.length === 0) return items;
+
+  return items.sort((a: any, b: any) => {
+    const va = a[sortKey];
+    const vb = b[sortKey];
+    if (va == null && vb == null) return 0;
+    if (va == null) return 1;
+    if (vb == null) return -1;
+    // Descending (newest first) — matches upstream default
+    return String(vb).localeCompare(String(va));
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -266,8 +300,12 @@ async function cachedProxyCall<T = unknown>(
     },
   );
 
-  // Merge results from all agents
-  const mergedItems = results.flatMap((r) => (Array.isArray(r.items) ? r.items : []));
+  // Merge results — collect all items then sort by natural key so the
+  // combined dataset looks like it came from a single source
+  const mergedItems = sortMergedItems(
+    results.flatMap((r) => (Array.isArray(r.items) ? r.items : [])),
+    path,
+  );
   const mergedTotal = results.reduce((sum, r) => sum + r.total, 0);
   const mergedTotalData = mergeTotalData(results);
 
