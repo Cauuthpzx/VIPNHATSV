@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import PasswordForm from "@/components/PasswordForm.vue";
+import { changePassword } from "@/api/services/proxy";
 
 async function handleSubmit(data: { oldPassword: string; newPassword: string }) {
-  // TODO: call API to change login password
-  console.log("Change login password:", data);
+  await changePassword(data);
 }
 </script>
 

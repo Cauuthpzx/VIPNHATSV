@@ -4,7 +4,8 @@ import bcrypt from "bcrypt";
 import { UnauthorizedError } from "../../errors/UnauthorizedError.js";
 import { ERROR_CODES } from "../../constants/error-codes.js";
 import { appConfig } from "../../config/app.js";
-import type { LoginInput } from "./auth.schema.js";
+import type { LoginInput, UpdateProfileInput, ChangePasswordInput, ChangeFundPasswordInput } from "./auth.schema.js";
+import { ValidationError } from "../../errors/ValidationError.js";
 
 const BCRYPT_ROUNDS = 12;
 
@@ -106,4 +107,38 @@ export async function refresh(app: FastifyInstance, refreshToken: string) {
 
 export async function logout(app: FastifyInstance, refreshToken: string) {
   await app.prisma.refreshToken.deleteMany({ where: { token: refreshToken } });
+}
+
+export async function updateProfile(app: FastifyInstance, userId: string, input: UpdateProfileInput) {
+  return app.prisma.user.update({
+    where: { id: userId },
+    data: { name: input.name },
+    select: { id: true, email: true, name: true, isActive: true, role: true },
+  });
+}
+
+export async function changePassword(app: FastifyInstance, userId: string, input: ChangePasswordInput) {
+  const user = await app.prisma.user.findUnique({ where: { id: userId } });
+  if (!user) throw new UnauthorizedError("User not found", ERROR_CODES.INVALID_CREDENTIALS);
+
+  const valid = await verifyPassword(input.oldPassword, user.password);
+  if (!valid) throw new ValidationError("Mật khẩu cũ không đúng");
+
+  const hashed = await hashPassword(input.newPassword);
+  await app.prisma.user.update({ where: { id: userId }, data: { password: hashed } });
+}
+
+export async function changeFundPassword(app: FastifyInstance, userId: string, input: ChangeFundPasswordInput) {
+  const user = await app.prisma.user.findUnique({ where: { id: userId } });
+  if (!user) throw new UnauthorizedError("User not found", ERROR_CODES.INVALID_CREDENTIALS);
+
+  // If fund password already set, validate old password
+  if (user.fundPassword) {
+    if (!input.oldPassword) throw new ValidationError("Vui lòng nhập mật khẩu giao dịch cũ");
+    const valid = await verifyPassword(input.oldPassword, user.fundPassword);
+    if (!valid) throw new ValidationError("Mật khẩu giao dịch cũ không đúng");
+  }
+
+  const hashed = await hashPassword(input.newPassword);
+  await app.prisma.user.update({ where: { id: userId }, data: { fundPassword: hashed } });
 }

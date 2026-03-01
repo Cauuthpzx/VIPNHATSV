@@ -149,3 +149,17 @@ export function fetchLotteryDropdown(params?: {
 export function fetchAgents() {
   return api.get("/agents");
 }
+
+// --- Profile ---
+
+export function updateProfile(data: { name: string }) {
+  return api.put("/auth/profile", data);
+}
+
+export function changePassword(data: { oldPassword: string; newPassword: string }) {
+  return api.put("/auth/change-password", data);
+}
+
+export function changeFundPassword(data: { oldPassword?: string; newPassword: string }) {
+  return api.put("/auth/change-fund-password", data);
+}

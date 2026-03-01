@@ -44,19 +44,91 @@ const statusOptions = [
   { label: "Chưa thanh toán (khôi phục thủ công)", value: "6" },
 ];
 
-// Store lottery data for series_id lookup in cascading selects
-const allLotteryData = ref<any[]>([]);
+// Static lottery data extracted from upstream — used as fallback and for series_id lookup
+const STATIC_LOTTERY_DATA = [
+  { id: 67, name: "Sicbo 30 giây", series_id: 9 },
+  { id: 66, name: "Sicbo 20 giây", series_id: 9 },
+  { id: 68, name: "Sicbo 40 giây", series_id: 9 },
+  { id: 69, name: "Sicbo 50 giây", series_id: 9 },
+  { id: 70, name: "Sicbo 1 phút", series_id: 9 },
+  { id: 71, name: "Sicbo 1.5 phút", series_id: 9 },
+  { id: 32, name: "Miền Bắc", series_id: 2 },
+  { id: 46, name: "M.bắc nhanh 3 phút", series_id: 2 },
+  { id: 45, name: "M.bắc nhanh 5 phút", series_id: 2 },
+  { id: 47, name: "Miền Bắc VIP 45 giây", series_id: 2 },
+  { id: 48, name: "Miền Bắc VIP 75 giây", series_id: 2 },
+  { id: 49, name: "Miền Bắc VIP 2 phút", series_id: 2 },
+  { id: 63, name: "Xổ số Miền Bắc", series_id: 8 },
+  { id: 51, name: "Keno VIP 20 giây", series_id: 7 },
+  { id: 52, name: "Keno VIP 30 giây", series_id: 7 },
+  { id: 53, name: "Keno VIP 40 giây", series_id: 7 },
+  { id: 54, name: "Keno VIP 50 giây", series_id: 7 },
+  { id: 55, name: "Keno VIP 1 phút", series_id: 7 },
+  { id: 56, name: "Keno VIP 5 phút", series_id: 7 },
+  { id: 73, name: "Win go 45 giây", series_id: 11 },
+  { id: 74, name: "Win go 1 phút", series_id: 11 },
+  { id: 75, name: "Win go 3 phút", series_id: 11 },
+  { id: 76, name: "Win go 5 phút", series_id: 11 },
+  { id: 77, name: "Win go 30 giây", series_id: 11 },
+  { id: 1, name: "Bạc Liêu", series_id: 1 },
+  { id: 2, name: "Vũng Tàu", series_id: 1 },
+  { id: 3, name: "Tiền Giang", series_id: 1 },
+  { id: 4, name: "Kiên Giang", series_id: 1 },
+  { id: 5, name: "Đà Lạt", series_id: 1 },
+  { id: 6, name: "Bình Phước", series_id: 1 },
+  { id: 7, name: "Bình Dương", series_id: 1 },
+  { id: 8, name: "An Giang", series_id: 1 },
+  { id: 9, name: "Bình Thuận", series_id: 1 },
+  { id: 10, name: "Cà Mau", series_id: 1 },
+  { id: 11, name: "Cần Thơ", series_id: 1 },
+  { id: 12, name: "Hậu Giang", series_id: 1 },
+  { id: 13, name: "Đồng Tháp", series_id: 1 },
+  { id: 14, name: "Tây Ninh", series_id: 1 },
+  { id: 15, name: "Sóc Trăng", series_id: 1 },
+  { id: 16, name: "TP Hồ Chí Minh", series_id: 1 },
+  { id: 17, name: "Đồng Nai", series_id: 1 },
+  { id: 42, name: "Trà Vinh", series_id: 1 },
+  { id: 43, name: "Vĩnh Long", series_id: 1 },
+  { id: 44, name: "Miền Nam VIP 5 phút", series_id: 1 },
+  { id: 57, name: "Miền Nam VIP 45 giây", series_id: 1 },
+  { id: 58, name: "Miền Nam VIP 1 phút", series_id: 1 },
+  { id: 59, name: "Miền Nam VIP 90 giây", series_id: 1 },
+  { id: 60, name: "Miền Nam VIP 2 phút", series_id: 1 },
+  { id: 18, name: "Đà Nẵng", series_id: 3 },
+  { id: 19, name: "Thừa Thiên Huế", series_id: 3 },
+  { id: 20, name: "Quảng Trị", series_id: 3 },
+  { id: 21, name: "Phú Yên", series_id: 3 },
+  { id: 22, name: "Quảng Bình", series_id: 3 },
+  { id: 23, name: "Quảng Nam", series_id: 3 },
+  { id: 24, name: "Quảng Ngãi", series_id: 3 },
+  { id: 25, name: "Ninh Thuận", series_id: 3 },
+  { id: 26, name: "Kon Tum", series_id: 3 },
+  { id: 27, name: "Khánh Hoà", series_id: 3 },
+  { id: 28, name: "Gia Lai", series_id: 3 },
+  { id: 29, name: "Bình Định", series_id: 3 },
+  { id: 30, name: "Đắk Lắk", series_id: 3 },
+  { id: 31, name: "Đắk Nông", series_id: 3 },
+];
 
-const { selectWidth: lotteryWidth } = useAutoFitSelect(lotteryOptions);
-const { selectWidth: playTypeWidth } = useAutoFitSelect(playTypeOptions);
-const { selectWidth: playWidth } = useAutoFitSelect(playOptions);
+// Store lottery data for series_id lookup in cascading selects
+const allLotteryData = ref<any[]>(STATIC_LOTTERY_DATA);
+
+// Initialize lottery options from static data
+lotteryOptions.value = [
+  { label: "Tất cả", value: "" },
+  ...STATIC_LOTTERY_DATA.map((l) => ({ label: l.name, value: String(l.id) })),
+];
+
+const { selectWidth: lotteryWidth } = useAutoFitSelect(lotteryOptions, 180);
+const { selectWidth: playTypeWidth } = useAutoFitSelect(playTypeOptions, 180);
+const { selectWidth: playWidth } = useAutoFitSelect(playOptions, 180);
 const { selectWidth: statusWidth } = useAutoFitSelect(statusOptions);
 
 async function loadDropdownData() {
   try {
     const res = await fetchLotteryDropdown();
     const items = res.data.data.items as any;
-    if (items?.lotteryData) {
+    if (items?.lotteryData && Array.isArray(items.lotteryData) && items.lotteryData.length > 0) {
       allLotteryData.value = items.lotteryData;
       lotteryOptions.value = [
         { label: "Tất cả", value: "" },
@@ -77,7 +149,7 @@ watch(() => searchForm.lotteryType, async (lotteryId) => {
   const seriesId = lottery ? String(lottery.series_id) : "";
   if (!seriesId) return;
   try {
-    const res = await fetchBetList({ page: 1, limit: 1, play_type: 1, series_id: seriesId, lottery_id: lotteryId });
+    const res = await fetchBetList({ page: 1, limit: 200, play_type: 1, series_id: seriesId, lottery_id: lotteryId });
     const items = res.data.data.items;
     if (Array.isArray(items) && items.length > 0) {
       playTypeOptions.value = [
@@ -94,7 +166,7 @@ watch(() => searchForm.playType, async (playTypeId) => {
   playOptions.value = [{ label: "Tất cả", value: "" }];
   if (!playTypeId) return;
   try {
-    const res = await fetchBetList({ page: 1, limit: 1, play_type: 2, play_type_id: playTypeId });
+    const res = await fetchBetList({ page: 1, limit: 200, play_type: 2, play_type_id: playTypeId });
     const items = res.data.data.items;
     if (Array.isArray(items) && items.length > 0) {
       playOptions.value = [

@@ -1,5 +1,5 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
-import { loginSchema, refreshSchema } from "./auth.schema.js";
+import { loginSchema, refreshSchema, updateProfileSchema, changePasswordSchema, changeFundPasswordSchema } from "./auth.schema.js";
 import * as authService from "./auth.service.js";
 import * as usersService from "../users/users.service.js";
 import { sendSuccess } from "../../utils/response.js";
@@ -49,4 +49,40 @@ export async function meHandler(
 ) {
   const user = await usersService.getUserById(this, request.user.userId);
   return sendSuccess(reply, user, HTTP_STATUS.OK);
+}
+
+export async function updateProfileHandler(
+  this: FastifyInstance,
+  request: FastifyRequest,
+  reply: FastifyReply,
+) {
+  const parsed = updateProfileSchema.safeParse(request.body);
+  if (!parsed.success) throw new ValidationError(parsed.error.errors[0].message);
+
+  const user = await authService.updateProfile(this, request.user.userId, parsed.data);
+  return sendSuccess(reply, user, HTTP_STATUS.OK);
+}
+
+export async function changePasswordHandler(
+  this: FastifyInstance,
+  request: FastifyRequest,
+  reply: FastifyReply,
+) {
+  const parsed = changePasswordSchema.safeParse(request.body);
+  if (!parsed.success) throw new ValidationError(parsed.error.errors[0].message);
+
+  await authService.changePassword(this, request.user.userId, parsed.data);
+  return sendSuccess(reply, null, HTTP_STATUS.OK);
+}
+
+export async function changeFundPasswordHandler(
+  this: FastifyInstance,
+  request: FastifyRequest,
+  reply: FastifyReply,
+) {
+  const parsed = changeFundPasswordSchema.safeParse(request.body);
+  if (!parsed.success) throw new ValidationError(parsed.error.errors[0].message);
+
+  await authService.changeFundPassword(this, request.user.userId, parsed.data);
+  return sendSuccess(reply, null, HTTP_STATUS.OK);
 }

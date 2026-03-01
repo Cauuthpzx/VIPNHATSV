@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import PasswordForm from "@/components/PasswordForm.vue";
+import { changeFundPassword } from "@/api/services/proxy";
 
 async function handleSubmit(data: { oldPassword: string; newPassword: string }) {
-  // TODO: call API to change fund/transaction password
-  console.log("Change fund password:", data);
+  await changeFundPassword({ oldPassword: data.oldPassword || undefined, newPassword: data.newPassword });
 }
 </script>
 
