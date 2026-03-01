@@ -13,25 +13,29 @@ const searchForm = reactive({
 });
 
 const columns = [
-  { title: "Tên tài khoản", key: "username" },
-  { title: "Thuộc đại lý", key: "user_parent_format" },
-  { title: "Số lần nạp", key: "deposit_count" },
-  { title: "Số tiền nạp", key: "deposit_amount" },
-  { title: "Số lần rút", key: "withdrawal_count" },
-  { title: "Số tiền rút", key: "withdrawal_amount" },
-  { title: "Phí giao dịch", key: "charge_fee" },
-  { title: "Hoa hồng đại lý", key: "agent_commission" },
-  { title: "Khuyến mãi", key: "promotion" },
+  { title: "Tên tài khoản", key: "username", ellipsisTooltip: true },
+  { title: "Thuộc đại lý", key: "user_parent_format", ellipsisTooltip: true },
+  { title: "Số lần nạp", key: "deposit_count", ellipsisTooltip: true },
+  { title: "Số tiền nạp", key: "deposit_amount", ellipsisTooltip: true },
+  { title: "Số lần rút", key: "withdrawal_count", ellipsisTooltip: true },
+  { title: "Số tiền rút", key: "withdrawal_amount", ellipsisTooltip: true },
+  { title: "Phí giao dịch", key: "charge_fee", ellipsisTooltip: true },
+  { title: "Hoa hồng đại lý", key: "agent_commission", ellipsisTooltip: true },
+  { title: "Khuyến mãi", key: "promotion", ellipsisTooltip: true },
+  { title: "Hoàn trả bên thứ 3", key: "third_rebate", ellipsisTooltip: true },
+  { title: "Hoạt động bên thứ 3", key: "third_activity_amount", ellipsisTooltip: true },
 ];
 
 const summaryColumns = [
-  { title: "Số lần nạp", key: "total_deposit_count" },
-  { title: "Số tiền nạp", key: "total_deposit_amount" },
-  { title: "Số lần rút", key: "total_withdrawal_count" },
-  { title: "Số tiền rút", key: "total_withdrawal_amount" },
-  { title: "Phí giao dịch", key: "total_charge_fee" },
-  { title: "Hoa hồng đại lý", key: "total_agent_commission" },
-  { title: "Khuyến mãi", key: "total_promotion" },
+  { title: "Số lần nạp", key: "total_deposit_count", ellipsisTooltip: true },
+  { title: "Số tiền nạp", key: "total_deposit_amount", ellipsisTooltip: true },
+  { title: "Số lần rút", key: "total_withdrawal_count", ellipsisTooltip: true },
+  { title: "Số tiền rút", key: "total_withdrawal_amount", ellipsisTooltip: true },
+  { title: "Phí giao dịch", key: "total_charge_fee", ellipsisTooltip: true },
+  { title: "Hoa hồng đại lý", key: "total_agent_commission", ellipsisTooltip: true },
+  { title: "Khuyến mãi", key: "total_promotion", ellipsisTooltip: true },
+  { title: "Hoàn trả bên thứ 3", key: "total_third_rebate", ellipsisTooltip: true },
+  { title: "Hoạt động bên thứ 3", key: "third_activity_amount", ellipsisTooltip: true },
 ];
 
 const summaryData = ref([
@@ -43,6 +47,8 @@ const summaryData = ref([
     total_charge_fee: "0.0000",
     total_agent_commission: "0.0000",
     total_promotion: "0.0000",
+    total_third_rebate: "0.0000",
+    third_activity_amount: 0,
   },
 ]);
 
@@ -89,6 +95,7 @@ onMounted(() => loadData());
 <template>
   <div>
     <lay-card title="Sao kê giao dịch">
+      <lay-field title="Tìm kiếm">
       <div class="search-form-wrap">
         <div class="layui-inline">
           <span class="form-label">Thời gian :</span>
@@ -112,6 +119,7 @@ onMounted(() => loadData());
           </lay-button>
         </div>
       </div>
+      </lay-field>
 
       <div class="table-container">
         <lay-table

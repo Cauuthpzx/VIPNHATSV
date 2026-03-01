@@ -16,17 +16,17 @@ const searchForm = reactive({
 });
 
 const columns = [
-  { title: "Hội viên", key: "username" },
-  { title: "Loại hình hội viên", key: "type_format" },
-  { title: "Tài khoản đại lý", key: "parent_user" },
-  { title: "Số dư", key: "money" },
-  { title: "Lần nạp", key: "deposit_count" },
-  { title: "Lần rút", key: "withdrawal_count" },
-  { title: "Tổng tiền nạp", key: "deposit_amount" },
-  { title: "Tổng tiền rút", key: "withdrawal_amount" },
-  { title: "Thời gian đăng nhập cuối", key: "login_time" },
-  { title: "Thời gian đăng ký", key: "register_time" },
-  { title: "Trạng thái", key: "status_format" },
+  { title: "Hội viên", key: "username", ellipsisTooltip: true },
+  { title: "Loại hình hội viên", key: "type_format", ellipsisTooltip: true },
+  { title: "Tài khoản đại lý", key: "parent_user", ellipsisTooltip: true },
+  { title: "Số dư", key: "money", ellipsisTooltip: true },
+  { title: "Lần nạp", key: "deposit_count", ellipsisTooltip: true },
+  { title: "Lần rút", key: "withdrawal_count", ellipsisTooltip: true },
+  { title: "Tổng tiền nạp", key: "deposit_amount", ellipsisTooltip: true },
+  { title: "Tổng tiền rút", key: "withdrawal_amount", ellipsisTooltip: true },
+  { title: "Thời gian đăng nhập cuối", key: "login_time", ellipsisTooltip: true },
+  { title: "Thời gian đăng ký", key: "register_time", ellipsisTooltip: true },
+  { title: "Trạng thái", key: "status_format", ellipsisTooltip: true },
   { title: "Thao tác", key: "action", customSlot: "action" },
 ];
 
@@ -96,6 +96,7 @@ onMounted(() => loadData());
 <template>
   <div>
     <lay-card title="Quản lí hội viên thuộc cấp">
+      <lay-field title="Tìm kiếm">
       <div class="search-form-wrap">
         <div class="layui-inline">
           <span class="form-label">Tên tài khoản:</span>
@@ -132,6 +133,7 @@ onMounted(() => loadData());
           </lay-button>
         </div>
       </div>
+      </lay-field>
 
       <div class="table-container">
         <lay-table

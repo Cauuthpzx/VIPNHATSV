@@ -86,6 +86,12 @@ const routes = [
         meta: { title: "Đơn cược bên thứ 3" },
       },
       {
+        path: "agent/profile",
+        name: "Profile",
+        component: () => import("@/pages/agent/Profile.vue"),
+        meta: { title: "Thông Tin Tài Khoản" },
+      },
+      {
         path: "agent/edit-password",
         name: "EditPassword",
         component: () => import("@/pages/agent/EditPassword.vue"),

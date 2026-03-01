@@ -5,7 +5,6 @@ import { useListPage } from "@/composables/useListPage";
 import { useAutoFitSelect } from "@/composables/useAutoFitSelect";
 import { fetchBetList } from "@/api/services/proxy";
 import { layer } from "@layui/layui-vue";
-import StatusBadge from "@/components/StatusBadge.vue";
 
 const { dateRange, dateQuickSelect, dateQuickOptions, dateQuickWidth, resetDateRange } = useDateRange("today");
 const { dataSource, loading, page } = useListPage();
@@ -45,36 +44,26 @@ const { selectWidth: playTypeWidth } = useAutoFitSelect(playTypeOptions);
 const { selectWidth: playWidth } = useAutoFitSelect(playOptions);
 const { selectWidth: statusWidth } = useAutoFitSelect(statusOptions);
 
-const BET_STATUS_MAP: Record<string, { label: string; color: string }> = {
-  pending: { label: "Chờ xử lý", color: "#e6a23c" },
-  won: { label: "Thắng", color: "#67c23a" },
-  lost: { label: "Thua", color: "#f56c6c" },
-  draw: { label: "Hoà", color: "#909399" },
-  cancelled: { label: "Đã hủy", color: "#909399" },
-};
-
 const columns = [
-  { title: "Mã giao dịch", key: "serial_no" },
-  { title: "Tên người dùng", key: "username" },
-  { title: "Thời gian cược", key: "buy_time" },
-  { title: "Trò chơi", key: "lottery_name" },
-  { title: "Loại trò chơi", key: "play_type_name" },
-  { title: "Kiểu chơi", key: "play_name" },
-  { title: "Nội dung cược", key: "bet_number" },
-  { title: "Tiền cược", key: "total_money" },
-  { title: "Tỉ lệ cược", key: "odds" },
-  { title: "Kết quả", key: "money" },
-  { title: "Hoàn trả", key: "rebate" },
-  { title: "Trạng thái", key: "status", customSlot: "status" },
-  { title: "Thời gian xổ", key: "open_time" },
-  { title: "Kỳ xổ", key: "qishu" },
+  { title: "Mã giao dịch", key: "serial_no", ellipsisTooltip: true },
+  { title: "Tên người dùng", key: "username", ellipsisTooltip: true },
+  { title: "Thời gian cược", key: "create_time", ellipsisTooltip: true },
+  { title: "Trò chơi", key: "lottery_name", ellipsisTooltip: true },
+  { title: "Loại trò chơi", key: "play_type_name", ellipsisTooltip: true },
+  { title: "Kiểu chơi", key: "play_name", ellipsisTooltip: true },
+  { title: "Kỳ xổ", key: "issue", ellipsisTooltip: true },
+  { title: "Nội dung cược", key: "content", ellipsisTooltip: true },
+  { title: "Tiền cược", key: "money", ellipsisTooltip: true },
+  { title: "Hoàn trả", key: "rebate_amount", ellipsisTooltip: true },
+  { title: "Kết quả", key: "result", ellipsisTooltip: true },
+  { title: "Trạng thái", key: "status_text", ellipsisTooltip: true },
   { title: "Thao tác", key: "action", customSlot: "action" },
 ];
 
 const summaryColumns = [
-  { title: "Tổng tiền cược", key: "total_money" },
-  { title: "Tổng kết quả", key: "total_result" },
-  { title: "Tổng hoàn trả", key: "total_rebate_amount" },
+  { title: "Tổng tiền cược", key: "total_money", ellipsisTooltip: true },
+  { title: "Tổng kết quả", key: "total_result", ellipsisTooltip: true },
+  { title: "Tổng hoàn trả", key: "total_rebate_amount", ellipsisTooltip: true },
 ];
 
 const summaryData = ref([
@@ -137,6 +126,7 @@ onMounted(() => loadData());
 <template>
   <div>
     <lay-card title="Danh sách đơn cược">
+      <lay-field title="Tìm kiếm">
       <div class="search-form-wrap">
         <div class="layui-inline">
           <span class="form-label">Thời gian :</span>
@@ -188,6 +178,7 @@ onMounted(() => loadData());
           </lay-button>
         </div>
       </div>
+      </lay-field>
 
       <div class="table-container">
         <lay-table
@@ -200,9 +191,6 @@ onMounted(() => loadData());
           :data-source="dataSource"
           @change="change"
         >
-          <template #status="{ row }">
-            <StatusBadge :status="row.status" :map="BET_STATUS_MAP" />
-          </template>
           <template #action="{ row }">
             <lay-button size="xs" type="primary">Chi tiết</lay-button>
           </template>

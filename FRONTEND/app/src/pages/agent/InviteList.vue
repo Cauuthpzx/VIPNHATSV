@@ -13,15 +13,15 @@ const searchForm = reactive({
 });
 
 const columns = [
-  { title: "Mã giới thiệu", key: "invite_code" },
-  { title: "Loại hình giới thiệu", key: "user_type" },
-  { title: "Tổng số đã đăng ký", key: "reg_count" },
-  { title: "Số lượng người dùng đã đăng ký", key: "scope_reg_count" },
-  { title: "Số người nạp tiền", key: "recharge_count" },
-  { title: "Nạp đầu trong ngày", key: "first_recharge_count" },
-  { title: "Nạp đầu trong ngày (số tiền)", key: "register_recharge_count" },
-  { title: "Ghi chú", key: "remark" },
-  { title: "Thời gian thêm vào", key: "create_time" },
+  { title: "Mã giới thiệu", key: "invite_code", ellipsisTooltip: true },
+  { title: "Loại hình giới thiệu", key: "user_type", ellipsisTooltip: true },
+  { title: "Tổng số đã đăng ký", key: "reg_count", ellipsisTooltip: true },
+  { title: "Số lượng người dùng đã đăng ký", key: "scope_reg_count", ellipsisTooltip: true },
+  { title: "Số người nạp tiền", key: "recharge_count", ellipsisTooltip: true },
+  { title: "Nạp đầu trong ngày", key: "first_recharge_count", ellipsisTooltip: true },
+  { title: "Nạp đầu trong ngày (số tiền)", key: "register_recharge_count", ellipsisTooltip: true },
+  { title: "Ghi chú", key: "remark", ellipsisTooltip: true },
+  { title: "Thời gian thêm vào", key: "create_time", ellipsisTooltip: true },
   { title: "Thao tác", key: "action", customSlot: "action" },
 ];
 
@@ -67,6 +67,7 @@ onMounted(() => loadData());
 <template>
   <div>
     <lay-card title="Danh sách liên kết giới thiệu">
+      <lay-field title="Tìm kiếm">
       <div class="search-form-wrap">
         <div class="layui-inline">
           <span class="form-label">Thời gian thêm vào:</span>
@@ -89,6 +90,7 @@ onMounted(() => loadData());
           </lay-button>
         </div>
       </div>
+      </lay-field>
 
       <div class="table-container">
         <lay-table

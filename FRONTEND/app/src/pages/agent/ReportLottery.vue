@@ -14,27 +14,27 @@ const searchForm = reactive({
 });
 
 const columns = [
-  { title: "Tên tài khoản", key: "username" },
-  { title: "Thuộc đại lý", key: "user_parent_format" },
-  { title: "Số lần cược", key: "bet_count" },
-  { title: "Tiền cược", key: "bet_amount" },
-  { title: "Tiền cược hợp lệ (trừ cược hoà)", key: "valid_amount" },
-  { title: "Hoàn trả", key: "rebate_amount" },
-  { title: "Kết quả thắng thua (không gồm hoàn trả)", key: "result" },
-  { title: "Thắng thua", key: "win_lose" },
-  { title: "Tiền trúng", key: "prize" },
-  { title: "Tên loại xổ", key: "lottery_name" },
+  { title: "Tên tài khoản", key: "username", ellipsisTooltip: true },
+  { title: "Thuộc đại lý", key: "user_parent_format", ellipsisTooltip: true },
+  { title: "Số lần cược", key: "bet_count", ellipsisTooltip: true },
+  { title: "Tiền cược", key: "bet_amount", ellipsisTooltip: true },
+  { title: "Tiền cược hợp lệ (trừ cược hoà)", key: "valid_amount", ellipsisTooltip: true },
+  { title: "Hoàn trả", key: "rebate_amount", ellipsisTooltip: true },
+  { title: "Kết quả thắng thua (không gồm hoàn trả)", key: "result", ellipsisTooltip: true },
+  { title: "Thắng thua", key: "win_lose", ellipsisTooltip: true },
+  { title: "Tiền trúng", key: "prize", ellipsisTooltip: true },
+  { title: "Tên loại xổ", key: "lottery_name", ellipsisTooltip: true },
 ];
 
 const summaryColumns = [
-  { title: "Số khách đặt cược", key: "total_bet_number" },
-  { title: "Số lần cược", key: "total_bet_count" },
-  { title: "Tiền cược", key: "total_bet_amount" },
-  { title: "Tiền cược hợp lệ (trừ cược hoà)", key: "total_valid_amount" },
-  { title: "Hoàn trả", key: "total_rebate_amount" },
-  { title: "Kết quả thắng thua (không gồm hoàn trả)", key: "total_result" },
-  { title: "Thắng thua", key: "total_win_lose" },
-  { title: "Tiền trúng", key: "total_prize" },
+  { title: "Số khách đặt cược", key: "total_bet_number", ellipsisTooltip: true },
+  { title: "Số lần cược", key: "total_bet_count", ellipsisTooltip: true },
+  { title: "Tiền cược", key: "total_bet_amount", ellipsisTooltip: true },
+  { title: "Tiền cược hợp lệ (trừ cược hoà)", key: "total_valid_amount", ellipsisTooltip: true },
+  { title: "Hoàn trả", key: "total_rebate_amount", ellipsisTooltip: true },
+  { title: "Kết quả thắng thua (không gồm hoàn trả)", key: "total_result", ellipsisTooltip: true },
+  { title: "Thắng thua", key: "total_win_lose", ellipsisTooltip: true },
+  { title: "Tiền trúng", key: "total_prize", ellipsisTooltip: true },
 ];
 
 const summaryData = ref([
@@ -95,6 +95,7 @@ onMounted(() => loadData());
 <template>
   <div>
     <lay-card title="Báo cáo xổ số">
+      <lay-field title="Tìm kiếm">
       <div class="search-form-wrap">
         <div class="layui-inline">
           <span class="form-label">Thời gian :</span>
@@ -122,6 +123,7 @@ onMounted(() => loadData());
           </lay-button>
         </div>
       </div>
+      </lay-field>
 
       <div class="table-container">
         <lay-table

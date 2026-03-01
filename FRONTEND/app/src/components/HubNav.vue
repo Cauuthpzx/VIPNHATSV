@@ -2,16 +2,17 @@
 import { useRouter } from "vue-router";
 import { useAppStore } from "@/stores/app";
 import { useAuthStore } from "@/stores/auth";
+import { layer } from "@layui/layui-vue";
 
 const router = useRouter();
 const store = useAppStore();
 const authStore = useAuthStore();
 
 async function onAction(action: string) {
-  if (action === "edit-password") {
-    router.push("/agent/edit-password");
-  } else if (action === "edit-fund-password") {
-    router.push("/agent/edit-fund-password");
+  if (action === "profile") {
+    router.push("/agent/profile");
+  } else if (action === "settings") {
+    layer.msg("Tính năng đang phát triển", { icon: 0 });
   } else if (action === "logout") {
     store.closeAllTabs();
     await authStore.logout();
@@ -29,13 +30,13 @@ async function onAction(action: string) {
     </a>
     <template #content>
       <div class="header-account-panel">
-        <div class="header-account-item" @click="onAction('edit-password')">
-          <i class="layui-icon layui-icon-password"></i>
-          <span>Đổi mật khẩu đăng nhập</span>
+        <div class="header-account-item" @click="onAction('profile')">
+          <i class="layui-icon layui-icon-username"></i>
+          <span>Thông Tin</span>
         </div>
-        <div class="header-account-item" @click="onAction('edit-fund-password')">
-          <i class="layui-icon layui-icon-dollar"></i>
-          <span>Đổi mật khẩu giao dịch</span>
+        <div class="header-account-item" @click="onAction('settings')">
+          <i class="layui-icon layui-icon-set"></i>
+          <span>Cài Đặt</span>
         </div>
         <div class="header-account-divider"></div>
         <div class="header-account-item" @click="onAction('logout')">

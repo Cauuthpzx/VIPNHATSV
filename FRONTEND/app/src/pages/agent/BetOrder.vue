@@ -13,16 +13,16 @@ const searchForm = reactive({
 });
 
 const columns = [
-  { title: "Mã giao dịch", key: "serial_no" },
-  { title: "Nhà cung cấp game bên thứ 3", key: "platform_id_name" },
-  { title: "Tên tài khoản thuộc nhà cái", key: "platform_username" },
-  { title: "Loại hình trò chơi", key: "c_name" },
-  { title: "Tên trò chơi bên thứ 3", key: "game_name" },
-  { title: "Tiền cược", key: "bet_amount" },
-  { title: "Tiền cược hợp lệ", key: "turnover" },
-  { title: "Tiền thưởng", key: "prize" },
-  { title: "Thắng/Thua", key: "win_lose" },
-  { title: "Thời gian cược", key: "bet_time" },
+  { title: "Mã giao dịch", key: "serial_no", ellipsisTooltip: true },
+  { title: "Nhà cung cấp game bên thứ 3", key: "platform_id_name", ellipsisTooltip: true },
+  { title: "Tên tài khoản thuộc nhà cái", key: "platform_username", ellipsisTooltip: true },
+  { title: "Loại hình trò chơi", key: "c_name", ellipsisTooltip: true },
+  { title: "Tên trò chơi bên thứ 3", key: "game_name", ellipsisTooltip: true },
+  { title: "Tiền cược", key: "bet_amount", ellipsisTooltip: true },
+  { title: "Tiền cược hợp lệ", key: "turnover", ellipsisTooltip: true },
+  { title: "Tiền thưởng", key: "prize", ellipsisTooltip: true },
+  { title: "Thắng/Thua", key: "win_lose", ellipsisTooltip: true },
+  { title: "Thời gian cược", key: "bet_time", ellipsisTooltip: true },
 ];
 
 async function loadData() {
@@ -67,6 +67,7 @@ onMounted(() => loadData());
 <template>
   <div>
     <lay-card title="Đơn cược bên thứ 3">
+      <lay-field title="Tìm kiếm">
       <div class="search-form-wrap">
         <div class="layui-inline">
           <span class="form-label">Thời gian :</span>
@@ -89,6 +90,7 @@ onMounted(() => loadData());
           </lay-button>
         </div>
       </div>
+      </lay-field>
 
       <div class="table-container">
         <lay-table

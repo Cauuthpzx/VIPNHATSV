@@ -11,12 +11,12 @@ const searchForm = reactive({
 });
 
 const columns = [
-  { title: "Mã số", key: "id" },
-  { title: "Có cài đặt mặc định không", key: "is_default_format" },
-  { title: "Tên ngân hàng", key: "bank_name" },
-  { title: "Chi nhánh", key: "bank_branch" },
-  { title: "Số tài khoản", key: "card_no" },
-  { title: "Tên chủ tài khoản", key: "name" },
+  { title: "Mã số", key: "id", ellipsisTooltip: true },
+  { title: "Có cài đặt mặc định không", key: "is_default_format", ellipsisTooltip: true },
+  { title: "Tên ngân hàng", key: "bank_name", ellipsisTooltip: true },
+  { title: "Chi nhánh", key: "bank_branch", ellipsisTooltip: true },
+  { title: "Số tài khoản", key: "card_no", ellipsisTooltip: true },
+  { title: "Tên chủ tài khoản", key: "name", ellipsisTooltip: true },
   { title: "Thao tác", key: "operation", customSlot: "operation" },
 ];
 
@@ -72,6 +72,7 @@ onMounted(() => loadData());
 <template>
   <div>
     <lay-card title="Danh sách thẻ ngân hàng">
+      <lay-field title="Tìm kiếm">
       <div class="search-form-wrap">
         <div class="layui-inline">
           <span class="form-label">Số tài khoản:</span>
@@ -86,6 +87,7 @@ onMounted(() => loadData());
           </lay-button>
         </div>
       </div>
+      </lay-field>
 
       <div class="table-container">
         <lay-table

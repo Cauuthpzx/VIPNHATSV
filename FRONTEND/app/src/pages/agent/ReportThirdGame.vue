@@ -14,22 +14,22 @@ const searchForm = reactive({
 });
 
 const columns = [
-  { title: "Tên tài khoản", key: "username" },
-  { title: "Nhà cung cấp game", key: "platform_id_name" },
-  { title: "Số lần cược", key: "t_bet_times" },
-  { title: "Tiền cược", key: "t_bet_amount" },
-  { title: "Tiền cược hợp lệ", key: "t_turnover" },
-  { title: "Tiền trúng", key: "t_prize" },
-  { title: "Thắng thua", key: "t_win_lose" },
+  { title: "Tên tài khoản", key: "username", ellipsisTooltip: true },
+  { title: "Nhà cung cấp game", key: "platform_id_name", ellipsisTooltip: true },
+  { title: "Số lần cược", key: "t_bet_times", ellipsisTooltip: true },
+  { title: "Tiền cược", key: "t_bet_amount", ellipsisTooltip: true },
+  { title: "Tiền cược hợp lệ", key: "t_turnover", ellipsisTooltip: true },
+  { title: "Tiền trúng", key: "t_prize", ellipsisTooltip: true },
+  { title: "Thắng thua", key: "t_win_lose", ellipsisTooltip: true },
 ];
 
 const summaryColumns = [
-  { title: "Số người chơi", key: "total_bet_number" },
-  { title: "Số lần cược", key: "total_bet_times" },
-  { title: "Tiền cược", key: "total_bet_amount" },
-  { title: "Tiền cược hợp lệ", key: "total_turnover" },
-  { title: "Tiền trúng", key: "total_prize" },
-  { title: "Thắng thua", key: "total_win_lose" },
+  { title: "Số người chơi", key: "total_bet_number", ellipsisTooltip: true },
+  { title: "Số lần cược", key: "total_bet_times", ellipsisTooltip: true },
+  { title: "Tiền cược", key: "total_bet_amount", ellipsisTooltip: true },
+  { title: "Tiền cược hợp lệ", key: "total_turnover", ellipsisTooltip: true },
+  { title: "Tiền trúng", key: "total_prize", ellipsisTooltip: true },
+  { title: "Thắng thua", key: "total_win_lose", ellipsisTooltip: true },
 ];
 
 const summaryData = ref([
@@ -88,6 +88,7 @@ onMounted(() => loadData());
 <template>
   <div>
     <lay-card title="Báo cáo nhà cung cấp">
+      <lay-field title="Tìm kiếm">
       <div class="search-form-wrap">
         <div class="layui-inline">
           <span class="form-label">Thời gian :</span>
@@ -115,6 +116,7 @@ onMounted(() => loadData());
           </lay-button>
         </div>
       </div>
+      </lay-field>
 
       <div class="table-container">
         <lay-table

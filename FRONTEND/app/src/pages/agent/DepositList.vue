@@ -39,12 +39,12 @@ const DEPOSIT_STATUS_MAP: Record<string, { label: string; color: string }> = {
 };
 
 const columns = [
-  { title: "Tên tài khoản", key: "username" },
-  { title: "Thuộc đại lý", key: "user_parent_format" },
-  { title: "Số tiền", key: "amount" },
-  { title: "Loại hình giao dịch", key: "type" },
+  { title: "Tên tài khoản", key: "username", ellipsisTooltip: true },
+  { title: "Thuộc đại lý", key: "user_parent_format", ellipsisTooltip: true },
+  { title: "Số tiền", key: "amount", ellipsisTooltip: true },
+  { title: "Loại hình giao dịch", key: "type", ellipsisTooltip: true },
   { title: "Trạng thái giao dịch", key: "status", customSlot: "status" },
-  { title: "Thời gian", key: "create_time" },
+  { title: "Thời gian", key: "create_time", ellipsisTooltip: true },
 ];
 
 async function loadData() {
@@ -91,6 +91,7 @@ onMounted(() => loadData());
 <template>
   <div>
     <lay-card title="Danh sách nạp tiền">
+      <lay-field title="Tìm kiếm">
       <div class="search-form-wrap">
         <div class="layui-inline">
           <span class="form-label">Thời gian :</span>
@@ -126,6 +127,7 @@ onMounted(() => loadData());
           </lay-button>
         </div>
       </div>
+      </lay-field>
 
       <div class="table-container">
         <lay-table

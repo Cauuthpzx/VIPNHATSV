@@ -5,7 +5,7 @@ import { useListPage } from "@/composables/useListPage";
 import { useAutoFitSelect } from "@/composables/useAutoFitSelect";
 import { fetchWithdrawalsRecord } from "@/api/services/proxy";
 import { layer } from "@layui/layui-vue";
-import StatusBadge from "@/components/StatusBadge.vue";
+
 
 const { dateRange, dateQuickSelect, dateQuickOptions, dateQuickWidth, resetDateRange } = useDateRange("today");
 const { dataSource, loading, page } = useListPage();
@@ -26,20 +26,15 @@ const statusOptions = [
 
 const { selectWidth: statusWidth } = useAutoFitSelect(statusOptions);
 
-const WITHDRAWAL_STATUS_MAP: Record<string, { label: string; color: string }> = {
-  pending: { label: "Chờ xử lý", color: "#e6a23c" },
-  success: { label: "Thành công", color: "#67c23a" },
-  failed: { label: "Thất bại", color: "#f56c6c" },
-  cancelled: { label: "Đã hủy", color: "#909399" },
-};
-
 const columns = [
-  { title: "Mã giao dịch", key: "serial_number" },
-  { title: "Thời gian tạo đơn", key: "create_time" },
-  { title: "Tên tài khoản", key: "username" },
-  { title: "Thuộc đại lý", key: "user_parent_format" },
-  { title: "Số tiền", key: "money" },
-  { title: "Trạng thái", key: "status", customSlot: "status" },
+  { title: "Mã giao dịch", key: "serial_no", ellipsisTooltip: true },
+  { title: "Thời gian tạo đơn", key: "create_time", ellipsisTooltip: true },
+  { title: "Tên tài khoản", key: "username", ellipsisTooltip: true },
+  { title: "Thuộc đại lý", key: "user_parent_format", ellipsisTooltip: true },
+  { title: "Số tiền yêu cầu", key: "amount", ellipsisTooltip: true },
+  { title: "Phí rút", key: "user_fee", ellipsisTooltip: true },
+  { title: "Số tiền thực nhận", key: "true_amount", ellipsisTooltip: true },
+  { title: "Trạng thái", key: "status_format", ellipsisTooltip: true },
   { title: "Thao tác", key: "operation", customSlot: "operation" },
 ];
 
@@ -92,6 +87,7 @@ onMounted(() => loadData());
 <template>
   <div>
     <lay-card title="Lịch sử rút tiền">
+      <lay-field title="Tìm kiếm">
       <div class="search-form-wrap">
         <div class="layui-inline">
           <span class="form-label">Thời gian :</span>
@@ -125,6 +121,7 @@ onMounted(() => loadData());
           </lay-button>
         </div>
       </div>
+      </lay-field>
 
       <div class="table-container">
         <lay-table
@@ -137,9 +134,6 @@ onMounted(() => loadData());
           :data-source="dataSource"
           @change="change"
         >
-          <template #status="{ row }">
-            <StatusBadge :status="row.status" :map="WITHDRAWAL_STATUS_MAP" />
-          </template>
           <template #operation="{ row }">
             <lay-button size="xs" type="primary" @click="handleDetail(row)">Chi tiết</lay-button>
           </template>
