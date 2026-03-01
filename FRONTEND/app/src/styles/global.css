@@ -98,19 +98,6 @@ body {
   height: 800px;
 }
 
-/* Summary section */
-.summary-section {
-  margin-top: 20px;
-  border-top: 1px solid #e6e6e6;
-  padding-top: 10px;
-}
-
-.summary-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #333;
-  margin-bottom: 10px;
-}
 
 /* Password form */
 .password-form {

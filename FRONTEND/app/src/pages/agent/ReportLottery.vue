@@ -136,11 +136,11 @@ onMounted(() => loadData());
           :data-source="dataSource"
           @change="change"
         />
-      </div>
-
-      <div class="summary-section">
-        <div class="summary-title">Dữ liệu tổng hợp :</div>
-        <lay-table :columns="summaryColumns" :data-source="summaryData" :default-toolbar="true" />
+        <lay-table :columns="summaryColumns" :data-source="summaryData" :default-toolbar="true">
+          <template v-slot:toolbar>
+            <lay-button size="xs" type="normal">Dữ liệu tổng hợp</lay-button>
+          </template>
+        </lay-table>
       </div>
     </lay-card>
   </div>
