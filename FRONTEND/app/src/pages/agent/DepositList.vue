@@ -3,12 +3,14 @@ import { reactive, onMounted } from "vue";
 import { useDateRange } from "@/composables/useDateRange";
 import { useListPage } from "@/composables/useListPage";
 import { useAutoFitSelect } from "@/composables/useAutoFitSelect";
+import { useAgentFilter } from "@/composables/useAgentFilter";
 import { fetchDepositList } from "@/api/services/proxy";
 import { layer } from "@layui/layui-vue";
 import StatusBadge from "@/components/StatusBadge.vue";
 
 const { dateRange, dateQuickSelect, dateQuickOptions, dateQuickWidth, resetDateRange } = useDateRange("today");
 const { dataSource, loading, page } = useListPage();
+const { selectedAgentId, agentOptions, agentWidth } = useAgentFilter();
 
 const searchForm = reactive({
   username: "",
@@ -39,6 +41,7 @@ const DEPOSIT_STATUS_MAP: Record<string, { label: string; color: string }> = {
 };
 
 const columns = [
+  { title: "Nhân viên", key: "_agentName", ellipsisTooltip: true },
   { title: "Tên tài khoản", key: "username", ellipsisTooltip: true },
   { title: "Thuộc đại lý", key: "user_parent_format", ellipsisTooltip: true },
   { title: "Số tiền", key: "amount", ellipsisTooltip: true },
@@ -93,6 +96,12 @@ onMounted(() => loadData());
     <lay-card>
       <lay-field title="Danh sách nạp tiền">
       <div class="search-form-wrap">
+        <div class="layui-inline">
+          <span class="form-label">Nhân viên :</span>
+          <lay-select v-model="selectedAgentId" :style="{ width: agentWidth }">
+            <lay-select-option v-for="opt in agentOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
+          </lay-select>
+        </div>
         <div class="layui-inline">
           <span class="form-label">Thời gian :</span>
           <lay-date-picker v-model="dateRange" range single-panel range-separator="-" :placeholder="['Ngày bắt đầu', 'Ngày kết thúc']" />

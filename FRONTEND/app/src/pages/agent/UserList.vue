@@ -2,10 +2,12 @@
 import { reactive, onMounted } from "vue";
 import { useListPage } from "@/composables/useListPage";
 import { useAutoFitSelect } from "@/composables/useAutoFitSelect";
+import { useAgentFilter } from "@/composables/useAgentFilter";
 import { fetchUserList } from "@/api/services/proxy";
 import { layer } from "@layui/layui-vue";
 
 const { dataSource, loading, page } = useListPage();
+const { selectedAgentId, agentOptions, agentWidth } = useAgentFilter();
 
 const searchForm = reactive({
   username: "",
@@ -16,6 +18,7 @@ const searchForm = reactive({
 });
 
 const columns = [
+  { title: "Nhân viên", key: "_agentName", ellipsisTooltip: true },
   { title: "Hội viên", key: "username", ellipsisTooltip: true },
   { title: "Loại hình hội viên", key: "type_format", ellipsisTooltip: true },
   { title: "Tài khoản đại lý", key: "parent_user", ellipsisTooltip: true },
@@ -99,6 +102,12 @@ onMounted(() => loadData());
     <lay-card>
       <lay-field title="Danh sách hội viên">
       <div class="search-form-wrap">
+        <div class="layui-inline">
+          <span class="form-label">Nhân viên :</span>
+          <lay-select v-model="selectedAgentId" :style="{ width: agentWidth }">
+            <lay-select-option v-for="opt in agentOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
+          </lay-select>
+        </div>
         <div class="layui-inline">
           <span class="form-label">Tên tài khoản:</span>
           <lay-input v-model="searchForm.username" placeholder="Nhập tên tài khoản" />

@@ -3,14 +3,17 @@ import { reactive, onMounted } from "vue";
 import { useListPage } from "@/composables/useListPage";
 import { fetchBankList } from "@/api/services/proxy";
 import { layer } from "@layui/layui-vue";
+import { useAgentFilter } from "@/composables/useAgentFilter";
 
 const { dataSource, loading, page } = useListPage();
+const { selectedAgentId, agentOptions, agentWidth } = useAgentFilter();
 
 const searchForm = reactive({
   accountNumber: "",
 });
 
 const columns = [
+  { title: "Nhân viên", key: "_agentName", ellipsisTooltip: true },
   { title: "Mã số", key: "id", ellipsisTooltip: true },
   { title: "Có cài đặt mặc định không", key: "is_default_format", ellipsisTooltip: true },
   { title: "Tên ngân hàng", key: "bank_name", ellipsisTooltip: true },
@@ -74,6 +77,12 @@ onMounted(() => loadData());
     <lay-card>
       <lay-field title="Danh sách thẻ ngân hàng">
       <div class="search-form-wrap">
+        <div class="layui-inline">
+          <span class="form-label">Nhân viên :</span>
+          <lay-select v-model="selectedAgentId" :style="{ width: agentWidth }">
+            <lay-select-option v-for="opt in agentOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
+          </lay-select>
+        </div>
         <div class="layui-inline">
           <span class="form-label">Số tài khoản:</span>
           <lay-input v-model="searchForm.accountNumber" placeholder="Số tài khoản" />

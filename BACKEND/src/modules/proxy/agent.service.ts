@@ -60,6 +60,26 @@ export async function listAgents(app: FastifyInstance) {
   });
 }
 
+// In-memory cache for active agents list (avoid DB query per request)
+let _activeAgentsCache: {
+  data: Array<{ id: string; name: string; sessionCookie: string; cookieExpires: Date | null }>;
+  ts: number;
+} | null = null;
+const ACTIVE_AGENTS_CACHE_MS = 30_000; // 30s
+
+export async function listActiveAgents(app: FastifyInstance) {
+  if (_activeAgentsCache && Date.now() - _activeAgentsCache.ts < ACTIVE_AGENTS_CACHE_MS) {
+    return _activeAgentsCache.data;
+  }
+  const agents = await app.prisma.agent.findMany({
+    where: { isActive: true, status: "active" },
+    select: { id: true, name: true, sessionCookie: true, cookieExpires: true },
+    orderBy: { name: "asc" },
+  });
+  _activeAgentsCache = { data: agents, ts: Date.now() };
+  return agents;
+}
+
 export async function updateAgentCookie(
   app: FastifyInstance,
   agentId: string,

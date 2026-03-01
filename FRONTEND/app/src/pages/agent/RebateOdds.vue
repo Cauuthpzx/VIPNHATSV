@@ -3,6 +3,7 @@ import { ref, watch, onMounted } from "vue";
 import { fetchLotteryDropdown, fetchRebateOdds } from "@/api/services/proxy";
 import { layer } from "@layui/layui-vue";
 import { useAutoFitSelect } from "@/composables/useAutoFitSelect";
+import { useAgentFilter } from "@/composables/useAgentFilter";
 
 const selectedSeries = ref("");
 const selectedLottery = ref("");
@@ -12,7 +13,9 @@ const loading = ref(false);
 
 const { selectWidth: seriesWidth } = useAutoFitSelect(seriesOptions);
 const { selectWidth: lotteryWidth } = useAutoFitSelect(lotteryOptions);
+const { selectedAgentId, agentOptions, agentWidth } = useAgentFilter();
 
+const agentColumn = { title: "Nhân viên", key: "_agentName" };
 const columns = ref<{ title: string; key: string }[]>([]);
 const dataSource = ref<Record<string, any>[]>([]);
 
@@ -68,10 +71,13 @@ async function fetchRebateData() {
     });
     const items = res.data.data.items as any;
     if (items?.tableHead && items?.tableBody) {
-      columns.value = (items.tableHead as any[]).map((h: any) => ({
-        title: h.title || h,
-        key: h.key || h.field || h,
-      }));
+      columns.value = [
+        agentColumn,
+        ...(items.tableHead as any[]).map((h: any) => ({
+          title: h.title || h,
+          key: h.key || h.field || h,
+        })),
+      ];
       dataSource.value = items.tableBody;
     } else {
       buildFallbackData();
@@ -85,6 +91,7 @@ async function fetchRebateData() {
 
 function buildFallbackData() {
   columns.value = [
+    agentColumn,
     { title: "Kiểu chơi", key: "playType" },
     { title: "Hoàn trả 10", key: "rebate10" },
     { title: "Hoàn trả 9", key: "rebate9" },
@@ -164,6 +171,12 @@ onMounted(() => {
     <lay-card>
       <lay-field title="Danh sách tỉ lệ hoàn trả">
       <div class="search-form-wrap">
+        <div class="layui-inline">
+          <span class="form-label">Nhân viên :</span>
+          <lay-select v-model="selectedAgentId" :style="{ width: agentWidth }">
+            <lay-select-option v-for="opt in agentOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
+          </lay-select>
+        </div>
         <div class="layui-inline">
           <span class="form-label">Chọn loại xổ :</span>
           <lay-select v-model="selectedSeries" :style="{ width: seriesWidth }">

@@ -2,10 +2,13 @@ import type { FastifyInstance } from "fastify";
 import { createHash } from "node:crypto";
 import { fetchUpstream } from "./proxy.client.js";
 import * as agentService from "./agent.service.js";
+import { decryptSessionCookie } from "../../utils/crypto.js";
 import { wsManager } from "../../websocket/ws.manager.js";
 import { logger } from "../../utils/logger.js";
 
-// Cache TTL in seconds per endpoint
+// ---------------------------------------------------------------------------
+// Cache TTL (seconds)
+// ---------------------------------------------------------------------------
 const CACHE_TTL: Record<string, number> = {
   "/agent/user.html": 60,
   "/agent/inviteList.html": 180,
@@ -21,18 +24,23 @@ const CACHE_TTL: Record<string, number> = {
   "/agent/getLottery": 600,
 };
 
-function buildCacheKey(path: string, params: Record<string, string>, agentId?: string): string {
+// Max concurrent upstream requests to avoid overwhelming the upstream server
+const MAX_CONCURRENCY = 6;
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function buildCacheKey(path: string, params: Record<string, string>, agentId: string): string {
   const sorted = Object.entries(params)
     .filter(([, v]) => v !== "" && v !== undefined)
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([k, v]) => `${k}=${v}`)
     .join("&");
   const hash = createHash("md5").update(sorted).digest("hex").slice(0, 12);
-  const agentPrefix = agentId ? `agent:${agentId}:` : "";
-  return `proxy:${agentPrefix}${path}:${hash}`;
+  return `proxy:agent:${agentId}:${path}:${hash}`;
 }
 
-// Endpoints that use start_date + end_date instead of a single date range string
 const SPLIT_DATE_ENDPOINTS = new Set([
   "/agent/reportLottery.html",
   "/agent/reportFunds.html",
@@ -46,7 +54,6 @@ function buildUpstreamParams(input: Record<string, unknown>, path: string): Reco
     if (key === "agentId") continue;
     if (value === undefined || value === null || value === "") continue;
 
-    // Split "date" or "bet_time" range into "start_date" + "end_date" for endpoints that require it
     if ((key === "date" || key === "bet_time") && SPLIT_DATE_ENDPOINTS.has(path)) {
       const parts = String(value).split(/\s*-\s*/);
       if (parts.length === 2) {
@@ -61,15 +68,92 @@ function buildUpstreamParams(input: Record<string, unknown>, path: string): Reco
   return params;
 }
 
-async function cachedProxyCall<T = unknown>(
+/**
+ * Reference-only requests that should always use a single agent
+ * (dropdown data, cascading selects — same data across all agents).
+ */
+function isReferenceRequest(path: string, input: Record<string, unknown>): boolean {
+  if (path === "/agent/getLottery") return true;
+  if (path === "/agent/getRebateOddsPanel.html") return true;
+  if (path === "/agent/bet.html" && input.play_type) return true;
+  return false;
+}
+
+// ---------------------------------------------------------------------------
+// Worker pool — run N async tasks with bounded concurrency
+// ---------------------------------------------------------------------------
+
+interface SingleResult<T> {
+  items: T[];
+  total: number;
+  totalData?: Record<string, unknown>;
+}
+
+async function promisePool<TItem, TResult>(
+  items: TItem[],
+  concurrency: number,
+  fn: (item: TItem) => Promise<TResult>,
+): Promise<TResult[]> {
+  const results: TResult[] = new Array(items.length);
+  let idx = 0;
+
+  async function worker() {
+    while (idx < items.length) {
+      const i = idx++;
+      results[i] = await fn(items[i]);
+    }
+  }
+
+  const workerCount = Math.min(concurrency, items.length);
+  await Promise.all(Array.from({ length: workerCount }, () => worker()));
+  return results;
+}
+
+// ---------------------------------------------------------------------------
+// Merge totalData — sum numeric fields across agents
+// ---------------------------------------------------------------------------
+
+function mergeTotalData(
+  results: Array<{ totalData?: Record<string, unknown> }>,
+): Record<string, unknown> | undefined {
+  const allTotals = results.map((r) => r.totalData).filter(Boolean) as Record<string, unknown>[];
+  if (allTotals.length === 0) return undefined;
+
+  const merged: Record<string, unknown> = {};
+  for (const td of allTotals) {
+    for (const [key, val] of Object.entries(td)) {
+      const num = parseFloat(String(val));
+      if (!isNaN(num)) {
+        merged[key] = ((merged[key] as number) || 0) + num;
+      } else {
+        merged[key] = val;
+      }
+    }
+  }
+
+  // Format to 4 decimals (matches upstream format)
+  for (const [key, val] of Object.entries(merged)) {
+    if (typeof val === "number") {
+      merged[key] = val.toFixed(4);
+    }
+  }
+  return merged;
+}
+
+// ---------------------------------------------------------------------------
+// fetchSingleAgent — fetch one agent with Redis cache
+// ---------------------------------------------------------------------------
+
+async function fetchSingleAgent<T = unknown>(
   app: FastifyInstance,
   path: string,
-  input: Record<string, unknown>,
-): Promise<{ items: T[] | T; total: number; totalData?: Record<string, unknown> }> {
-  const params = buildUpstreamParams(input, path);
-  const agentId = input.agentId as string | undefined;
+  params: Record<string, string>,
+  agentId: string,
+  agentName: string,
+  cookie: string,
+  ttl: number,
+): Promise<SingleResult<T>> {
   const cacheKey = buildCacheKey(path, params, agentId);
-  const ttl = CACHE_TTL[path] ?? 60;
 
   // 1. Check Redis cache
   try {
@@ -83,14 +167,15 @@ async function cachedProxyCall<T = unknown>(
   }
 
   // 2. Fetch from upstream
-  const cookie = agentId
-    ? await agentService.getAgentCookie(app, agentId)
-    : await agentService.getDefaultAgentCookie(app);
-
   const upstream = await fetchUpstream<T>({ path, cookie, params });
 
-  const result = {
-    items: Array.isArray(upstream.data) ? upstream.data : (upstream.data ?? []),
+  const rawItems = Array.isArray(upstream.data) ? upstream.data : [];
+
+  // Stamp each item with agent name
+  const items = rawItems.map((item: any) => ({ _agentName: agentName, ...item }));
+
+  const result: SingleResult<T> = {
+    items: items as T[],
     total: upstream.count ?? 0,
     totalData: upstream.total_data,
   };
@@ -102,17 +187,103 @@ async function cachedProxyCall<T = unknown>(
     // Redis write error — ignore
   }
 
-  // 4. Notify WS clients
-  wsManager.broadcast({
-    type: "data_update",
-    endpoint: path,
-    timestamp: Date.now(),
-  });
-
   return result;
 }
 
-// --- Per-endpoint proxy functions ---
+// ---------------------------------------------------------------------------
+// cachedProxyCall — main entry point
+// ---------------------------------------------------------------------------
+
+async function cachedProxyCall<T = unknown>(
+  app: FastifyInstance,
+  path: string,
+  input: Record<string, unknown>,
+): Promise<{ items: T[] | T; total: number; totalData?: Record<string, unknown> }> {
+  const params = buildUpstreamParams(input, path);
+  const ttl = CACHE_TTL[path] ?? 60;
+  const explicitAgentId = input.agentId as string | undefined;
+
+  // -----------------------------------------------------------------------
+  // Single-agent mode: explicit agentId OR reference/dropdown request
+  // -----------------------------------------------------------------------
+  if (explicitAgentId || isReferenceRequest(path, input)) {
+    let cookie: string;
+    let agentName: string;
+
+    if (explicitAgentId) {
+      cookie = await agentService.getAgentCookie(app, explicitAgentId);
+      // Get agent name for the stamp
+      const agents = await agentService.listActiveAgents(app);
+      const found = agents.find((a) => a.id === explicitAgentId);
+      agentName = found?.name ?? "";
+    } else {
+      // Reference request — use first active agent
+      const agents = await agentService.listActiveAgents(app);
+      if (agents.length === 0) {
+        return { items: [] as unknown as T[], total: 0 };
+      }
+      const agent = agents[0];
+      cookie = decryptSessionCookie(agent.sessionCookie);
+      agentName = agent.name;
+    }
+
+    const agentId = explicitAgentId || (await agentService.listActiveAgents(app))[0]?.id || "default";
+    const result = await fetchSingleAgent<T>(app, path, params, agentId, agentName, cookie, ttl);
+
+    wsManager.broadcast({ type: "data_update", endpoint: path, timestamp: Date.now() });
+    return result;
+  }
+
+  // -----------------------------------------------------------------------
+  // Multi-agent mode: fetch ALL active agents in parallel
+  // -----------------------------------------------------------------------
+  const agents = await agentService.listActiveAgents(app);
+  if (agents.length === 0) {
+    return { items: [] as unknown as T[], total: 0 };
+  }
+
+  const results = await promisePool(
+    agents,
+    MAX_CONCURRENCY,
+    async (agent) => {
+      try {
+        // Validate cookie expiry
+        if (agent.cookieExpires && agent.cookieExpires < new Date()) {
+          logger.warn("Skipping agent with expired cookie", { agentId: agent.id, name: agent.name });
+          return { items: [] as T[], total: 0 } as SingleResult<T>;
+        }
+
+        const cookie = decryptSessionCookie(agent.sessionCookie);
+        return await fetchSingleAgent<T>(app, path, params, agent.id, agent.name, cookie, ttl);
+      } catch (err) {
+        logger.warn("Agent fetch failed, skipping", {
+          agentId: agent.id,
+          name: agent.name,
+          error: err instanceof Error ? err.message : String(err),
+        });
+        return { items: [] as T[], total: 0 } as SingleResult<T>;
+      }
+    },
+  );
+
+  // Merge results from all agents
+  const mergedItems = results.flatMap((r) => (Array.isArray(r.items) ? r.items : []));
+  const mergedTotal = results.reduce((sum, r) => sum + r.total, 0);
+  const mergedTotalData = mergeTotalData(results);
+
+  // Broadcast once for the merged result
+  wsManager.broadcast({ type: "data_update", endpoint: path, timestamp: Date.now() });
+
+  return {
+    items: mergedItems as T[] | T,
+    total: mergedTotal,
+    totalData: mergedTotalData,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Per-endpoint proxy functions (public API — unchanged signatures)
+// ---------------------------------------------------------------------------
 
 export function fetchUserList(app: FastifyInstance, input: Record<string, unknown>) {
   return cachedProxyCall(app, "/agent/user.html", input);

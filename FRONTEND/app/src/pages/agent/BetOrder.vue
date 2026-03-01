@@ -3,8 +3,10 @@ import { reactive, onMounted } from "vue";
 import { useListPage } from "@/composables/useListPage";
 import { fetchBetOrder } from "@/api/services/proxy";
 import { layer } from "@layui/layui-vue";
+import { useAgentFilter } from "@/composables/useAgentFilter";
 
 const { dataSource, loading, page } = useListPage();
+const { selectedAgentId, agentOptions, agentWidth } = useAgentFilter();
 
 const searchForm = reactive({
   dateRange: [] as string[],
@@ -13,6 +15,7 @@ const searchForm = reactive({
 });
 
 const columns = [
+  { title: "Nhân viên", key: "_agentName", ellipsisTooltip: true },
   { title: "Mã giao dịch", key: "serial_no", ellipsisTooltip: true },
   { title: "Nhà cung cấp game bên thứ 3", key: "platform_id_name", ellipsisTooltip: true },
   { title: "Tên tài khoản thuộc nhà cái", key: "platform_username", ellipsisTooltip: true },
@@ -70,6 +73,12 @@ onMounted(() => loadData());
     <lay-card>
       <lay-field title="Đơn cược bên thứ 3">
       <div class="search-form-wrap">
+        <div class="layui-inline">
+          <span class="form-label">Nhân viên :</span>
+          <lay-select v-model="selectedAgentId" :style="{ width: agentWidth }">
+            <lay-select-option v-for="opt in agentOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
+          </lay-select>
+        </div>
         <div class="layui-inline">
           <span class="form-label">Thời gian :</span>
           <lay-date-picker v-model="searchForm.dateRange" range single-panel range-separator="-" :placeholder="['Ngày bắt đầu', 'Ngày kết thúc']" :allow-clear="true" />

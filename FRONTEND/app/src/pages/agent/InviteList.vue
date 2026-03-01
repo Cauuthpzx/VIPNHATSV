@@ -3,8 +3,10 @@ import { reactive, onMounted } from "vue";
 import { useListPage } from "@/composables/useListPage";
 import { fetchInviteList } from "@/api/services/proxy";
 import { layer } from "@layui/layui-vue";
+import { useAgentFilter } from "@/composables/useAgentFilter";
 
 const { dataSource, loading, page } = useListPage();
+const { selectedAgentId, agentOptions, agentWidth } = useAgentFilter();
 
 const searchForm = reactive({
   dateAdded: [] as string[],
@@ -13,6 +15,7 @@ const searchForm = reactive({
 });
 
 const columns = [
+  { title: "Nhân viên", key: "_agentName", ellipsisTooltip: true },
   { title: "Mã giới thiệu", key: "invite_code", ellipsisTooltip: true },
   { title: "Loại hình giới thiệu", key: "user_type", ellipsisTooltip: true },
   { title: "Tổng số đã đăng ký", key: "reg_count", ellipsisTooltip: true },
@@ -69,6 +72,12 @@ onMounted(() => loadData());
     <lay-card>
       <lay-field title="Danh sách mã giới thiệu">
       <div class="search-form-wrap">
+        <div class="layui-inline">
+          <span class="form-label">Nhân viên :</span>
+          <lay-select v-model="selectedAgentId" :style="{ width: agentWidth }">
+            <lay-select-option v-for="opt in agentOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
+          </lay-select>
+        </div>
         <div class="layui-inline">
           <span class="form-label">Thời gian thêm vào:</span>
           <lay-date-picker v-model="searchForm.dateAdded" range single-panel range-separator="-" :placeholder="['Ngày bắt đầu', 'Ngày kết thúc']" :allow-clear="true" />
