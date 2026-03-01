@@ -1,0 +1,298 @@
+/* === CSS Variable Overrides === */
+:root {
+  --input-focus-border-color: #009688;
+}
+
+/* === RESET === */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: "Helvetica Neue", Helvetica, "PingFang SC", Tahoma, Arial, sans-serif;
+  font-size: 14px;
+  color: #666;
+  background: #f2f2f2;
+}
+
+body {
+  position: relative;
+}
+
+/* === LAYUI OVERRIDES - Match original site exactly === */
+
+/* Card */
+.layui-card {
+  background: #fff;
+  border-radius: 2px;
+  box-shadow: 0 1px 2px 0 rgba(0,0,0,.05);
+}
+
+.layui-card-header {
+  height: 42px;
+  line-height: 42px;
+  padding: 0 15px;
+  border-bottom: 1px solid #f6f6f6;
+  color: #333;
+  font-size: 14px;
+}
+
+.layui-card-body {
+  padding: 0 15px 10px;
+  font-size: 14px;
+  line-height: 24px;
+}
+
+/* Form */
+.layui-form-item {
+  margin-bottom: 15px;
+}
+
+.layui-form-label {
+  float: left;
+  display: block;
+  padding: 9px 15px;
+  width: 110px;
+  font-weight: 400;
+  line-height: 20px;
+  text-align: right;
+}
+
+.layui-input-block {
+  margin-left: 110px;
+  min-height: 38px;
+}
+
+.layui-input-inline {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+/* Input - exact original sizing */
+.layui-input,
+.layui-textarea {
+  height: 38px;
+  line-height: 38px;
+  padding: 0 10px;
+  border: 1px solid #e6e6e6;
+  background-color: #fff;
+  border-radius: 2px;
+  font-size: 14px;
+  color: #666;
+}
+
+/* Select wrapper - no extra border/padding (inner .layui-input handles that) */
+.layui-select {
+  height: 38px;
+  font-size: 14px;
+  color: #666;
+  border: none;
+  padding: 0;
+  background: transparent;
+}
+
+.layui-input:focus,
+.layui-textarea:focus {
+  border-color: var(--input-focus-border-color);
+}
+
+.layui-input::placeholder {
+  color: #aaa;
+}
+
+/* Button - exact original sizing */
+.layui-btn {
+  height: 38px;
+  line-height: 38px;
+  padding: 0 18px;
+  font-size: 14px;
+  border: none;
+  border-radius: 2px;
+  cursor: pointer;
+  display: inline-block;
+  vertical-align: middle;
+  text-align: center;
+  white-space: nowrap;
+  text-decoration: none;
+  -webkit-appearance: none;
+}
+
+.layui-btn-normal {
+  background-color: #009688;
+  color: #fff;
+}
+
+.layui-btn-primary {
+  background-color: #fff;
+  color: #333;
+  border: 1px solid #e6e6e6;
+}
+
+.layui-btn-sm {
+  height: 30px;
+  line-height: 30px;
+  padding: 0 15px;
+  font-size: 12px;
+}
+
+.layui-btn-xs {
+  height: 22px;
+  line-height: 22px;
+  padding: 0 5px;
+  font-size: 12px;
+}
+
+/* Table - exact original */
+.layui-table {
+  width: 100%;
+  background-color: #fff;
+  color: #666;
+}
+
+.layui-table th {
+  font-weight: 400;
+  font-size: 14px;
+  padding: 5px 0;
+  text-align: center;
+  min-height: 38.5px;
+}
+
+.layui-table td {
+  font-size: 14px;
+  padding: 5px 0;
+  text-align: center;
+  min-height: 38.5px;
+}
+
+.layui-table thead tr {
+  background: #fafafa;
+}
+
+/* Pagination */
+.layui-laypage {
+  padding: 7px 7px 0;
+  font-size: 12px;
+}
+
+.layui-page-limits {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.layui-page-limits .layui-select {
+  min-width: 140px;
+  height: 28px;
+}
+
+.layui-page-limits .layui-select .layui-input {
+  height: 28px;
+  line-height: 28px;
+  font-size: 12px;
+}
+
+/* Inline form layout */
+.layui-inline {
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 10px;
+}
+
+/* === Page common styles - used by all sub-pages === */
+
+/* Search form section */
+.search-form-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 15px 15px 5px;
+}
+
+.search-form-wrap .layui-inline {
+  display: inline-flex;
+  align-items: center;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.search-form-wrap .form-label {
+  font-size: 14px;
+  color: #666;
+  white-space: nowrap;
+  padding-right: 5px;
+}
+
+/* Responsive: fields fill width on small screens */
+@media (max-width: 768px) {
+  .search-form-wrap .layui-inline {
+    flex: 1 1 100%;
+  }
+  .search-form-wrap .layui-inline .layui-select,
+  .search-form-wrap .layui-inline .layui-input {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+/* Quick date buttons */
+.date-quick-btns {
+  display: inline-flex;
+  gap: 3px;
+  margin-left: 5px;
+}
+
+.date-quick-btns .layui-btn {
+  height: 38px;
+  line-height: 38px;
+  padding: 0 10px;
+  font-size: 14px;
+}
+
+/* Summary section */
+.summary-section {
+  margin-top: 20px;
+  border-top: 1px solid #e6e6e6;
+  padding-top: 10px;
+}
+
+.summary-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 10px;
+}
+
+/* Password form */
+.password-form {
+  padding: 0;
+}
+
+.password-form .layui-form-item {
+  margin-bottom: 15px;
+  display: flex;
+  align-items: center;
+}
+
+.password-form .layui-form-label {
+  width: 110px;
+  padding: 9px 15px;
+  text-align: right;
+  font-size: 14px;
+  color: #666;
+}
+
+.password-form .layui-input-block {
+  flex: 1;
+}
+
+.password-form .layui-input {
+  width: 100%;
+  height: 38px;
+}
