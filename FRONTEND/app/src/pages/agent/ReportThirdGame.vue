@@ -118,7 +118,7 @@ function handleLimitChange(limit: number) {
       <div class="search-form-wrap">
         <div class="layui-inline">
           <span class="form-label">Thời gian :</span>
-          <lay-date-picker v-model="searchForm.dateRange" range single-panel :placeholder="['Ngày bắt đầu', 'Ngày kết thúc']" :allow-clear="true" />
+          <lay-date-picker v-model="searchForm.dateRange" range single-panel range-separator="-" :placeholder="['Ngày bắt đầu', 'Ngày kết thúc']" />
         </div>
         <div class="layui-inline">
           <lay-select v-model="dateQuickSelect" style="width: 150px" @change="onDateQuickChange">

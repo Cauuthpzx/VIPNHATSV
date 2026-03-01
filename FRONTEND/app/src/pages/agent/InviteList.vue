@@ -43,11 +43,11 @@ function handleReset() {
       <div class="search-form-wrap">
         <div class="layui-inline">
           <span class="form-label">Thời gian thêm vào:</span>
-          <lay-date-picker v-model="searchForm.dateAdded" range single-panel :placeholder="['Ngày bắt đầu', 'Ngày kết thúc']" :allow-clear="true" />
+          <lay-date-picker v-model="searchForm.dateAdded" range single-panel range-separator="-" placeholder="Ngày bắt đầu - Ngày kết thúc" :allow-clear="true" />
         </div>
         <div class="layui-inline">
           <span class="form-label">Thời gian hội viên đăng nhập:</span>
-          <lay-date-picker v-model="searchForm.dateMemberLogin" range single-panel :placeholder="['Ngày bắt đầu', 'Ngày kết thúc']" :allow-clear="true" />
+          <lay-date-picker v-model="searchForm.dateMemberLogin" range single-panel range-separator="-" placeholder="Ngày bắt đầu - Ngày kết thúc" :allow-clear="true" />
         </div>
         <div class="layui-inline">
           <span class="form-label">Mã giới thiệu:</span>

@@ -71,7 +71,7 @@ function handleReset() {
         </div>
         <div class="layui-inline">
           <span class="form-label">Thời gian nạp đầu:</span>
-          <lay-date-picker v-model="searchForm.dateRange" range single-panel :placeholder="['Ngày bắt đầu', 'Ngày kết thúc']" :allow-clear="true" />
+          <lay-date-picker v-model="searchForm.dateRange" range single-panel range-separator="-" placeholder="Ngày bắt đầu - Ngày kết thúc" :allow-clear="true" />
         </div>
         <div class="layui-inline">
           <span class="form-label">Trạng thái:</span>
