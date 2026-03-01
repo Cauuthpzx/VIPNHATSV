@@ -161,7 +161,7 @@ onMounted(() => {
 
 <template>
   <div>
-    <lay-card title="Danh sách tỉ lệ hoàn trả">
+    <lay-card>
       <lay-field title="Tìm kiếm">
       <div class="search-form-wrap">
         <div class="layui-inline">
@@ -191,7 +191,7 @@ onMounted(() => {
       <div class="table-container">
         <lay-table
           :resize="true"
-          :height="'100%'"
+          :max-height="'100%'"
           :columns="columns"
           :loading="loading"
           :default-toolbar="true"

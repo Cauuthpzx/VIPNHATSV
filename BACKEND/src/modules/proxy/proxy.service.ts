@@ -31,13 +31,31 @@ function buildCacheKey(path: string, params: Record<string, string>): string {
   return `proxy:${path}:${hash}`;
 }
 
-function buildUpstreamParams(input: Record<string, unknown>): Record<string, string> {
+// Endpoints that use start_date + end_date instead of a single date range string
+const SPLIT_DATE_ENDPOINTS = new Set([
+  "/agent/reportLottery.html",
+  "/agent/reportFunds.html",
+  "/agent/reportThirdGame.html",
+  "/agent/betOrder.html",
+]);
+
+function buildUpstreamParams(input: Record<string, unknown>, path: string): Record<string, string> {
   const params: Record<string, string> = {};
   for (const [key, value] of Object.entries(input)) {
     if (key === "agentId") continue;
-    if (value !== undefined && value !== null && value !== "") {
-      params[key] = String(value);
+    if (value === undefined || value === null || value === "") continue;
+
+    // Split "date" or "bet_time" range into "start_date" + "end_date" for endpoints that require it
+    if ((key === "date" || key === "bet_time") && SPLIT_DATE_ENDPOINTS.has(path)) {
+      const parts = String(value).split(/\s*-\s*/);
+      if (parts.length === 2) {
+        params["start_date"] = parts[0].trim();
+        params["end_date"] = parts[1].trim();
+      }
+      continue;
     }
+
+    params[key] = String(value);
   }
   return params;
 }
@@ -47,7 +65,7 @@ async function cachedProxyCall<T = unknown>(
   path: string,
   input: Record<string, unknown>,
 ): Promise<{ items: T[] | T; total: number; totalData?: Record<string, unknown> }> {
-  const params = buildUpstreamParams(input);
+  const params = buildUpstreamParams(input, path);
   const cacheKey = buildCacheKey(path, params);
   const ttl = CACHE_TTL[path] ?? 60;
 

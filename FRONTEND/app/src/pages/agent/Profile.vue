@@ -6,7 +6,7 @@ const authStore = useAuthStore();
 
 <template>
   <div>
-    <lay-card title="Thông Tin Tài Khoản">
+    <lay-card>
       <div class="profile-info">
         <div class="profile-avatar">
           {{ authStore.user?.name?.charAt(0)?.toUpperCase() || authStore.user?.email?.charAt(0)?.toUpperCase() }}

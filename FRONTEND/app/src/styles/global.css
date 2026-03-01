@@ -4,7 +4,7 @@
 }
 
 /* === RESET === */
-html, body, div, h1, h2, h3, h4, h5, h6, p, ul, ol, li, form, fieldset {
+html, body, h1, h2, h3, h4, h5, h6, p, ul, ol, li, form, fieldset {
   margin: 0;
   padding: 0;
 }
@@ -54,6 +54,12 @@ body {
   color: #666;
   white-space: nowrap;
   padding-right: 5px;
+}
+
+/* Hover/focus border cho tất cả fields trong search form */
+.search-form-wrap .layui-input:hover,
+.search-form-wrap .layui-select:hover .layui-input {
+  border-color: #009688;
 }
 
 /* Standalone lay-input: min-width để không quá nhỏ */

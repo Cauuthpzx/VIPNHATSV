@@ -86,7 +86,7 @@ onMounted(() => loadData());
 
 <template>
   <div>
-    <lay-card title="Lịch sử rút tiền">
+    <lay-card>
       <lay-field title="Tìm kiếm">
       <div class="search-form-wrap">
         <div class="layui-inline">
@@ -127,7 +127,7 @@ onMounted(() => loadData());
         <lay-table
           :page="page"
           :resize="true"
-          :height="'100%'"
+          :max-height="'100%'"
           :columns="columns"
           :loading="loading"
           :default-toolbar="true"

@@ -6,8 +6,10 @@ https://www.layui-vue.com/zh-CN/guide/introduce ... https://www.layui-vue.com/zh
 
 - PHẢI LÀ CLIENT SPA VUE3 HOÀN TOÀN.
 - TOÀN BỘ THAY ĐỔI PHẢI THỰC HIỆN TRỰC TIẾP TRONG SOURCE CODE, KHÔNG TRÊN FILE ĐÃ BUILD.
+- **CẤM TUYỆT ĐỐI OVERRIDE CSS class `.layui-*` trong global.css hoặc bất kỳ file CSS nào khi chưa được người dùng cho phép.** Để layui-vue component tự quản lý style. Nếu cần thay đổi, PHẢI HỎI trước.
 - HẠN CHẾ TỐI ĐA OVERRIDE CSS VÀ !important. FIX TRIỆT ĐỂ TRONG SOURCE GỐC.
 - YÊU CẦU KHÔNG ĐƯỢC THAY ĐỔI GIAO DIỆN HIỆN TẠI (khi refactor).
+- **DRY (Don't Repeat Yourself)**: Những gì dùng chung (CSS, logic, config) thì gom 1 chỗ duy nhất (global.css, composables, utils). KHÔNG BAO GIỜ copy cùng 1 đoạn code/style vào nhiều file.
 - Tổ chức gom file tập trung, không hard code styles inline, dùng composables/utils chung.
 - Bố trí thư mục sạch sẽ, không trùng lặp, tránh deadcode.
 

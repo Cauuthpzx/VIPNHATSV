@@ -10,7 +10,7 @@
       v-model="inlimit"
       placeholder="请选择"
       :disabled="disabled"
-      :autoFitWidth="false"
+      :autoFitWidth="true"
     >
       <lay-select-option
         :value="option"
