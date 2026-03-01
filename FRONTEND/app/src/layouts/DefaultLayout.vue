@@ -2,18 +2,36 @@
 import { computed, ref } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useAppStore } from "@/stores/app";
+import { useAuthStore } from "@/stores/auth";
 import { menuData } from "@/config/menu";
+import type { MenuItem } from "@/config/menu";
 import HubNav from "@/components/HubNav.vue";
 import { useSidebarSlider, useTabsSlider } from "@/composables/useSidebarSlider";
 
 const router = useRouter();
 const route = useRoute();
 const store = useAppStore();
+const authStore = useAuthStore();
+
+// Filter menu based on user permissions
+const filteredMenuData = computed<MenuItem[]>(() => {
+  return menuData
+    .map((group) => {
+      const visibleChildren = group.children.filter((child) => {
+        // No permission required → visible to all
+        if (!child.permission) return true;
+        // Check user permission (isAdmin sees everything)
+        return authStore.hasPermission(child.permission);
+      });
+      return { ...group, children: visibleChildren };
+    })
+    .filter((group) => group.children.length > 0);
+});
 
 const openKeys = ref<string[]>([]);
 const selectedKey = computed({
   get() {
-    for (const group of menuData) {
+    for (const group of filteredMenuData.value) {
       for (const child of group.children) {
         if (child.path === route.path) return child.id;
       }
@@ -26,7 +44,7 @@ const selectedKey = computed({
 });
 
 function onMenuClick(childId: string) {
-  for (const group of menuData) {
+  for (const group of filteredMenuData.value) {
     const child = group.children.find((c) => c.id === childId);
     if (child) {
       store.addTab({ title: child.title, path: child.path, closable: true });
@@ -144,7 +162,7 @@ useTabsSlider();
           theme="dark"
         >
           <lay-sub-menu
-            v-for="group in menuData"
+            v-for="group in filteredMenuData"
             :key="group.id"
             :id="group.id"
           >

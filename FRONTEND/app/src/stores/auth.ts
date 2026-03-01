@@ -6,7 +6,7 @@ export interface AuthUser {
   id: string;
   email: string;
   name: string | null;
-  role: string;
+  role: { id: string; name: string; type: string; permissions: string[] };
 }
 
 const TOKEN_KEY = "access_token";
@@ -27,6 +27,15 @@ export const useAuthStore = defineStore("auth", () => {
     val ? localStorage.setItem(REFRESH_KEY, val) : localStorage.removeItem(REFRESH_KEY);
   });
 
+  const permissions = computed(() => user.value?.role?.permissions ?? []);
+  const isAdmin = computed(() => permissions.value.includes("*"));
+
+  function hasPermission(...required: string[]): boolean {
+    const perms = permissions.value;
+    if (perms.includes("*")) return true;
+    return required.every((p) => perms.includes(p));
+  }
+
   async function login(email: string, password: string) {
     const res = await api.post("/auth/login", { email, password });
     const data = res.data;
@@ -35,8 +44,9 @@ export const useAuthStore = defineStore("auth", () => {
     }
     accessToken.value = data.data.accessToken;
     refreshToken.value = data.data.refreshToken;
-    user.value = data.data.user;
-    return data.data;
+    // Login response returns incomplete user (role as string).
+    // Fetch full user data including role object with permissions.
+    await fetchMe();
   }
 
   async function refreshAccessToken(): Promise<boolean> {
@@ -98,6 +108,9 @@ export const useAuthStore = defineStore("auth", () => {
     user,
     isLoggedIn,
     initialized,
+    permissions,
+    isAdmin,
+    hasPermission,
     login,
     refreshAccessToken,
     fetchMe,

@@ -1,12 +1,18 @@
+import { PERMISSIONS } from "@/constants/permissions";
+
+export interface MenuChild {
+  id: string;
+  title: string;
+  path: string;
+  permission?: string;
+}
+
 export interface MenuItem {
   id: string;
   title: string;
   icon: string;
-  children: {
-    id: string;
-    title: string;
-    path: string;
-  }[];
+  permission?: string;
+  children: MenuChild[];
 }
 
 export const menuData: MenuItem[] = [
@@ -71,6 +77,15 @@ export const menuData: MenuItem[] = [
     icon: "layui-icon-list",
     children: [
       { id: "rebateOdds", title: "Danh sách tỉ lệ hoàn trả", path: "/agent/rebate-odds" },
+    ],
+  },
+  {
+    id: "system",
+    title: "SYSTEM",
+    icon: "layui-icon-set",
+    children: [
+      { id: "systemUsers", title: "Quản lý người dùng", path: "/system/users", permission: PERMISSIONS.USERS_READ },
+      { id: "systemRoles", title: "Quản lý vai trò", path: "/system/roles", permission: PERMISSIONS.ROLES_READ },
     ],
   },
 ];

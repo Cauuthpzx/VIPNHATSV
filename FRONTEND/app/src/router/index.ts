@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
+import { PERMISSIONS } from "@/constants/permissions";
 
 const routes = [
   {
@@ -109,6 +110,19 @@ const routes = [
         component: () => import("@/pages/agent/RebateOdds.vue"),
         meta: { title: "Danh sách tỉ lệ hoàn trả" },
       },
+      // --- SYSTEM ---
+      {
+        path: "system/users",
+        name: "SystemUsers",
+        component: () => import("@/pages/system/SystemUsers.vue"),
+        meta: { title: "Quản lý người dùng", permission: PERMISSIONS.USERS_READ },
+      },
+      {
+        path: "system/roles",
+        name: "SystemRoles",
+        component: () => import("@/pages/system/SystemRoles.vue"),
+        meta: { title: "Quản lý vai trò", permission: PERMISSIONS.ROLES_READ },
+      },
     ],
   },
   {
@@ -149,6 +163,20 @@ router.beforeEach(async (to) => {
   // Protected route: check auth
   if (!authStore.isLoggedIn) {
     return "/login";
+  }
+
+  // Refresh user data (permissions) on each navigation so changes take effect
+  // without requiring logout/reload. For permission-guarded routes, await the
+  // result so the guard uses fresh permissions. For other routes, fire-and-forget
+  // so the menu reactively updates in the background.
+  const requiredPermission = to.meta.permission as string | undefined;
+  if (requiredPermission) {
+    await authStore.fetchMe();
+    if (!authStore.hasPermission(requiredPermission)) {
+      return "/agent/welcome";
+    }
+  } else {
+    authStore.fetchMe();
   }
 
   return true;

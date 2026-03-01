@@ -99,7 +99,7 @@ const quickActions = [
             </div>
 
             <lay-tag type="normal" color="#16baaa" style="margin-top: 8px">
-              {{ authStore.user?.role || "—" }}
+              {{ authStore.user?.role?.name || "—" }}
             </lay-tag>
 
             <lay-line />
