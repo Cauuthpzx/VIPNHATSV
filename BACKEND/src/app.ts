@@ -3,6 +3,7 @@ import { appConfig } from "./config/app.js";
 
 // Plugins
 import prismaPlugin from "./plugins/prisma.js";
+import redisPlugin from "./plugins/redis.js";
 import corsPlugin from "./plugins/cors.js";
 import helmetPlugin from "./plugins/helmet.js";
 import rateLimitPlugin from "./plugins/rateLimit.js";
@@ -31,6 +32,7 @@ export async function buildApp() {
 
   // Plugins
   await app.register(prismaPlugin);
+  await app.register(redisPlugin);
   await app.register(corsPlugin);
   await app.register(helmetPlugin);
   await app.register(rateLimitPlugin);

@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { reactive } from "vue";
+import { reactive, onMounted } from "vue";
 import { useDateRange } from "@/composables/useDateRange";
 import { useListPage } from "@/composables/useListPage";
+import { fetchWithdrawalsRecord } from "@/api/services/proxy";
+import { layer } from "@layui/layui-vue";
 import StatusBadge from "@/components/StatusBadge.vue";
 
 const { dateRange, dateQuickSelect, dateQuickOptions, resetDateRange } = useDateRange("today");
@@ -29,19 +31,32 @@ const WITHDRAWAL_STATUS_MAP: Record<string, { label: string; color: string }> = 
 };
 
 const columns = [
-  { title: "Mã giao dịch", key: "transactionId", width: "180.5px", align: "center" },
-  { title: "Thời gian tạo đơn", key: "createdAt", width: "161px", align: "center" },
+  { title: "Mã giao dịch", key: "serial_number", width: "180.5px", align: "center" },
+  { title: "Thời gian tạo đơn", key: "create_time", width: "161px", align: "center" },
   { title: "Tên tài khoản", key: "username", width: "255px", align: "center" },
-  { title: "Thuộc đại lý", key: "agent", width: "255px", align: "center" },
-  { title: "Số tiền", key: "amount", width: "255px", align: "center" },
+  { title: "Thuộc đại lý", key: "user_parent_format", width: "255px", align: "center" },
+  { title: "Số tiền", key: "money", width: "255px", align: "center" },
   { title: "Trạng thái", key: "status", align: "center", customSlot: "status" },
   { title: "Thao tác", key: "operation", align: "center", customSlot: "operation" },
 ];
 
-function loadData() {
+async function loadData() {
   loading.value = true;
-  // TODO: API call
-  loading.value = false;
+  try {
+    const res = await fetchWithdrawalsRecord({
+      page: page.current,
+      limit: page.limit,
+      username: searchForm.username || undefined,
+      status: searchForm.status || undefined,
+      date: dateRange.value?.length === 2 ? `${dateRange.value[0]} - ${dateRange.value[1]}` : undefined,
+    });
+    dataSource.value = res.data.data.items;
+    page.total = res.data.data.total;
+  } catch {
+    layer.msg("Lỗi tải dữ liệu", { icon: 2 });
+  } finally {
+    loading.value = false;
+  }
 }
 
 function handleSearch() {
@@ -72,6 +87,8 @@ function handleLimitChange(limit: number) {
   _limitChange(limit);
   loadData();
 }
+
+onMounted(() => loadData());
 </script>
 
 <template>
@@ -84,21 +101,21 @@ function handleLimitChange(limit: number) {
           <lay-date-picker v-model="dateRange" range single-panel range-separator="-" :placeholder="['Ngày bắt đầu', 'Ngày kết thúc']" />
         </div>
         <div class="layui-inline">
-          <lay-select v-model="dateQuickSelect" style="width: 150px">
+          <lay-select v-model="dateQuickSelect">
             <lay-select-option v-for="opt in dateQuickOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
           </lay-select>
         </div>
         <div class="layui-inline">
           <span class="form-label">Tên tài khoản:</span>
-          <lay-input v-model="searchForm.username" placeholder="Tên tài khoản" style="width: 150px" />
+          <lay-input v-model="searchForm.username" placeholder="Tên tài khoản" />
         </div>
         <div class="layui-inline">
           <span class="form-label">Mã giao dịch:</span>
-          <lay-input v-model="searchForm.serialNumber" placeholder="Mã giao dịch" style="width: 300px" />
+          <lay-input v-model="searchForm.serialNumber" placeholder="Mã giao dịch" />
         </div>
         <div class="layui-inline">
           <span class="form-label">Trạng thái:</span>
-          <lay-select v-model="searchForm.status" style="width: 200px">
+          <lay-select v-model="searchForm.status">
             <lay-select-option v-for="opt in statusOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
           </lay-select>
         </div>

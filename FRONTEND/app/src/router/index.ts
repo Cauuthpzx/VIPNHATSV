@@ -1,11 +1,12 @@
 import { createRouter, createWebHistory } from "vue-router";
+import { useAuthStore } from "@/stores/auth";
 
 const routes = [
   {
     path: "/login",
     name: "Login",
     component: () => import("@/pages/Login.vue"),
-    meta: { title: "Đăng nhập" },
+    meta: { title: "Đăng nhập", public: true },
   },
   {
     path: "/",
@@ -109,4 +110,28 @@ const routes = [
 export const router = createRouter({
   history: createWebHistory(),
   routes,
+});
+
+router.beforeEach(async (to) => {
+  const authStore = useAuthStore();
+
+  // Initialize auth on first navigation
+  if (!authStore.initialized) {
+    await authStore.init();
+  }
+
+  if (to.meta.public) {
+    // If already logged in and going to login page, redirect to welcome
+    if (authStore.isLoggedIn && to.path === "/login") {
+      return "/agent/welcome";
+    }
+    return true;
+  }
+
+  // Protected route: check auth
+  if (!authStore.isLoggedIn) {
+    return "/login";
+  }
+
+  return true;
 });

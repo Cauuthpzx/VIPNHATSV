@@ -20,4 +20,11 @@ export const appConfig = {
   },
   logLevel: env.LOG_LEVEL,
   gracefulShutdownTimeout: 10_000,
+  redis: {
+    url: env.REDIS_URL,
+  },
+  upstream: {
+    baseUrl: env.UPSTREAM_BASE_URL,
+    timeoutMs: env.UPSTREAM_TIMEOUT_MS,
+  },
 } as const;

@@ -40,6 +40,21 @@ const _Placeholder = computed(() => {
     : [props.placeholder, props.placeholder];
 });
 
+const rangePlaceholderText = computed(() => {
+  if (!isArray(props.placeholder)) {
+    return props.placeholder || "";
+  }
+  return props.placeholder.filter(Boolean).join(` ${props.rangeSeparator} `);
+});
+
+const isRangeEmpty = computed(() => {
+  if (!props.range) return false;
+  const val = inputValue.value;
+  if (!val) return true;
+  if (isArray(val)) return !val[0] && !val[1];
+  return !val;
+});
+
 const currentInputValue = ref<string | Array<string | null> | null>(null);
 
 const inputValue = computed(() => {
@@ -283,11 +298,11 @@ function onPick(dates: Dayjs | Array<Dayjs>) {
         @clear="handleClear"
       />
       <div v-else class="laydate-range-inputs">
+        <span v-if="isRangeEmpty" class="laydate-range-placeholder">{{ rangePlaceholderText }}</span>
         <LayInput
           :readonly="readonly"
           :name="name"
           :model-value="inputValue && inputValue[0]"
-          :placeholder="_Placeholder[0]"
           :disabled="disabled"
           class="start-input"
           :size="size"
@@ -296,12 +311,11 @@ function onPick(dates: Dayjs | Array<Dayjs>) {
           @blur="handleBlur"
           @focus="handleFocus"
         />
-        <span class="range-separator">{{ rangeSeparator }}</span>
+        <span class="range-separator" :style="isRangeEmpty ? { visibility: 'hidden' } : {}">{{ rangeSeparator }}</span>
         <LayInput
           :readonly="readonly"
           :name="name"
           :allow-clear="!disabled && allowClear"
-          :placeholder="_Placeholder[1]"
           :model-value="inputValue && inputValue[1]"
           :disabled="disabled"
           class="end-input"

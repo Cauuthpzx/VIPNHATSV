@@ -546,7 +546,8 @@ html #layuicss-laydate {
 }
 
 .laydate-range-inputs {
-  display: flex;
+  position: relative;
+  display: inline-flex;
   align-items: center;
   height: 100%;
   border-width: 1px;
@@ -554,11 +555,23 @@ html #layuicss-laydate {
   width: 100%;
   border-style: solid;
   overflow: hidden;
-  display: inline-flex;
   border-color: var(--input-border-color);
   border-radius: var(--input-border-radius);
   &:hover {
     border-color: #d2d2d2;
+  }
+  .laydate-range-placeholder {
+    position: absolute;
+    left: 0;
+    right: 0;
+    text-align: center;
+    color: #aaa;
+    font-size: 14px;
+    pointer-events: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    z-index: 1;
   }
   .range-separator {
     margin: 0 5px;

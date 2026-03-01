@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import { reactive, ref } from "vue";
+import { reactive, ref, onMounted } from "vue";
 import { useDateRange } from "@/composables/useDateRange";
 import { useListPage } from "@/composables/useListPage";
+import { useAutoFitSelect } from "@/composables/useAutoFitSelect";
+import { fetchBetList } from "@/api/services/proxy";
+import { layer } from "@layui/layui-vue";
 import StatusBadge from "@/components/StatusBadge.vue";
 
-const { dateRange, dateQuickSelect, dateQuickOptions, resetDateRange } = useDateRange("today");
-const { dataSource, loading, page, handlePageChange, handleLimitChange } = useListPage();
+const { dateRange, dateQuickSelect, dateQuickOptions, dateQuickWidth, resetDateRange } = useDateRange("today");
+const { dataSource, loading, page, handlePageChange: _pageChange, handleLimitChange: _limitChange } = useListPage();
 
 const searchForm = reactive({
   username: "",
@@ -37,6 +40,11 @@ const statusOptions = [
   { label: "Đã hủy", value: "cancelled" },
 ];
 
+const { selectWidth: lotteryWidth } = useAutoFitSelect(lotteryOptions);
+const { selectWidth: playTypeWidth } = useAutoFitSelect(playTypeOptions);
+const { selectWidth: playWidth } = useAutoFitSelect(playOptions);
+const { selectWidth: statusWidth } = useAutoFitSelect(statusOptions);
+
 const BET_STATUS_MAP: Record<string, { label: string; color: string }> = {
   pending: { label: "Chờ xử lý", color: "#e6a23c" },
   won: { label: "Thắng", color: "#67c23a" },
@@ -46,42 +54,75 @@ const BET_STATUS_MAP: Record<string, { label: string; color: string }> = {
 };
 
 const columns = [
-  { title: "Mã giao dịch", key: "serialNo", width: "200.5px", align: "center" },
+  { title: "Mã giao dịch", key: "serial_no", width: "200.5px", align: "center" },
   { title: "Tên người dùng", key: "username", width: "151px", align: "center" },
-  { title: "Thời gian cược", key: "betTime", width: "161px", align: "center" },
-  { title: "Trò chơi", key: "game", width: "157px", align: "center" },
-  { title: "Loại trò chơi", key: "gameType", width: "157px", align: "center" },
-  { title: "Kiểu chơi", key: "playType", align: "center" },
-  { title: "Nội dung cược", key: "betContent", align: "center" },
-  { title: "Tiền cược", key: "betAmount", align: "center" },
+  { title: "Thời gian cược", key: "buy_time", width: "161px", align: "center" },
+  { title: "Trò chơi", key: "lottery_name", width: "157px", align: "center" },
+  { title: "Loại trò chơi", key: "play_type_name", width: "157px", align: "center" },
+  { title: "Kiểu chơi", key: "play_name", align: "center" },
+  { title: "Nội dung cược", key: "bet_number", align: "center" },
+  { title: "Tiền cược", key: "total_money", align: "center" },
   { title: "Tỉ lệ cược", key: "odds", align: "center" },
-  { title: "Kết quả", key: "result", align: "center" },
+  { title: "Kết quả", key: "money", align: "center" },
   { title: "Hoàn trả", key: "rebate", align: "center" },
   { title: "Trạng thái", key: "status", customSlot: "status", align: "center" },
-  { title: "Thời gian xổ", key: "drawTime", align: "center" },
-  { title: "Kỳ xổ", key: "drawPeriod", align: "center" },
+  { title: "Thời gian xổ", key: "open_time", align: "center" },
+  { title: "Kỳ xổ", key: "qishu", align: "center" },
   { title: "Thao tác", key: "action", customSlot: "action", align: "center" },
 ];
 
 const summaryColumns = [
-  { title: "Tổng tiền cược", key: "totalBetAmount", align: "center" },
-  { title: "Tổng tiền thắng", key: "totalWinAmount", align: "center" },
-  { title: "Tổng hoàn trả", key: "totalRebate", align: "center" },
-  { title: "Tổng thắng thua", key: "totalWinLoss", align: "center" },
+  { title: "Tổng tiền cược", key: "total_money", align: "center" },
+  { title: "Tổng kết quả", key: "total_result", align: "center" },
+  { title: "Tổng hoàn trả", key: "total_rebate_amount", align: "center" },
 ];
 
 const summaryData = ref([
   {
-    totalBetAmount: "0.0000",
-    totalWinAmount: "0.0000",
-    totalRebate: "0.0000",
-    totalWinLoss: "0.0000",
+    total_money: "0.0000",
+    total_result: "0.0000",
+    total_rebate_amount: "0.0000",
   },
 ]);
 
+async function loadData() {
+  loading.value = true;
+  try {
+    const res = await fetchBetList({
+      page: page.current,
+      limit: page.limit,
+      username: searchForm.username || undefined,
+      serial_no: searchForm.serialNo || undefined,
+      date: dateRange.value?.length === 2 ? `${dateRange.value[0]} - ${dateRange.value[1]}` : undefined,
+      lottery_id: searchForm.lotteryType || undefined,
+      status: searchForm.status || undefined,
+      is_summary: 1,
+    });
+    dataSource.value = res.data.data.items;
+    page.total = res.data.data.total;
+    if (res.data.data.totalData) {
+      summaryData.value = [res.data.data.totalData as any];
+    }
+  } catch {
+    layer.msg("Lỗi tải dữ liệu", { icon: 2 });
+  } finally {
+    loading.value = false;
+  }
+}
+
 function handleSearch() {
   page.current = 1;
-  // TODO: call API
+  loadData();
+}
+
+function handlePageChange(val: { current: number }) {
+  _pageChange(val);
+  loadData();
+}
+
+function handleLimitChange(limit: number) {
+  _limitChange(limit);
+  loadData();
 }
 
 function handleReset() {
@@ -93,6 +134,8 @@ function handleReset() {
   searchForm.play = "";
   searchForm.status = "";
 }
+
+onMounted(() => loadData());
 
 </script>
 
@@ -107,40 +150,40 @@ function handleReset() {
           <lay-date-picker v-model="dateRange" range single-panel range-separator="-" :placeholder="['Ngày bắt đầu', 'Ngày kết thúc']" />
         </div>
         <div class="layui-inline">
-          <lay-select v-model="dateQuickSelect" style="width: 150px">
+          <lay-select v-model="dateQuickSelect" :style="{ width: dateQuickWidth }">
             <lay-select-option v-for="opt in dateQuickOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
           </lay-select>
         </div>
         <div class="layui-inline">
           <span class="form-label">Tên người dùng :</span>
-          <lay-input v-model="searchForm.username" placeholder="Vui lòng nhập đầy đủ Tên người dùng" style="width: 160px" />
+          <lay-input v-model="searchForm.username" placeholder="Vui lòng nhập đầy đủ Tên người dùng" />
         </div>
         <div class="layui-inline">
           <span class="form-label">Mã giao dịch :</span>
-          <lay-input v-model="searchForm.serialNo" placeholder="Nhập mã giao dịch" style="width: 182px" />
+          <lay-input v-model="searchForm.serialNo" placeholder="Nhập mã giao dịch" />
         </div>
         <div class="layui-inline">
           <span class="form-label">Tên loại xổ :</span>
-          <lay-select v-model="searchForm.lotteryType" style="width: 150px">
+          <lay-select v-model="searchForm.lotteryType" :style="{ width: lotteryWidth }">
             <lay-select-option v-for="opt in lotteryOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
           </lay-select>
         </div>
         <!-- Row 2 -->
         <div class="layui-inline">
           <span class="form-label">Kiểu chơi :</span>
-          <lay-select v-model="searchForm.playType" style="width: 150px">
+          <lay-select v-model="searchForm.playType" :style="{ width: playTypeWidth }">
             <lay-select-option v-for="opt in playTypeOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
           </lay-select>
         </div>
         <div class="layui-inline">
           <span class="form-label">Trò chơi :</span>
-          <lay-select v-model="searchForm.play" style="width: 150px">
+          <lay-select v-model="searchForm.play" :style="{ width: playWidth }">
             <lay-select-option v-for="opt in playOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
           </lay-select>
         </div>
         <div class="layui-inline">
           <span class="form-label">Trạng thái :</span>
-          <lay-select v-model="searchForm.status" style="width: 150px">
+          <lay-select v-model="searchForm.status" :style="{ width: statusWidth }">
             <lay-select-option v-for="opt in statusOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
           </lay-select>
         </div>

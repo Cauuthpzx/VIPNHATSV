@@ -1,4 +1,5 @@
 import { ref, watch } from "vue";
+import { useAutoFitSelect } from "./useAutoFitSelect";
 
 export type DateQuickType = "today" | "yesterday" | "thisWeek" | "thisMonth" | "lastMonth";
 
@@ -74,10 +75,13 @@ export function useDateRange(initial: DateQuickType = "today") {
     isResetting = false;
   }
 
+  const { selectWidth: dateQuickWidth } = useAutoFitSelect(DATE_QUICK_OPTIONS);
+
   return {
     dateRange,
     dateQuickSelect,
     dateQuickOptions,
+    dateQuickWidth,
     resetDateRange,
   };
 }

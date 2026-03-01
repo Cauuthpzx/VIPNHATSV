@@ -17,6 +17,11 @@ const envSchema = z.object({
   RATE_LIMIT_WINDOW_MS: z.coerce.number().default(60_000),
 
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
+
+  REDIS_URL: z.string().default("redis://localhost:6379"),
+  UPSTREAM_BASE_URL: z.string().default("https://a2u4k.ee88dly.com"),
+  UPSTREAM_TIMEOUT_MS: z.coerce.number().default(15_000),
+  ENCRYPTION_KEY: z.string().length(64),
 });
 
 export type Env = z.infer<typeof envSchema>;

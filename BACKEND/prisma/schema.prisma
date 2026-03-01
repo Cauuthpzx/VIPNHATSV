@@ -52,3 +52,18 @@ model RefreshToken {
   @@index([userId])
   @@map("refresh_tokens")
 }
+
+model Agent {
+  id            String    @id @default(cuid())
+  name          String
+  extUsername   String    @unique @map("ext_username")
+  sessionCookie String    @map("session_cookie")
+  cookieExpires DateTime? @map("cookie_expires")
+  status        String    @default("active")
+  isActive      Boolean   @default(true) @map("is_active")
+  lastLoginAt   DateTime? @map("last_login_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  @@map("agents")
+}

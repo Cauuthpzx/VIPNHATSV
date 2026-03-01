@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { reactive } from "vue";
+import { reactive, onMounted } from "vue";
 import { useListPage } from "@/composables/useListPage";
+import { fetchBankList } from "@/api/services/proxy";
+import { layer } from "@layui/layui-vue";
 
 const { dataSource, loading, page, handlePageChange: _pageChange, handleLimitChange: _limitChange } = useListPage();
 
@@ -10,18 +12,29 @@ const searchForm = reactive({
 
 const columns = [
   { title: "Mã số", key: "id", width: "282.5px", align: "center" },
-  { title: "Có cài đặt mặc định không", key: "isDefault", width: "283px", align: "center" },
-  { title: "Tên ngân hàng", key: "bankName", width: "283px", align: "center" },
-  { title: "Chi nhánh", key: "branch", width: "283px", align: "center" },
-  { title: "Số tài khoản", key: "accountNumber", width: "283px", align: "center" },
-  { title: "Tên chủ tài khoản", key: "accountHolder", align: "center" },
+  { title: "Có cài đặt mặc định không", key: "is_default_format", width: "283px", align: "center" },
+  { title: "Tên ngân hàng", key: "bank_name", width: "283px", align: "center" },
+  { title: "Chi nhánh", key: "bank_branch", width: "283px", align: "center" },
+  { title: "Số tài khoản", key: "card_no", width: "283px", align: "center" },
+  { title: "Tên chủ tài khoản", key: "name", align: "center" },
   { title: "Thao tác", key: "operation", customSlot: "operation", align: "center" },
 ];
 
-function loadData() {
+async function loadData() {
   loading.value = true;
-  // TODO: API call
-  loading.value = false;
+  try {
+    const res = await fetchBankList({
+      page: page.current,
+      limit: page.limit,
+      card_no: searchForm.accountNumber || undefined,
+    });
+    dataSource.value = res.data.data.items;
+    page.total = res.data.data.total;
+  } catch {
+    layer.msg("Lỗi tải dữ liệu", { icon: 2 });
+  } finally {
+    loading.value = false;
+  }
 }
 
 function handleSearch() {
@@ -58,6 +71,8 @@ function handleLimitChange(limit: number) {
   _limitChange(limit);
   loadData();
 }
+
+onMounted(() => loadData());
 </script>
 
 <template>
@@ -67,7 +82,7 @@ function handleLimitChange(limit: number) {
       <div class="search-form-wrap">
         <div class="layui-inline">
           <span class="form-label">Số tài khoản:</span>
-          <lay-input v-model="searchForm.accountNumber" placeholder="Số tài khoản" style="width: 300px" />
+          <lay-input v-model="searchForm.accountNumber" placeholder="Số tài khoản" />
         </div>
         <div class="layui-inline">
           <lay-button type="normal" @click="handleSearch">

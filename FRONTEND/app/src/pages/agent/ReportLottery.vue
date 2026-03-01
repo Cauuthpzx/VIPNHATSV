@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { reactive, ref } from "vue";
+import { reactive, ref, onMounted } from "vue";
 import { useDateRange } from "@/composables/useDateRange";
 import { useListPage } from "@/composables/useListPage";
+import { fetchReportLottery } from "@/api/services/proxy";
+import { layer } from "@layui/layui-vue";
 
-const { dateRange, dateQuickSelect, dateQuickOptions, resetDateRange } = useDateRange("today");
-const { dataSource, loading, page, handlePageChange, handleLimitChange } = useListPage();
+const { dateRange, dateQuickSelect, dateQuickOptions, dateQuickWidth, resetDateRange } = useDateRange("today");
+const { dataSource, loading, page, handlePageChange: _pageChange, handleLimitChange: _limitChange } = useListPage();
 
 const searchForm = reactive({
   lotteryType: "",
@@ -13,44 +15,76 @@ const searchForm = reactive({
 
 const columns = [
   { title: "Tên tài khoản", key: "username", width: "150.5px", align: "center" },
-  { title: "Thuộc đại lý", key: "agent", width: "151px", align: "center" },
-  { title: "Số lần cược", key: "betCount", width: "201px", align: "center" },
-  { title: "Tiền cược", key: "betAmount", width: "201px", align: "center" },
-  { title: "Tiền cược hợp lệ (trừ cược hoà)", key: "validBet", width: "201px", align: "center" },
-  { title: "Hoàn trả", key: "rebate", align: "center" },
-  { title: "Thắng thua", key: "winLoss", align: "center" },
-  { title: "Kết quả thắng thua (không gồm hoàn trả)", key: "netResult", align: "center" },
-  { title: "Tiền trúng", key: "winAmount", align: "center" },
-  { title: "Tên loại xổ", key: "lotteryName", align: "center" },
+  { title: "Thuộc đại lý", key: "user_parent_format", width: "151px", align: "center" },
+  { title: "Số lần cược", key: "bet_count", width: "201px", align: "center" },
+  { title: "Tiền cược", key: "bet_amount", width: "201px", align: "center" },
+  { title: "Tiền cược hợp lệ (trừ cược hoà)", key: "valid_amount", width: "201px", align: "center" },
+  { title: "Hoàn trả", key: "rebate_amount", align: "center" },
+  { title: "Kết quả thắng thua (không gồm hoàn trả)", key: "result", align: "center" },
+  { title: "Thắng thua", key: "win_lose", align: "center" },
+  { title: "Tiền trúng", key: "prize", align: "center" },
+  { title: "Tên loại xổ", key: "lottery_name", align: "center" },
 ];
 
 const summaryColumns = [
-  { title: "Số khách đặt cược", key: "players", align: "center" },
-  { title: "Số lần cược", key: "bets", align: "center" },
-  { title: "Tiền cược", key: "betAmount", align: "center" },
-  { title: "Tiền cược hợp lệ (trừ cược hoà)", key: "validBet", align: "center" },
-  { title: "Hoàn trả", key: "rebate", align: "center" },
-  { title: "Thắng thua", key: "winLoss", align: "center" },
-  { title: "Kết quả thắng thua (không gồm hoàn trả)", key: "netResult", align: "center" },
-  { title: "Tiền trúng", key: "winAmount", align: "center" },
+  { title: "Số khách đặt cược", key: "total_bet_number", align: "center" },
+  { title: "Số lần cược", key: "total_bet_count", align: "center" },
+  { title: "Tiền cược", key: "total_bet_amount", align: "center" },
+  { title: "Tiền cược hợp lệ (trừ cược hoà)", key: "total_valid_amount", align: "center" },
+  { title: "Hoàn trả", key: "total_rebate_amount", align: "center" },
+  { title: "Kết quả thắng thua (không gồm hoàn trả)", key: "total_result", align: "center" },
+  { title: "Thắng thua", key: "total_win_lose", align: "center" },
+  { title: "Tiền trúng", key: "total_prize", align: "center" },
 ];
 
 const summaryData = ref([
   {
-    players: 0,
-    bets: 0,
-    betAmount: "0.0000",
-    validBet: "0.0000",
-    rebate: "0.0000",
-    winLoss: "0.0000",
-    netResult: "0.0000",
-    winAmount: "0.0000",
+    total_bet_number: 0,
+    total_bet_count: 0,
+    total_bet_amount: "0.0000",
+    total_valid_amount: "0.0000",
+    total_rebate_amount: "0.0000",
+    total_result: "0.0000",
+    total_win_lose: "0.0000",
+    total_prize: "0.0000",
   },
 ]);
 
+async function loadData() {
+  loading.value = true;
+  try {
+    const res = await fetchReportLottery({
+      page: page.current,
+      limit: page.limit,
+      username: searchForm.username || undefined,
+      lottery_id: searchForm.lotteryType || undefined,
+      date: dateRange.value?.length === 2 ? `${dateRange.value[0]} - ${dateRange.value[1]}` : undefined,
+    });
+    dataSource.value = res.data.data.items;
+    page.total = res.data.data.total;
+    if (res.data.data.totalData) {
+      summaryData.value = [res.data.data.totalData as any];
+    }
+  } catch {
+    layer.msg("Lỗi tải dữ liệu", { icon: 2 });
+  } finally {
+    loading.value = false;
+  }
+}
+
 function handleSearch() {
   page.current = 1;
-  // TODO: call API
+  loadData();
+}
+
+function handlePageChange(val: number) {
+  _pageChange(val);
+  loadData();
+}
+
+function handleLimitChange(val: number) {
+  _limitChange(val);
+  loadData();
 }
 
 function handleReset() {
@@ -58,6 +92,8 @@ function handleReset() {
   searchForm.lotteryType = "";
   searchForm.username = "";
 }
+
+onMounted(() => loadData());
 </script>
 
 <template>
@@ -69,17 +105,17 @@ function handleReset() {
           <lay-date-picker v-model="dateRange" range single-panel range-separator="-" :placeholder="['Ngày bắt đầu', 'Ngày kết thúc']" />
         </div>
         <div class="layui-inline">
-          <lay-select v-model="dateQuickSelect" style="width: 150px">
+          <lay-select v-model="dateQuickSelect" :style="{ width: dateQuickWidth }">
             <lay-select-option v-for="opt in dateQuickOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
           </lay-select>
         </div>
         <div class="layui-inline">
           <span class="form-label">Tên loại xổ :</span>
-          <lay-select v-model="searchForm.lotteryType" placeholder="Chọn hoặc nhập để tìm kiếm" style="width: 200px" />
+          <lay-select v-model="searchForm.lotteryType" placeholder="Chọn hoặc nhập để tìm kiếm" />
         </div>
         <div class="layui-inline">
           <span class="form-label">Tên tài khoản :</span>
-          <lay-input v-model="searchForm.username" placeholder="Nhập tên tài khoản" style="width: 200px" />
+          <lay-input v-model="searchForm.username" placeholder="Nhập tên tài khoản" />
         </div>
         <div class="layui-inline">
           <lay-button type="normal" @click="handleSearch">

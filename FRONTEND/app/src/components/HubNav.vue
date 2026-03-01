@@ -1,17 +1,20 @@
 <script setup lang="ts">
 import { useRouter } from "vue-router";
 import { useAppStore } from "@/stores/app";
+import { useAuthStore } from "@/stores/auth";
 
 const router = useRouter();
 const store = useAppStore();
+const authStore = useAuthStore();
 
-function onAction(action: string) {
+async function onAction(action: string) {
   if (action === "edit-password") {
     router.push("/agent/edit-password");
   } else if (action === "edit-fund-password") {
     router.push("/agent/edit-fund-password");
   } else if (action === "logout") {
     store.closeAllTabs();
+    await authStore.logout();
     router.push("/login");
   }
 }

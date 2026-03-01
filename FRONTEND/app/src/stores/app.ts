@@ -1,5 +1,6 @@
 import { defineStore } from "pinia";
-import { ref } from "vue";
+import { ref, computed } from "vue";
+import { useAuthStore } from "@/stores/auth";
 
 export interface TabItem {
   title: string;
@@ -9,7 +10,8 @@ export interface TabItem {
 
 export const useAppStore = defineStore("app", () => {
   const collapsed = ref(false);
-  const username = ref("xiu777");
+  const authStore = useAuthStore();
+  const username = computed(() => authStore.user?.name || authStore.user?.email || "");
 
   const tabs = ref<TabItem[]>([
     { title: "Trang chủ", path: "/agent/welcome", closable: false },

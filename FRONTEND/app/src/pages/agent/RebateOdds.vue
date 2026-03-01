@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, onMounted } from "vue";
+import { fetchLotteryDropdown, fetchRebateOdds } from "@/api/services/proxy";
+import { layer } from "@layui/layui-vue";
 
 const selectedSeries = ref("");
 const selectedLottery = ref("");
@@ -11,19 +13,21 @@ const columns = ref<{ title: string; key: string; width?: string; align?: string
 const dataSource = ref<Record<string, any>[]>([]);
 
 async function fetchInit() {
-  // TODO: call API POST /agent/getRebateOddsPanel.html { type: "init" }
-  seriesOptions.value = [
-    { value: "1", label: "Miền Nam" },
-    { value: "2", label: "Miền Bắc" },
-    { value: "3", label: "Miền Trung" },
-    { value: "6", label: "Xổ số nhanh" },
-    { value: "7", label: "Keno" },
-    { value: "8", label: "Xổ số cào" },
-    { value: "9", label: "Sicbo" },
-    { value: "10", label: "pk" },
-    { value: "11", label: "Wingo" },
-  ];
-  selectedSeries.value = "1";
+  try {
+    const res = await fetchLotteryDropdown();
+    const items = res.data.data.items as any;
+    if (items?.seriesData) {
+      seriesOptions.value = items.seriesData.map((s: any) => ({
+        value: String(s.id),
+        label: s.name,
+      }));
+    }
+    if (seriesOptions.value.length > 0) {
+      selectedSeries.value = seriesOptions.value[0].value;
+    }
+  } catch {
+    layer.msg("Lỗi tải danh sách xổ số", { icon: 2 });
+  }
 }
 
 async function fetchLotteryTypes(seriesId: string) {
@@ -31,13 +35,19 @@ async function fetchLotteryTypes(seriesId: string) {
     lotteryOptions.value = [];
     return;
   }
-  // TODO: call API POST /agent/getRebateOddsPanel.html { type: "getLottery", series_id: seriesId }
-  lotteryOptions.value = [
-    { value: "1", label: "Miền Nam VIP" },
-    { value: "2", label: "Hồ Chí Minh" },
-  ];
-  if (lotteryOptions.value.length > 0) {
-    selectedLottery.value = lotteryOptions.value[0].value;
+  try {
+    const res = await fetchLotteryDropdown({ series_id: seriesId });
+    const items = res.data.data.items as any;
+    if (items?.lotteryData) {
+      lotteryOptions.value = items.lotteryData
+        .filter((l: any) => String(l.series_id) === seriesId)
+        .map((l: any) => ({ value: String(l.id), label: l.name }));
+    }
+    if (lotteryOptions.value.length > 0) {
+      selectedLottery.value = lotteryOptions.value[0].value;
+    }
+  } catch {
+    layer.msg("Lỗi tải loại xổ số", { icon: 2 });
   }
 }
 
@@ -47,9 +57,27 @@ async function fetchRebateData() {
     return;
   }
   loading.value = true;
-  // TODO: call API POST /agent/getRebateOddsPanel.html { type: "getData", lotteryId }
-  buildFallbackData();
-  loading.value = false;
+  try {
+    const res = await fetchRebateOdds({
+      type: "getData",
+      lotteryId: selectedLottery.value,
+    });
+    const items = res.data.data.items as any;
+    if (items?.tableHead && items?.tableBody) {
+      columns.value = (items.tableHead as any[]).map((h: any) => ({
+        title: h.title || h,
+        key: h.key || h.field || h,
+        align: "center" as const,
+      }));
+      dataSource.value = items.tableBody;
+    } else {
+      buildFallbackData();
+    }
+  } catch {
+    buildFallbackData();
+  } finally {
+    loading.value = false;
+  }
 }
 
 function buildFallbackData() {
@@ -134,7 +162,7 @@ onMounted(() => {
       <div class="search-form-wrap">
         <div class="layui-inline">
           <span class="form-label">Chọn loại xổ :</span>
-          <lay-select v-model="selectedSeries" style="width: 150px">
+          <lay-select v-model="selectedSeries">
             <lay-select-option
               v-for="opt in seriesOptions"
               :key="opt.value"
@@ -144,7 +172,7 @@ onMounted(() => {
           </lay-select>
         </div>
         <div class="layui-inline">
-          <lay-select v-model="selectedLottery" style="width: 200px">
+          <lay-select v-model="selectedLottery">
             <lay-select-option
               v-for="opt in lotteryOptions"
               :key="opt.value"

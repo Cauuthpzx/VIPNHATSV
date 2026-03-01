@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { reactive } from "vue";
+import { reactive, onMounted } from "vue";
 import { useListPage } from "@/composables/useListPage";
+import { fetchBetOrder } from "@/api/services/proxy";
+import { layer } from "@layui/layui-vue";
 
-const { dataSource, loading, page, handlePageChange, handleLimitChange } = useListPage();
+const { dataSource, loading, page, handlePageChange: _pageChange, handleLimitChange: _limitChange } = useListPage();
 
 const searchForm = reactive({
   dateRange: [] as string[],
@@ -11,22 +13,50 @@ const searchForm = reactive({
 });
 
 const columns = [
-  { title: "Mã giao dịch", key: "serialNo", width: "250.5px", align: "center" },
-  { title: "Nhà cung cấp game bên thứ 3", key: "provider", width: "151px", align: "center" },
-  { title: "Tên tài khoản thuộc nhà cái", key: "platformUsername", width: "151px", align: "center" },
-  { title: "Loại hình trò chơi", key: "gameType", width: "151px", align: "center" },
-  { title: "Tên trò chơi bên thứ 3", key: "gameName", width: "151px", align: "center" },
-  { title: "Tiền cược", key: "betAmount", align: "center" },
-  { title: "Tiền cược hợp lệ", key: "validBetAmount", align: "center" },
-  { title: "Tiền thưởng", key: "bonusAmount", align: "center" },
-  { title: "Thắng/Thua", key: "winLoss", align: "center" },
-  { title: "Thời gian cược", key: "betTime", align: "center" },
-  { title: "Thời gian thanh toán", key: "settleTime", align: "center" },
+  { title: "Mã giao dịch", key: "serial_no", width: "250.5px", align: "center" },
+  { title: "Nhà cung cấp game bên thứ 3", key: "platform_id_name", width: "151px", align: "center" },
+  { title: "Tên tài khoản thuộc nhà cái", key: "platform_username", width: "151px", align: "center" },
+  { title: "Loại hình trò chơi", key: "c_name", width: "151px", align: "center" },
+  { title: "Tên trò chơi bên thứ 3", key: "game_name", width: "151px", align: "center" },
+  { title: "Tiền cược", key: "bet_amount", align: "center" },
+  { title: "Tiền cược hợp lệ", key: "turnover", align: "center" },
+  { title: "Tiền thưởng", key: "prize", align: "center" },
+  { title: "Thắng/Thua", key: "win_lose", align: "center" },
+  { title: "Thời gian cược", key: "bet_time", align: "center" },
 ];
+
+async function loadData() {
+  loading.value = true;
+  try {
+    const res = await fetchBetOrder({
+      page: page.current,
+      limit: page.limit,
+      serial_no: searchForm.serialNo || undefined,
+      platform_username: searchForm.platformUsername || undefined,
+      bet_time: searchForm.dateRange?.length === 2 ? `${searchForm.dateRange[0]} - ${searchForm.dateRange[1]}` : undefined,
+    });
+    dataSource.value = res.data.data.items;
+    page.total = res.data.data.total;
+  } catch {
+    layer.msg("Lỗi tải dữ liệu", { icon: 2 });
+  } finally {
+    loading.value = false;
+  }
+}
 
 function handleSearch() {
   page.current = 1;
-  // TODO: call API
+  loadData();
+}
+
+function handlePageChange(val: { current: number }) {
+  _pageChange(val);
+  loadData();
+}
+
+function handleLimitChange(limit: number) {
+  _limitChange(limit);
+  loadData();
 }
 
 function handleReset() {
@@ -34,6 +64,8 @@ function handleReset() {
   searchForm.serialNo = "";
   searchForm.platformUsername = "";
 }
+
+onMounted(() => loadData());
 </script>
 
 <template>
@@ -43,15 +75,15 @@ function handleReset() {
       <div class="search-form-wrap">
         <div class="layui-inline">
           <span class="form-label">Thời gian :</span>
-          <lay-date-picker v-model="searchForm.dateRange" range single-panel range-separator="-" placeholder="Ngày bắt đầu - Ngày kết thúc" :allow-clear="true" />
+          <lay-date-picker v-model="searchForm.dateRange" range single-panel range-separator="-" :placeholder="['Ngày bắt đầu', 'Ngày kết thúc']" :allow-clear="true" />
         </div>
         <div class="layui-inline">
           <span class="form-label">Mã giao dịch :</span>
-          <lay-input v-model="searchForm.serialNo" placeholder="Nhập mã giao dịch" style="width: 200px" />
+          <lay-input v-model="searchForm.serialNo" placeholder="Nhập mã giao dịch" />
         </div>
         <div class="layui-inline">
           <span class="form-label">Tên tài khoản thuộc nhà cái :</span>
-          <lay-input v-model="searchForm.platformUsername" placeholder="Nhập tên tài khoản" style="width: 182px" />
+          <lay-input v-model="searchForm.platformUsername" placeholder="Nhập tên tài khoản" />
         </div>
         <div class="layui-inline">
           <lay-button type="normal" @click="handleSearch">

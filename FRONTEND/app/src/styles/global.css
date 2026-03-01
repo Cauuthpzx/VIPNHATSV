@@ -159,9 +159,13 @@ body {
 .layui-table th {
   font-weight: 400;
   font-size: 14px;
-  padding: 5px 0;
+  padding: 5px 8px;
   text-align: center;
   min-height: 38.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 0;
 }
 
 .layui-table td {
@@ -227,6 +231,16 @@ body {
   color: #666;
   white-space: nowrap;
   padding-right: 5px;
+}
+
+/* Consistent form field sizing in search forms */
+.search-form-wrap .layui-select {
+  width: 120px;
+}
+
+/* Standalone lay-input: min-width để không quá nhỏ */
+.search-form-wrap .layui-inline > .layui-input {
+  min-width: 180px;
 }
 
 /* Responsive: fields fill width on small screens */

@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { reactive } from "vue";
+import { reactive, onMounted } from "vue";
 import { useListPage } from "@/composables/useListPage";
+import { fetchUserList } from "@/api/services/proxy";
+import { layer } from "@layui/layui-vue";
 
-const { dataSource, loading, page, handlePageChange, handleLimitChange } = useListPage();
+const { dataSource, loading, page, handlePageChange: _pageChange, handleLimitChange: _limitChange } = useListPage();
 
 const searchForm = reactive({
   username: "",
@@ -14,17 +16,16 @@ const searchForm = reactive({
 
 const columns = [
   { title: "Hội viên", key: "username" },
-  { title: "Loại hình hội viên", key: "memberType" },
-  { title: "Tài khoản đại lý", key: "agentAccount" },
-  { title: "Số dư", key: "balance" },
-  { title: "Lần nạp", key: "depositCount" },
-  { title: "Lần rút", key: "withdrawCount" },
-  { title: "Tổng tiền nạp", key: "totalDeposit" },
-  { title: "Tổng tiền rút", key: "totalWithdraw" },
-  { title: "IP đăng nhập cuối", key: "lastLoginIp" },
-  { title: "Thời gian đăng nhập cuối", key: "lastLoginTime" },
-  { title: "Thời gian đăng ký", key: "registerTime" },
-  { title: "Trạng thái", key: "status" },
+  { title: "Loại hình hội viên", key: "type_format" },
+  { title: "Tài khoản đại lý", key: "parent_user" },
+  { title: "Số dư", key: "money" },
+  { title: "Lần nạp", key: "deposit_count" },
+  { title: "Lần rút", key: "withdrawal_count" },
+  { title: "Tổng tiền nạp", key: "deposit_amount" },
+  { title: "Tổng tiền rút", key: "withdrawal_amount" },
+  { title: "Thời gian đăng nhập cuối", key: "login_time" },
+  { title: "Thời gian đăng ký", key: "register_time" },
+  { title: "Trạng thái", key: "status_format" },
   { title: "Thao tác", key: "action" },
 ];
 
@@ -45,9 +46,27 @@ const sortOrderOptions = [
   { label: "Từ bé đến lớn", value: "asc" },
 ];
 
+async function loadData() {
+  loading.value = true;
+  try {
+    const res = await fetchUserList({
+      page: page.current,
+      limit: page.limit,
+      username: searchForm.username || undefined,
+      status: searchForm.status || undefined,
+    });
+    dataSource.value = res.data.data.items;
+    page.total = res.data.data.total;
+  } catch {
+    layer.msg("Lỗi tải dữ liệu", { icon: 2 });
+  } finally {
+    loading.value = false;
+  }
+}
+
 function handleSearch() {
   page.current = 1;
-  // TODO: call API
+  loadData();
 }
 
 function handleReset() {
@@ -56,7 +75,21 @@ function handleReset() {
   searchForm.status = "";
   searchForm.sortField = "";
   searchForm.sortOrder = "";
+  page.current = 1;
+  loadData();
 }
+
+function handlePageChange(val: { current: number }) {
+  _pageChange(val);
+  loadData();
+}
+
+function handleLimitChange(limit: number) {
+  _limitChange(limit);
+  loadData();
+}
+
+onMounted(() => loadData());
 </script>
 
 <template>
@@ -66,27 +99,27 @@ function handleReset() {
       <div class="search-form-wrap">
         <div class="layui-inline">
           <span class="form-label">Tên tài khoản:</span>
-          <lay-input v-model="searchForm.username" placeholder="Nhập tên tài khoản" style="width: 200px" />
+          <lay-input v-model="searchForm.username" placeholder="Nhập tên tài khoản" />
         </div>
         <div class="layui-inline">
           <span class="form-label">Thời gian nạp đầu:</span>
-          <lay-date-picker v-model="searchForm.dateRange" range single-panel range-separator="-" placeholder="Ngày bắt đầu - Ngày kết thúc" :allow-clear="true" />
+          <lay-date-picker v-model="searchForm.dateRange" range single-panel range-separator="-" :placeholder="['Ngày bắt đầu', 'Ngày kết thúc']" :allow-clear="true" />
         </div>
         <div class="layui-inline">
           <span class="form-label">Trạng thái:</span>
-          <lay-select v-model="searchForm.status" style="width: 212px">
+          <lay-select v-model="searchForm.status">
             <lay-select-option v-for="opt in statusOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
           </lay-select>
         </div>
         <div class="layui-inline">
           <span class="form-label">Sắp xếp theo trường:</span>
-          <lay-select v-model="searchForm.sortField" style="width: 150px">
+          <lay-select v-model="searchForm.sortField">
             <lay-select-option v-for="opt in sortFieldOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
           </lay-select>
         </div>
         <div class="layui-inline">
           <span class="form-label">Sắp xếp theo hướng:</span>
-          <lay-select v-model="searchForm.sortOrder" style="width: 150px">
+          <lay-select v-model="searchForm.sortOrder">
             <lay-select-option v-for="opt in sortOrderOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
           </lay-select>
         </div>
