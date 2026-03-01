@@ -2,7 +2,8 @@
 import { reactive, ref, onMounted } from "vue";
 import { useDateRange } from "@/composables/useDateRange";
 import { useListPage } from "@/composables/useListPage";
-import { fetchReportLottery } from "@/api/services/proxy";
+import { useAutoFitSelect } from "@/composables/useAutoFitSelect";
+import { fetchReportLottery, fetchLotteryDropdown } from "@/api/services/proxy";
 import { layer } from "@layui/layui-vue";
 
 const { dateRange, dateQuickSelect, dateQuickOptions, dateQuickWidth, resetDateRange } = useDateRange("today");
@@ -13,6 +14,25 @@ const searchForm = reactive({
   username: "",
 });
 
+const lotteryOptions = ref([
+  { label: "Tất cả", value: "" },
+]);
+
+const { selectWidth: lotteryWidth } = useAutoFitSelect(lotteryOptions);
+
+async function loadLotteryOptions() {
+  try {
+    const res = await fetchLotteryDropdown();
+    const items = res.data.data.items as any;
+    if (items?.lotteryData) {
+      lotteryOptions.value = [
+        { label: "Tất cả", value: "" },
+        ...items.lotteryData.map((l: any) => ({ label: l.name, value: String(l.id) })),
+      ];
+    }
+  } catch {}
+}
+
 const columns = [
   { title: "Tên tài khoản", key: "username", ellipsisTooltip: true },
   { title: "Thuộc đại lý", key: "user_parent_format", ellipsisTooltip: true },
@@ -20,8 +40,8 @@ const columns = [
   { title: "Tiền cược", key: "bet_amount", ellipsisTooltip: true },
   { title: "Tiền cược hợp lệ (trừ cược hoà)", key: "valid_amount", ellipsisTooltip: true },
   { title: "Hoàn trả", key: "rebate_amount", ellipsisTooltip: true },
-  { title: "Kết quả thắng thua (không gồm hoàn trả)", key: "result", ellipsisTooltip: true },
-  { title: "Thắng thua", key: "win_lose", ellipsisTooltip: true },
+  { title: "Thắng thua", key: "result", ellipsisTooltip: true },
+  { title: "Kết quả thắng thua (không gồm hoàn trả)", key: "win_lose", ellipsisTooltip: true },
   { title: "Tiền trúng", key: "prize", ellipsisTooltip: true },
   { title: "Tên loại xổ", key: "lottery_name", ellipsisTooltip: true },
 ];
@@ -32,8 +52,8 @@ const summaryColumns = [
   { title: "Tiền cược", key: "total_bet_amount", ellipsisTooltip: true },
   { title: "Tiền cược hợp lệ (trừ cược hoà)", key: "total_valid_amount", ellipsisTooltip: true },
   { title: "Hoàn trả", key: "total_rebate_amount", ellipsisTooltip: true },
-  { title: "Kết quả thắng thua (không gồm hoàn trả)", key: "total_result", ellipsisTooltip: true },
-  { title: "Thắng thua", key: "total_win_lose", ellipsisTooltip: true },
+  { title: "Thắng thua", key: "total_result", ellipsisTooltip: true },
+  { title: "Kết quả thắng thua (không gồm hoàn trả)", key: "total_win_lose", ellipsisTooltip: true },
   { title: "Tiền trúng", key: "total_prize", ellipsisTooltip: true },
 ];
 
@@ -89,13 +109,16 @@ function handleReset() {
   searchForm.username = "";
 }
 
-onMounted(() => loadData());
+onMounted(() => {
+  loadLotteryOptions();
+  loadData();
+});
 </script>
 
 <template>
   <div>
     <lay-card>
-      <lay-field title="Tìm kiếm">
+      <lay-field title="Báo cáo xổ số">
       <div class="search-form-wrap">
         <div class="layui-inline">
           <span class="form-label">Thời gian :</span>
@@ -108,7 +131,9 @@ onMounted(() => loadData());
         </div>
         <div class="layui-inline">
           <span class="form-label">Tên loại xổ :</span>
-          <lay-select v-model="searchForm.lotteryType" placeholder="Chọn hoặc nhập để tìm kiếm" />
+          <lay-select v-model="searchForm.lotteryType" :style="{ width: lotteryWidth }">
+            <lay-select-option v-for="opt in lotteryOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
+          </lay-select>
         </div>
         <div class="layui-inline">
           <span class="form-label">Tên tài khoản :</span>
@@ -138,7 +163,7 @@ onMounted(() => loadData());
         />
         <lay-table :columns="summaryColumns" :data-source="summaryData" :default-toolbar="true">
           <template v-slot:toolbar>
-            <lay-button size="xs" type="normal">Dữ liệu tổng hợp</lay-button>
+            <lay-button size="sm" type="normal"><b>DỮ LIỆU TỔNG HỢP</b></lay-button>
           </template>
         </lay-table>
       </div>

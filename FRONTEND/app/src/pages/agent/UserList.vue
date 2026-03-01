@@ -43,6 +43,7 @@ const sortFieldOptions = [
 ];
 
 const sortOrderOptions = [
+  { label: "Chọn", value: "" },
   { label: "Từ lớn đến bé", value: "desc" },
   { label: "Từ bé đến lớn", value: "asc" },
 ];
@@ -96,7 +97,7 @@ onMounted(() => loadData());
 <template>
   <div>
     <lay-card>
-      <lay-field title="Tìm kiếm">
+      <lay-field title="Danh sách hội viên">
       <div class="search-form-wrap">
         <div class="layui-inline">
           <span class="form-label">Tên tài khoản:</span>

@@ -91,7 +91,7 @@ onMounted(() => loadData());
 <template>
   <div>
     <lay-card>
-      <lay-field title="Tìm kiếm">
+      <lay-field title="Danh sách nạp tiền">
       <div class="search-form-wrap">
         <div class="layui-inline">
           <span class="form-label">Thời gian :</span>

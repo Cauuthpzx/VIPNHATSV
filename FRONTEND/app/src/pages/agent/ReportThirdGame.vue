@@ -2,6 +2,7 @@
 import { reactive, ref, onMounted } from "vue";
 import { useDateRange } from "@/composables/useDateRange";
 import { useListPage } from "@/composables/useListPage";
+import { useAutoFitSelect } from "@/composables/useAutoFitSelect";
 import { fetchReportThirdGame } from "@/api/services/proxy";
 import { layer } from "@layui/layui-vue";
 
@@ -13,22 +14,67 @@ const searchForm = reactive({
   platform: "",
 });
 
+const platformOptions = [
+  { label: "Tất cả", value: "" },
+  { label: "PA", value: "PA" },
+  { label: "BBIN", value: "BBIN" },
+  { label: "WM", value: "WM" },
+  { label: "MINI", value: "MINI" },
+  { label: "KY", value: "KY" },
+  { label: "PGSOFT", value: "PGSOFT" },
+  { label: "LUCKYWIN", value: "LUCKYWIN" },
+  { label: "SABA", value: "SABA" },
+  { label: "PT", value: "PT" },
+  { label: "RICH88", value: "RICH88" },
+  { label: "ASTAR", value: "ASTAR" },
+  { label: "FB", value: "FB" },
+  { label: "JILI", value: "JILI" },
+  { label: "KA", value: "KA" },
+  { label: "MW", value: "MW" },
+  { label: "SBO", value: "SBO" },
+  { label: "NEXTSPIN", value: "NEXTSPIN" },
+  { label: "AMB", value: "AMB" },
+  { label: "FunTa", value: "FunTa" },
+  { label: "MG", value: "MG" },
+  { label: "WS168", value: "WS168" },
+  { label: "DG CASINO", value: "DG CASINO" },
+  { label: "V8", value: "V8" },
+  { label: "AE", value: "AE" },
+  { label: "TP", value: "TP" },
+  { label: "FC", value: "FC" },
+  { label: "JDB", value: "JDB" },
+  { label: "CQ9", value: "CQ9" },
+  { label: "PP", value: "PP" },
+  { label: "VA", value: "VA" },
+  { label: "BNG", value: "BNG" },
+  { label: "DB CASINO", value: "DB CASINO" },
+  { label: "EVO CASINO", value: "EVO CASINO" },
+  { label: "CMD SPORTS", value: "CMD SPORTS" },
+  { label: "PG NEW", value: "PG NEW" },
+  { label: "FBLIVE", value: "FBLIVE" },
+  { label: "ON CASINO", value: "ON CASINO" },
+  { label: "MT", value: "MT" },
+  { label: "fC NEW", value: "fC NEW" },
+];
+
+const { selectWidth: platformWidth } = useAutoFitSelect(platformOptions);
+
 const columns = [
   { title: "Tên tài khoản", key: "username", ellipsisTooltip: true },
   { title: "Nhà cung cấp game", key: "platform_id_name", ellipsisTooltip: true },
   { title: "Số lần cược", key: "t_bet_times", ellipsisTooltip: true },
   { title: "Tiền cược", key: "t_bet_amount", ellipsisTooltip: true },
   { title: "Tiền cược hợp lệ", key: "t_turnover", ellipsisTooltip: true },
-  { title: "Tiền trúng", key: "t_prize", ellipsisTooltip: true },
+  { title: "Tiền thưởng", key: "t_prize", ellipsisTooltip: true },
   { title: "Thắng thua", key: "t_win_lose", ellipsisTooltip: true },
 ];
 
 const summaryColumns = [
-  { title: "Số người chơi", key: "total_bet_number", ellipsisTooltip: true },
   { title: "Số lần cược", key: "total_bet_times", ellipsisTooltip: true },
+  { title: "Số khách đặt cược", key: "total_bet_number", ellipsisTooltip: true },
   { title: "Tiền cược", key: "total_bet_amount", ellipsisTooltip: true },
   { title: "Tiền cược hợp lệ", key: "total_turnover", ellipsisTooltip: true },
-  { title: "Tiền trúng", key: "total_prize", ellipsisTooltip: true },
+  { title: "Tiền thưởng", key: "total_prize", ellipsisTooltip: true },
   { title: "Thắng thua", key: "total_win_lose", ellipsisTooltip: true },
 ];
 
@@ -88,7 +134,7 @@ onMounted(() => loadData());
 <template>
   <div>
     <lay-card>
-      <lay-field title="Tìm kiếm">
+      <lay-field title="Báo cáo nhà cung cấp">
       <div class="search-form-wrap">
         <div class="layui-inline">
           <span class="form-label">Thời gian :</span>
@@ -105,7 +151,9 @@ onMounted(() => loadData());
         </div>
         <div class="layui-inline">
           <span class="form-label">Nhà cung cấp :</span>
-          <lay-select v-model="searchForm.platform" placeholder="Chọn hoặc nhập để tìm kiếm" />
+          <lay-select v-model="searchForm.platform" :style="{ width: platformWidth }">
+            <lay-select-option v-for="opt in platformOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
+          </lay-select>
         </div>
         <div class="layui-inline">
           <lay-button type="normal" @click="handleSearch">
@@ -131,7 +179,7 @@ onMounted(() => loadData());
         />
         <lay-table :columns="summaryColumns" :data-source="summaryData" :default-toolbar="true">
           <template v-slot:toolbar>
-            <lay-button size="xs" type="normal">Dữ liệu tổng hợp</lay-button>
+            <lay-button size="sm" type="normal"><b>DỮ LIỆU TỔNG HỢP</b></lay-button>
           </template>
         </lay-table>
       </div>

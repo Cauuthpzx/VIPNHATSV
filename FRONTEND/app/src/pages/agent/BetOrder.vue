@@ -34,6 +34,7 @@ async function loadData() {
       serial_no: searchForm.serialNo || undefined,
       platform_username: searchForm.platformUsername || undefined,
       bet_time: searchForm.dateRange?.length === 2 ? `${searchForm.dateRange[0]} - ${searchForm.dateRange[1]}` : undefined,
+      es: 1,
     });
     dataSource.value = res.data.data.items;
     page.total = res.data.data.total;
@@ -67,7 +68,7 @@ onMounted(() => loadData());
 <template>
   <div>
     <lay-card>
-      <lay-field title="Tìm kiếm">
+      <lay-field title="Đơn cược bên thứ 3">
       <div class="search-form-wrap">
         <div class="layui-inline">
           <span class="form-label">Thời gian :</span>

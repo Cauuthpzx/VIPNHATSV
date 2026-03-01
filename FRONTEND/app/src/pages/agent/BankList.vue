@@ -72,7 +72,7 @@ onMounted(() => loadData());
 <template>
   <div>
     <lay-card>
-      <lay-field title="Tìm kiếm">
+      <lay-field title="Danh sách thẻ ngân hàng">
       <div class="search-form-wrap">
         <div class="layui-inline">
           <span class="form-label">Số tài khoản:</span>

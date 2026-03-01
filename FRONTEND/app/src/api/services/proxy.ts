@@ -102,10 +102,13 @@ export function fetchBetList(params: {
   username?: string;
   serial_no?: string;
   lottery_id?: string;
+  play_type?: number;
   play_type_id?: string;
   play_id?: string;
+  series_id?: string;
   status?: string;
   is_summary?: number;
+  es?: number;
 }) {
   return api.post<ProxyResponse>("/proxy/bet-list", params);
 }
@@ -116,6 +119,7 @@ export function fetchBetOrder(params: {
   bet_time?: string;
   serial_no?: string;
   platform_username?: string;
+  es?: number;
 }) {
   return api.post<ProxyResponse>("/proxy/bet-order", params);
 }

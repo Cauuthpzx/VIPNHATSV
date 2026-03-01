@@ -162,7 +162,7 @@ onMounted(() => {
 <template>
   <div>
     <lay-card>
-      <lay-field title="Tìm kiếm">
+      <lay-field title="Danh sách tỉ lệ hoàn trả">
       <div class="search-form-wrap">
         <div class="layui-inline">
           <span class="form-label">Chọn loại xổ :</span>
