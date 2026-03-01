@@ -30,7 +30,7 @@ async function handleSubmit(data: { oldPassword: string; newPassword: string }) 
         size="sm"
       >
         <lay-select-option
-          v-for="opt in agentOptions.filter(o => o.value)"
+          v-for="opt in agentOptions.filter((o: any) => o.value)"
           :key="opt.value"
           :value="opt.value"
           :label="opt.label"
