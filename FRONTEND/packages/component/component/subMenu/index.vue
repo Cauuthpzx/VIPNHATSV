@@ -94,14 +94,15 @@ const openHandle = function () {
       <i v-if="slots.expandIcon" class="layui-nav-more">
         <slot name="expandIcon" :isExpand="isOpen"></slot>
       </i>
-      <i
+      <span
         v-else
         :class="[
           isOpen ? 'layui-nav-mored' : '',
-          'layui-icon layui-icon-down',
           'layui-nav-more',
         ]"
-      ></i>
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="25" height="25" viewBox="0 0 24 24"><path d="m7 10 5 5 5-5z" fill="currentColor"/></svg>
+      </span>
     </a>
     <template v-if="isTree">
       <lay-transition :enable="isCollapseTransition">

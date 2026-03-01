@@ -3,7 +3,6 @@ import type { DropdownTeleportProps } from "../dropdown/interface";
 
 import { computed, inject, Ref } from "vue";
 import LayDropdown from "../dropdown/index.vue";
-import { LayIcon } from "@layui/icons-vue";
 import useLevel from "../menu/useLevel";
 
 export interface SubMenuPopupProps {
@@ -26,9 +25,9 @@ const computedTheme = computed(() => {
   return theme.value === "light" ? "-light" : "";
 });
 
-const computedExpandIcon = computed(() => {
-  if (isTree.value) return "layui-icon-right";
-  return level.value === 2 ? "layui-icon-down" : "layui-icon-right";
+const isExpandDown = computed(() => {
+  if (isTree.value) return false;
+  return level.value === 2;
 });
 
 const computedPlacement = computed(() => {
@@ -55,9 +54,10 @@ const computedPlacement = computed(() => {
           </span>
         </div>
         <span v-if="$slots.expandIcon" class="layui-nav-more">
-          <slot name="expandIcon">
-            <lay-icon :type="computedExpandIcon" />
-          </slot>
+          <slot name="expandIcon"></slot>
+        </span>
+        <span v-else class="layui-nav-more" :style="{ transform: isExpandDown ? 'rotate(0deg)' : 'rotate(-90deg)' }">
+          <svg xmlns="http://www.w3.org/2000/svg" width="25" height="25" viewBox="0 0 24 24"><path d="m7 10 5 5 5-5z" fill="currentColor"/></svg>
         </span>
       </a>
     </li>

@@ -3,6 +3,7 @@ import { computed, ref } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useAppStore } from "@/stores/app";
 import { menuData } from "@/config/menu";
+import HubNav from "@/components/HubNav.vue";
 
 const router = useRouter();
 const route = useRoute();
@@ -54,19 +55,6 @@ function handleRefresh() {
 
 const sideWidth = computed(() => (store.collapsed ? 60 : 200));
 
-// Account nav
-const accountSelectedKey = ref("");
-function onAccountSelect(key: string) {
-  if (key === "edit-password") {
-    router.push("/agent/edit-password");
-  } else if (key === "edit-fund-password") {
-    router.push("/agent/edit-fund-password");
-  } else if (key === "logout") {
-    store.closeAllTabs();
-    router.push("/login");
-  }
-  accountSelectedKey.value = "";
-}
 
 // Tabs scroll
 const tabsInner = ref<HTMLElement>();
@@ -127,39 +115,17 @@ function closeTabMenu() {
 
     <!-- ===== HEADER ===== -->
     <lay-header class="admin-header" :style="{ left: sideWidth + 'px' }">
-      <ul class="layui-nav layui-layout-left">
-        <li class="layui-nav-item layadmin-flexible" @click="store.toggleCollapse()">
-          <a href="javascript:;" :title="store.collapsed ? 'Mở rộng' : 'Kéo sang bên'">
-            <i class="layui-icon" :class="store.collapsed ? 'layui-icon-spread-left' : 'layui-icon-shrink-right'"></i>
-          </a>
-        </li>
-        <li class="layui-nav-item" @click="handleRefresh">
-          <a href="javascript:;" title="Làm mới trang">
-            <i class="layui-icon layui-icon-refresh-3"></i>
-          </a>
-        </li>
-      </ul>
-      <ul class="layui-nav layui-layout-right">
-        <lay-menu
-          v-model:selected-key="accountSelectedKey"
-          @change-selected-key="onAccountSelect"
-        >
-          <lay-sub-menu id="account">
-            <template #icon><i class="layui-icon layui-icon-user"></i></template>
-            <template #title>{{ store.username }}</template>
-            <lay-menu-item id="edit-password">
-              <template #title>Đổi mật khẩu đăng nhập</template>
-            </lay-menu-item>
-            <lay-menu-item id="edit-fund-password">
-              <template #title>Đổi mật khẩu giao dịch</template>
-            </lay-menu-item>
-            <lay-menu-item id="logout">
-              <template #icon><i class="layui-icon layui-icon-logout"></i></template>
-              <template #title>Đăng xuất</template>
-            </lay-menu-item>
-          </lay-sub-menu>
-        </lay-menu>
-      </ul>
+      <div class="admin-header-left">
+        <a href="javascript:;" @click="store.toggleCollapse()" :title="store.collapsed ? 'Mở rộng' : 'Kéo sang bên'">
+          <i class="layui-icon" :class="store.collapsed ? 'layui-icon-spread-left' : 'layui-icon-shrink-right'"></i>
+        </a>
+        <a href="javascript:;" @click="handleRefresh" title="Làm mới trang">
+          <i class="layui-icon layui-icon-refresh-3"></i>
+        </a>
+      </div>
+      <div class="admin-header-right">
+        <HubNav />
+      </div>
     </lay-header>
 
     <!-- ===== TABS ===== -->
@@ -181,7 +147,7 @@ function closeTabMenu() {
             :class="{ 'layui-this': store.activeTab === tab.path }"
             @click="onTabClick(tab.path)"
           >
-            <i v-if="!tab.closable" class="layui-icon layui-icon-home"></i>
+            <svg v-if="!tab.closable" class="tab-home-icon" xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24"><path d="M4 10h3v7H4zm6.5 0h3v7h-3zM2 19h20v3H2zm15-9h3v7h-3zm-5-9L2 6v2h20V6z" fill="currentColor"/></svg>
             <template v-else>{{ tab.title }}</template>
             <i
               v-if="tab.closable"
@@ -273,6 +239,16 @@ function closeTabMenu() {
   height: 40px;
   line-height: 40px;
   font-size: 14px;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+
+.layui-side-menu .layui-nav-tree .layui-nav-child dd a > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 
 .layui-side-menu .layui-nav-bar {
@@ -280,18 +256,11 @@ function closeTabMenu() {
 }
 
 .layui-side-menu .layui-sub-menu-icon {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 20px;
-  margin-right: 10px;
-  text-align: center;
-}
-
-.layui-side-menu .layui-nav-more {
-  transition: transform 0.3s;
-}
-
-.layui-side-menu .layui-nav-mored {
-  transform: rotate(180deg);
+  flex-shrink: 0;
 }
 
 /* Sidebar collapsed state — center icons */
@@ -309,16 +278,12 @@ function closeTabMenu() {
 .layui-side-menu .layui-nav-tree.layui-nav-collapse .layui-sub-menu-icon {
   margin: 0;
   width: 60px;
-  font-size: 18px;
+  font-size: 16px;
   text-align: center;
 }
 
 /* Header - uses <lay-header> component, override height to 50px */
 .layui-layout-admin > .admin-header.layui-header {
-  --nav-bg-color: transparent;
-  --nav-text-color: #666;
-  --nav-text-color-active: #666;
-
   position: fixed;
   top: 0;
   right: 0;
@@ -327,73 +292,43 @@ function closeTabMenu() {
   background: #fff;
   border-bottom: 1px solid #f6f6f6;
   transition: left 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
-.admin-header .layui-layout-left {
-  position: absolute;
-  left: 0;
-  top: 0;
-  height: 50px;
-  line-height: 50px;
-  padding: 0 10px;
-  background: transparent;
-}
-
-.admin-header .layui-nav .layui-nav-item {
-  line-height: 50px;
-}
-
-.admin-header .layui-nav .layui-nav-item > a {
-  font-size: 14px;
-  padding: 0 15px;
+.admin-header-left {
   display: flex;
   align-items: center;
   height: 50px;
-  text-decoration: none;
 }
 
-.admin-header .layui-nav .layui-nav-item > a:hover {
+.admin-header-left > a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 50px;
+  height: 50px;
+  color: #666;
+  text-decoration: none;
+  transition: background 0.2s;
+}
+
+.admin-header-left > a:hover {
   background: #f6f6f6;
 }
 
-.admin-header .layui-nav .layui-nav-item > a .layui-icon {
+.admin-header-left > a .layui-icon {
   font-size: 16px;
 }
 
-.admin-header .layui-nav .layui-nav-bar {
-  display: none;
-}
-
-.admin-header .layui-layout-right {
-  position: absolute;
-  right: 0;
-  top: 0;
+.admin-header-right {
   height: 50px;
-  line-height: 50px;
-  padding: 0;
-  list-style: none;
-  margin: 0;
-}
-
-.admin-header .layui-layout-right .layui-nav {
-  background: transparent;
-  padding: 0;
-}
-
-.admin-header .layui-layout-right .layui-nav .layui-nav-item > a {
-  height: 50px;
-  line-height: 50px;
-  padding: 0 15px;
   display: flex;
   align-items: center;
-  gap: 5px;
-  color: #666;
-  font-size: 14px;
+  margin-right: 50px;
 }
 
-.admin-header .layui-layout-right .layui-nav .layui-nav-item > a cite {
-  font-style: normal;
-}
 
 /* Tabs */
 .layadmin-pagetabs {
@@ -542,6 +477,15 @@ function closeTabMenu() {
 .layadmin-pagetabs .layui-tab-close:hover {
   background: #ff5722;
   color: #fff;
+}
+
+.layadmin-pagetabs .layui-tab-title li:has(.tab-home-icon) {
+  justify-content: center;
+  padding: 0 10px;
+}
+
+.tab-home-icon {
+  display: block;
 }
 
 /* Body */

@@ -101,10 +101,16 @@
   right: 8px;
   left: auto !important;
   margin-top: 0;
-  font-size: 12.5px !important;
   cursor: pointer;
-  transition: all 0.2s;
-  -webkit-transition: all 0.2s;
+  transition: transform 0.3s;
+  display: inline-flex;
+  align-items: center;
+  height: inherit;
+  line-height: inherit;
+}
+
+.layui-nav .layui-nav-more svg {
+  display: block;
 }
 
 .layui-nav .layui-nav-mored,
@@ -191,10 +197,20 @@
   height: 50px;
   line-height: 50px;
   position: relative;
-  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: 6px;
   overflow: hidden;
   white-space: nowrap;
-  padding: 0 23px;
+  padding: 0 40px 0 23px;
+}
+
+.layui-nav-tree .layui-nav-item > a > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
 }
 
 .layui-nav-tree .layui-nav-item * {
@@ -202,13 +218,16 @@
 }
 
 .layui-nav-tree .layui-nav-more {
-  right: 15px;
+  position: absolute;
+  right: 10px;
+  top: 0;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
 }
 
 
-.layui-nav-tree .layui-nav-item span {
-  margin-left: 3px;
-}
 
 .layui-nav-tree .layui-nav-bar {
   width: 5px;
