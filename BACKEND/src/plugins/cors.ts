@@ -4,8 +4,10 @@ import fastifyCors from "@fastify/cors";
 import { appConfig } from "../config/app.js";
 
 async function corsPlugin(app: FastifyInstance) {
+  const raw = appConfig.cors.origin;
+  const origin = raw.includes(",") ? raw.split(",").map((s) => s.trim()) : raw;
   await app.register(fastifyCors, {
-    origin: appConfig.cors.origin,
+    origin,
     credentials: true,
   });
 }
