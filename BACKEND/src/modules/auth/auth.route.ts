@@ -12,8 +12,8 @@ import {
 const authRateLimit = {
   config: {
     rateLimit: {
-      max: 5,
-      timeWindow: 60_000, // 5 requests per minute per IP
+      max: 30,
+      timeWindow: 60_000, // 30 requests per minute per IP
     },
   },
 };
