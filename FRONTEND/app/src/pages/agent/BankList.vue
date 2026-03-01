@@ -4,6 +4,11 @@ import { useListPage } from "@/composables/useListPage";
 import { fetchBankList } from "@/api/services/proxy";
 import { layer } from "@layui/layui-vue";
 import { useAgentFilter } from "@/composables/useAgentFilter";
+import { useAuthStore } from "@/stores/auth";
+import { PERMISSIONS } from "@/constants/permissions";
+
+const authStore = useAuthStore();
+const canWrite = authStore.hasPermission(PERMISSIONS.FINANCE_WRITE);
 
 const { dataSource, loading, page, setLoading, bindLoadData } = useListPage();
 const { selectedAgentId, agentOptions, agentWidth, notifySuccess } = useAgentFilter();
@@ -99,11 +104,11 @@ function handleDelete(row: any) {
           @change="handlePageChange"
         >
           <template v-slot:toolbar>
-            <lay-button type="normal" size="xs" @click="handleAdd">+ Thêm tài khoản ngân hàng</lay-button>
+            <lay-button v-if="canWrite" type="normal" size="xs" @click="handleAdd">+ Thêm tài khoản ngân hàng</lay-button>
           </template>
           <template #operation="{ row }">
-            <lay-button size="xs" type="primary" @click="handleEdit(row)">Sửa</lay-button>
-            <lay-button size="xs" type="danger" @click="handleDelete(row)">Xóa</lay-button>
+            <lay-button v-if="canWrite" size="xs" type="primary" @click="handleEdit(row)">Sửa</lay-button>
+            <lay-button v-if="canWrite" size="xs" type="danger" @click="handleDelete(row)">Xóa</lay-button>
           </template>
         </lay-table>
       </div>

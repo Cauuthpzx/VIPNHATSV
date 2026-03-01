@@ -2,7 +2,7 @@
 import { ref, reactive, onMounted } from "vue";
 import { layer } from "@layui/layui-vue";
 import { useAuthStore } from "@/stores/auth";
-import { PERMISSIONS, PERMISSION_LABELS, ALL_PERMISSIONS } from "@/constants/permissions";
+import { PERMISSIONS, PERMISSION_LABELS, PERMISSION_GROUPS, ALL_PERMISSIONS } from "@/constants/permissions";
 import {
   fetchRoles,
   createRole,
@@ -359,19 +359,27 @@ onMounted(() => loadData());
             @change="toggleAllPerms"
           />
         </div>
-        <div class="perm-grid">
-          <div
-            v-for="perm in allPermKeys"
-            :key="perm"
-            class="perm-item"
-          >
-            <lay-checkbox
-              :modelValue="selectedPerms.includes(perm)"
-              skin="primary"
-              :label="PERMISSION_LABELS[perm] || perm"
-              @change="togglePerm(perm)"
-            />
-            <span class="perm-code">{{ perm }}</span>
+
+        <div
+          v-for="group in PERMISSION_GROUPS"
+          :key="group.label"
+          class="perm-group"
+        >
+          <div class="perm-group-label">{{ group.label }}</div>
+          <div class="perm-grid">
+            <div
+              v-for="perm in group.permissions"
+              :key="perm"
+              class="perm-item"
+            >
+              <lay-checkbox
+                :modelValue="selectedPerms.includes(perm)"
+                skin="primary"
+                :label="PERMISSION_LABELS[perm] || perm"
+                @change="togglePerm(perm)"
+              />
+              <span class="perm-code">{{ perm }}</span>
+            </div>
           </div>
         </div>
 
@@ -402,13 +410,28 @@ onMounted(() => loadData());
 .perm-header {
   padding-bottom: 12px;
   border-bottom: 1px solid #eee;
+  margin-bottom: 8px;
+}
+
+.perm-group {
   margin-bottom: 16px;
+}
+
+.perm-group-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 8px;
+  padding: 4px 8px;
+  background: #f8f8f8;
+  border-radius: 4px;
 }
 
 .perm-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px 24px;
+  gap: 8px 24px;
+  padding-left: 8px;
 }
 
 .perm-item {

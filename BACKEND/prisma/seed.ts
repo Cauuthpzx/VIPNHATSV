@@ -27,7 +27,12 @@ async function main() {
       name: "Manager",
       type: RoleType.MANAGER,
       level: 50,
-      permissions: ["users:read", "users:write", "roles:read"],
+      permissions: [
+        "users:read", "users:write", "roles:read",
+        "member:read", "member:write", "invite:read", "invite:write",
+        "report:read", "finance:read", "finance:write",
+        "bet:read", "password:write", "rebate:read",
+      ],
     },
   });
 
@@ -38,7 +43,11 @@ async function main() {
       name: "Viewer",
       type: RoleType.VIEWER,
       level: 10,
-      permissions: ["users:read", "roles:read"],
+      permissions: [
+        "users:read", "roles:read",
+        "member:read", "invite:read", "report:read",
+        "finance:read", "bet:read", "rebate:read",
+      ],
     },
   });
 

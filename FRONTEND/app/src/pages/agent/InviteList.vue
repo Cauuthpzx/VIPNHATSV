@@ -4,6 +4,11 @@ import { useListPage } from "@/composables/useListPage";
 import { fetchInviteList } from "@/api/services/proxy";
 import { layer } from "@layui/layui-vue";
 import { useAgentFilter } from "@/composables/useAgentFilter";
+import { useAuthStore } from "@/stores/auth";
+import { PERMISSIONS } from "@/constants/permissions";
+
+const authStore = useAuthStore();
+const canWrite = authStore.hasPermission(PERMISSIONS.INVITE_WRITE);
 
 const { dataSource, loading, page, setLoading, bindLoadData } = useListPage();
 const { selectedAgentId, agentOptions, agentWidth, notifySuccess } = useAgentFilter();
@@ -102,9 +107,11 @@ function handleReset() {
           @change="handlePageChange"
         >
           <template v-slot:toolbar>
-            <lay-button type="normal" size="xs">+ Thêm mã giới thiệu</lay-button>
-            <lay-button type="normal" size="xs">Copy đường link</lay-button>
-            <lay-button type="normal" size="xs">Xem cài đặt</lay-button>
+            <template v-if="canWrite">
+              <lay-button type="normal" size="xs">+ Thêm mã giới thiệu</lay-button>
+              <lay-button type="normal" size="xs">Copy đường link</lay-button>
+              <lay-button type="normal" size="xs">Xem cài đặt</lay-button>
+            </template>
           </template>
           <template #num="{ row, column }">
             <lay-count-up :end-val="Number(row[column.key]) || 0" :duration="600" :decimal-places="String(row[column.key]).includes('.') ? 2 : 0" :use-grouping="false" />

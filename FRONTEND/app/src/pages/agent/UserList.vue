@@ -3,8 +3,13 @@ import { reactive } from "vue";
 import { useListPage } from "@/composables/useListPage";
 import { useAutoFitSelect } from "@/composables/useAutoFitSelect";
 import { useAgentFilter } from "@/composables/useAgentFilter";
+import { useAuthStore } from "@/stores/auth";
+import { PERMISSIONS } from "@/constants/permissions";
 import { fetchUserList } from "@/api/services/proxy";
 import { layer } from "@layui/layui-vue";
+
+const authStore = useAuthStore();
+const canWrite = authStore.hasPermission(PERMISSIONS.MEMBER_WRITE);
 
 const { dataSource, loading, page, setLoading, bindLoadData } = useListPage();
 const { selectedAgentId, agentOptions, agentWidth, notifySuccess } = useAgentFilter();
@@ -148,15 +153,17 @@ function handleReset() {
           @change="handlePageChange"
         >
           <template v-slot:toolbar>
-            <lay-button type="normal" size="xs">+ Thêm hội viên</lay-button>
-            <lay-button type="normal" size="xs">+ Đại lý mới thêm</lay-button>
-            <lay-button type="normal" size="xs">Cài đặt hoàn trả</lay-button>
+            <template v-if="canWrite">
+              <lay-button type="normal" size="xs">+ Thêm hội viên</lay-button>
+              <lay-button type="normal" size="xs">+ Đại lý mới thêm</lay-button>
+              <lay-button type="normal" size="xs">Cài đặt hoàn trả</lay-button>
+            </template>
           </template>
           <template #num="{ row, column }">
             <lay-count-up :end-val="Number(row[column.key]) || 0" :duration="600" :decimal-places="String(row[column.key]).includes('.') ? 2 : 0" :use-grouping="false" />
           </template>
           <template v-slot:action>
-            <lay-button size="xs" type="normal">Cài đặt hoàn trả</lay-button>
+            <lay-button v-if="canWrite" size="xs" type="normal">Cài đặt hoàn trả</lay-button>
           </template>
         </lay-table>
       </div>
