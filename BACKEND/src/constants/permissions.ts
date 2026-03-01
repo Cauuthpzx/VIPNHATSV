@@ -30,6 +30,10 @@ export const PERMISSIONS = {
 
   // --- AGENT: Hoàn trả ---
   REBATE_READ: "rebate:read",
+
+  // --- SYNC ---
+  SYNC_READ: "sync:read",
+  SYNC_WRITE: "sync:write",
 } as const;
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

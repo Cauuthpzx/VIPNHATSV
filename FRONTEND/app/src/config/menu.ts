@@ -86,6 +86,7 @@ export const menuData: MenuItem[] = [
     children: [
       { id: "systemUsers", title: "Quản lý người dùng", path: "/system/users", permission: PERMISSIONS.USERS_READ },
       { id: "systemRoles", title: "Quản lý vai trò", path: "/system/roles", permission: PERMISSIONS.ROLES_READ },
+      { id: "syncDashboard", title: "Theo dõi đồng bộ", path: "/system/sync", permission: PERMISSIONS.SYNC_READ },
     ],
   },
 ];

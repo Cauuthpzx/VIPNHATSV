@@ -123,6 +123,12 @@ const routes = [
         component: () => import("@/pages/system/SystemRoles.vue"),
         meta: { title: "Quản lý vai trò", permission: PERMISSIONS.ROLES_READ },
       },
+      {
+        path: "system/sync",
+        name: "SyncDashboard",
+        component: () => import("@/pages/system/SyncDashboard.vue"),
+        meta: { title: "Theo dõi đồng bộ", permission: PERMISSIONS.SYNC_READ },
+      },
     ],
   },
   {
@@ -140,13 +146,11 @@ export const router = createRouter({
 router.beforeEach(async (to) => {
   const authStore = useAuthStore();
 
-  // Initialize auth on first navigation (timeout 5s to prevent white screen)
+  // Auth initialization is handled by App.vue before any route renders.
+  // If somehow we get here before init (e.g. direct URL), wait for it.
   if (!authStore.initialized) {
     try {
-      await Promise.race([
-        authStore.init(),
-        new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 5000)),
-      ]);
+      await authStore.init();
     } catch {
       authStore.initialized = true;
     }

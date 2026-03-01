@@ -30,6 +30,10 @@ export const PERMISSIONS = {
 
   // --- AGENT: Hoàn trả ---
   REBATE_READ: "rebate:read",
+
+  // --- SYNC ---
+  SYNC_READ: "sync:read",
+  SYNC_WRITE: "sync:write",
 } as const;
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -67,6 +71,10 @@ export const PERMISSION_GROUPS = [
     permissions: ["rebate:read"],
   },
   {
+    label: "Đồng bộ",
+    permissions: ["sync:read", "sync:write"],
+  },
+  {
     label: "Hệ thống",
     permissions: ["users:read", "users:write", "users:delete", "roles:read", "roles:write", "roles:delete"],
   },
@@ -91,4 +99,7 @@ export const PERMISSION_LABELS: Record<string, string> = {
   "bet:read": "Xem đơn cược",
   "password:write": "Đổi mật khẩu",
   "rebate:read": "Xem hoàn trả",
+  // SYNC
+  "sync:read": "Xem đồng bộ",
+  "sync:write": "Quản lý đồng bộ",
 };

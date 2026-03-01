@@ -13,6 +13,11 @@ import { logger } from "../../utils/logger.js";
 
 let isSyncing = false;
 
+/** Check if a sync is currently in progress. */
+export function getIsSyncing(): boolean {
+  return isSyncing;
+}
+
 /**
  * Run a full sync cycle: for each endpoint, fetch ALL pages from ALL agents,
  * then UPSERT into PostgreSQL.
