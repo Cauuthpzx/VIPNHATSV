@@ -9,7 +9,7 @@ import { layer } from "@layui/layui-vue";
 
 
 const { dateRange, dateQuickSelect, dateQuickOptions, dateQuickWidth, resetDateRange } = useDateRange("today");
-const { dataSource, loading, page, scrollToTable } = useListPage();
+const { dataSource, loading, page, scrollToTable, setLoading } = useListPage();
 const { selectedAgentId, agentOptions, agentWidth } = useAgentFilter();
 
 const searchForm = reactive({
@@ -34,15 +34,15 @@ const columns = [
   { title: "Thời gian tạo đơn", key: "create_time", ellipsisTooltip: true },
   { title: "Tên tài khoản", key: "username", ellipsisTooltip: true },
   { title: "Thuộc đại lý", key: "user_parent_format", ellipsisTooltip: true },
-  { title: "Số tiền yêu cầu", key: "amount", ellipsisTooltip: true },
-  { title: "Phí rút", key: "user_fee", ellipsisTooltip: true },
-  { title: "Số tiền thực nhận", key: "true_amount", ellipsisTooltip: true },
+  { title: "Số tiền yêu cầu", key: "amount", customSlot: "num" },
+  { title: "Phí rút", key: "user_fee", customSlot: "num" },
+  { title: "Số tiền thực nhận", key: "true_amount", customSlot: "num" },
   { title: "Trạng thái", key: "status_format", ellipsisTooltip: true },
   { title: "Thao tác", key: "operation", customSlot: "operation" },
 ];
 
 async function loadData() {
-  loading.value = true;
+  setLoading(true);
   try {
     const res = await fetchWithdrawalsRecord({
       page: page.current,
@@ -56,7 +56,7 @@ async function loadData() {
   } catch {
     layer.msg("Lỗi tải dữ liệu", { icon: 2 });
   } finally {
-    loading.value = false;
+    setLoading(false);
   }
 }
 
@@ -143,6 +143,9 @@ onMounted(() => loadData());
           :data-source="dataSource"
           @change="change"
         >
+          <template #num="{ row, column }">
+            <lay-count-up :end-val="Number(row[column.key]) || 0" :duration="600" :decimal-places="String(row[column.key]).includes('.') ? 2 : 0" :use-grouping="false" />
+          </template>
           <template #operation="{ row }">
             <lay-button size="xs" type="primary" @click="handleDetail(row)">Chi tiết</lay-button>
           </template>

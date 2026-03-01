@@ -6,7 +6,7 @@ import { useAgentFilter } from "@/composables/useAgentFilter";
 import { fetchUserList } from "@/api/services/proxy";
 import { layer } from "@layui/layui-vue";
 
-const { dataSource, loading, page, scrollToTable } = useListPage();
+const { dataSource, loading, page, scrollToTable, setLoading } = useListPage();
 const { selectedAgentId, agentOptions, agentWidth } = useAgentFilter();
 
 const searchForm = reactive({
@@ -22,11 +22,11 @@ const columns = [
   { title: "Hội viên", key: "username", ellipsisTooltip: true },
   { title: "Loại hình hội viên", key: "type_format", ellipsisTooltip: true },
   { title: "Tài khoản đại lý", key: "parent_user", ellipsisTooltip: true },
-  { title: "Số dư", key: "money", ellipsisTooltip: true },
-  { title: "Lần nạp", key: "deposit_count", ellipsisTooltip: true },
-  { title: "Lần rút", key: "withdrawal_count", ellipsisTooltip: true },
-  { title: "Tổng tiền nạp", key: "deposit_amount", ellipsisTooltip: true },
-  { title: "Tổng tiền rút", key: "withdrawal_amount", ellipsisTooltip: true },
+  { title: "Số dư", key: "money", customSlot: "num" },
+  { title: "Lần nạp", key: "deposit_count", customSlot: "num" },
+  { title: "Lần rút", key: "withdrawal_count", customSlot: "num" },
+  { title: "Tổng tiền nạp", key: "deposit_amount", customSlot: "num" },
+  { title: "Tổng tiền rút", key: "withdrawal_amount", customSlot: "num" },
   { title: "Thời gian đăng nhập cuối", key: "login_time", ellipsisTooltip: true },
   { title: "Thời gian đăng ký", key: "register_time", ellipsisTooltip: true },
   { title: "Trạng thái", key: "status_format", ellipsisTooltip: true },
@@ -56,7 +56,7 @@ const { selectWidth: sortFieldWidth } = useAutoFitSelect(sortFieldOptions);
 const { selectWidth: sortOrderWidth } = useAutoFitSelect(sortOrderOptions);
 
 async function loadData() {
-  loading.value = true;
+  setLoading(true);
   try {
     const res = await fetchUserList({
       page: page.current,
@@ -69,7 +69,7 @@ async function loadData() {
   } catch {
     layer.msg("Lỗi tải dữ liệu", { icon: 2 });
   } finally {
-    loading.value = false;
+    setLoading(false);
   }
 }
 
@@ -160,6 +160,9 @@ onMounted(() => loadData());
             <lay-button type="normal" size="xs">+ Thêm hội viên</lay-button>
             <lay-button type="normal" size="xs">+ Đại lý mới thêm</lay-button>
             <lay-button type="normal" size="xs">Cài đặt hoàn trả</lay-button>
+          </template>
+          <template #num="{ row, column }">
+            <lay-count-up :end-val="Number(row[column.key]) || 0" :duration="600" :decimal-places="String(row[column.key]).includes('.') ? 2 : 0" :use-grouping="false" />
           </template>
           <template v-slot:action>
             <lay-button size="xs" type="normal">Cài đặt hoàn trả</lay-button>

@@ -19,7 +19,7 @@ export function useAgentFilter() {
     ...agentStore.activeAgents.map((a) => ({ label: a.name, value: a.id })),
   ]);
 
-  const { selectWidth: agentWidth } = useAutoFitSelect(agentOptions);
+  const { selectWidth: agentWidth } = useAutoFitSelect(agentOptions, 120);
 
   return {
     selectedAgentId,

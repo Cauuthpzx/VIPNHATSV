@@ -19,8 +19,17 @@ export function useListPage(initialLimit = 10) {
   function scrollToTable() {
     nextTick(() => {
       const body = document.querySelector(".layui-body");
-      if (body) body.scrollTo({ top: 0, behavior: "instant" });
+      if (body) body.scrollTo({ top: 0, behavior: "smooth" });
     });
+  }
+
+  /**
+   * Chỉ show loading spinner khi chưa có data (lần đầu).
+   * Khi đã có data → không show loading, tránh flicker.
+   */
+  function setLoading(val: boolean) {
+    if (val && dataSource.value.length > 0) return;
+    loading.value = val;
   }
 
   return {
@@ -29,5 +38,6 @@ export function useListPage(initialLimit = 10) {
     page,
     resetPage,
     scrollToTable,
+    setLoading,
   };
 }

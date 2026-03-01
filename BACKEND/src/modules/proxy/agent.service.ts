@@ -16,14 +16,6 @@ export async function getAgentCookie(
     throw new AppError("Agent is inactive", HTTP_STATUS.FORBIDDEN, ERROR_CODES.FORBIDDEN);
   }
 
-  if (agent.cookieExpires && agent.cookieExpires < new Date()) {
-    throw new AppError(
-      "Agent session expired",
-      HTTP_STATUS.UNAUTHORIZED,
-      ERROR_CODES.AGENT_SESSION_EXPIRED,
-    );
-  }
-
   return decryptSessionCookie(agent.sessionCookie);
 }
 

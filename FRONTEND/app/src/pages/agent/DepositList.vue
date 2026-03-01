@@ -9,7 +9,7 @@ import { layer } from "@layui/layui-vue";
 import StatusBadge from "@/components/StatusBadge.vue";
 
 const { dateRange, dateQuickSelect, dateQuickOptions, dateQuickWidth, resetDateRange } = useDateRange("today");
-const { dataSource, loading, page, scrollToTable } = useListPage();
+const { dataSource, loading, page, scrollToTable, setLoading } = useListPage();
 const { selectedAgentId, agentOptions, agentWidth } = useAgentFilter();
 
 const searchForm = reactive({
@@ -44,14 +44,14 @@ const columns = [
   { title: "Nhân viên", key: "_agentName", ellipsisTooltip: true },
   { title: "Tên tài khoản", key: "username", ellipsisTooltip: true },
   { title: "Thuộc đại lý", key: "user_parent_format", ellipsisTooltip: true },
-  { title: "Số tiền", key: "amount", ellipsisTooltip: true },
+  { title: "Số tiền", key: "amount", customSlot: "num" },
   { title: "Loại hình giao dịch", key: "type", ellipsisTooltip: true },
   { title: "Trạng thái giao dịch", key: "status", customSlot: "status" },
   { title: "Thời gian", key: "create_time", ellipsisTooltip: true },
 ];
 
 async function loadData() {
-  loading.value = true;
+  setLoading(true);
   try {
     const res = await fetchDepositList({
       page: page.current,
@@ -64,7 +64,7 @@ async function loadData() {
   } catch {
     layer.msg("Lỗi tải dữ liệu", { icon: 2 });
   } finally {
-    loading.value = false;
+    setLoading(false);
   }
 }
 
@@ -149,6 +149,9 @@ onMounted(() => loadData());
           :data-source="dataSource"
           @change="change"
         >
+          <template #num="{ row, column }">
+            <lay-count-up :end-val="Number(row[column.key]) || 0" :duration="600" :decimal-places="String(row[column.key]).includes('.') ? 2 : 0" :use-grouping="false" />
+          </template>
           <template #status="{ row }">
             <StatusBadge :status="row.status" :map="DEPOSIT_STATUS_MAP" />
           </template>

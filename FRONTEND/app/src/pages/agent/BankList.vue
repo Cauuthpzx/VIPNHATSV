@@ -5,7 +5,7 @@ import { fetchBankList } from "@/api/services/proxy";
 import { layer } from "@layui/layui-vue";
 import { useAgentFilter } from "@/composables/useAgentFilter";
 
-const { dataSource, loading, page, scrollToTable } = useListPage();
+const { dataSource, loading, page, scrollToTable, setLoading } = useListPage();
 const { selectedAgentId, agentOptions, agentWidth } = useAgentFilter();
 
 const searchForm = reactive({
@@ -24,7 +24,7 @@ const columns = [
 ];
 
 async function loadData() {
-  loading.value = true;
+  setLoading(true);
   try {
     const res = await fetchBankList({
       page: page.current,
@@ -36,7 +36,7 @@ async function loadData() {
   } catch {
     layer.msg("Lỗi tải dữ liệu", { icon: 2 });
   } finally {
-    loading.value = false;
+    setLoading(false);
   }
 }
 

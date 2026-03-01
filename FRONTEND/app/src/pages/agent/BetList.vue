@@ -8,7 +8,7 @@ import { fetchBetList, fetchLotteryDropdown } from "@/api/services/proxy";
 import { layer } from "@layui/layui-vue";
 
 const { dateRange, dateQuickSelect, dateQuickOptions, dateQuickWidth, resetDateRange } = useDateRange("today");
-const { dataSource, loading, page, scrollToTable } = useListPage();
+const { dataSource, loading, page, scrollToTable, setLoading } = useListPage();
 const { selectedAgentId, agentOptions, agentWidth } = useAgentFilter();
 
 const searchForm = reactive({
@@ -114,16 +114,16 @@ const columns = [
   { title: "Cách chơi", key: "play_name", ellipsisTooltip: true },
   { title: "Kỳ", key: "issue", ellipsisTooltip: true },
   { title: "Thông tin cược", key: "content", ellipsisTooltip: true },
-  { title: "Tiền cược", key: "money", ellipsisTooltip: true },
-  { title: "Tiền hoàn trả", key: "rebate_amount", ellipsisTooltip: true },
-  { title: "Thắng thua", key: "result", ellipsisTooltip: true },
+  { title: "Tiền cược", key: "money", customSlot: "num" },
+  { title: "Tiền hoàn trả", key: "rebate_amount", customSlot: "num" },
+  { title: "Thắng thua", key: "result", customSlot: "num" },
   { title: "Trạng thái", key: "status_text", ellipsisTooltip: true },
 ];
 
 const summaryColumns = [
-  { title: "Tiền cược", key: "total_money", ellipsisTooltip: true },
-  { title: "Tiền hoàn trả", key: "total_rebate_amount", ellipsisTooltip: true },
-  { title: "Thắng thua", key: "total_result", ellipsisTooltip: true },
+  { title: "Tiền cược", key: "total_money", customSlot: "sumNum" },
+  { title: "Tiền hoàn trả", key: "total_rebate_amount", customSlot: "sumNum" },
+  { title: "Thắng thua", key: "total_result", customSlot: "sumNum" },
 ];
 
 const summaryData = ref([
@@ -135,7 +135,7 @@ const summaryData = ref([
 ]);
 
 async function loadData() {
-  loading.value = true;
+  setLoading(true);
   const params = {
     page: page.current,
     limit: page.limit,
@@ -161,7 +161,7 @@ async function loadData() {
   } catch {
     layer.msg("Lỗi tải dữ liệu", { icon: 2 });
   } finally {
-    loading.value = false;
+    setLoading(false);
   }
 }
 
@@ -265,10 +265,17 @@ onMounted(() => {
           :default-toolbar="true"
           :data-source="dataSource"
           @change="change"
-        />
+        >
+          <template #num="{ row, column }">
+            <lay-count-up :end-val="Number(row[column.key]) || 0" :duration="600" :decimal-places="String(row[column.key]).includes('.') ? 2 : 0" :use-grouping="false" />
+          </template>
+        </lay-table>
         <lay-table :columns="summaryColumns" :data-source="summaryData" :default-toolbar="true">
           <template v-slot:toolbar>
             <lay-button size="sm" type="normal"><b>DỮ LIỆU TỔNG HỢP</b></lay-button>
+          </template>
+          <template #sumNum="{ row, column }">
+            <lay-count-up :end-val="Number(row[column.key]) || 0" :duration="600" :decimal-places="String(row[column.key]).includes('.') ? 4 : 0" :use-grouping="false" />
           </template>
         </lay-table>
       </div>

@@ -292,11 +292,6 @@ async function cachedProxyCall<T = unknown>(
     MAX_CONCURRENCY,
     async (agent) => {
       try {
-        if (agent.cookieExpires && agent.cookieExpires < new Date()) {
-          logger.warn("Skipping agent with expired cookie", { agentId: agent.id, name: agent.name });
-          return { items: [] as T[], total: 0 } as SingleResult<T>;
-        }
-
         const cookie = decryptSessionCookie(agent.sessionCookie);
         return await fetchSingleAgent<T>(app, path, allParams, agent.id, agent.name, cookie, ttl);
       } catch (err) {

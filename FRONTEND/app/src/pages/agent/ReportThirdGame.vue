@@ -8,7 +8,7 @@ import { fetchReportThirdGame } from "@/api/services/proxy";
 import { layer } from "@layui/layui-vue";
 
 const { dateRange, dateQuickSelect, dateQuickOptions, dateQuickWidth, resetDateRange } = useDateRange("today");
-const { dataSource, loading, page, scrollToTable } = useListPage();
+const { dataSource, loading, page, scrollToTable, setLoading } = useListPage();
 const { selectedAgentId, agentOptions, agentWidth } = useAgentFilter();
 
 const searchForm = reactive({
@@ -65,20 +65,20 @@ const columns = [
   { title: "Nhân viên", key: "_agentName", ellipsisTooltip: true },
   { title: "Tên tài khoản", key: "username", ellipsisTooltip: true },
   { title: "Nhà cung cấp game", key: "platform_id_name", ellipsisTooltip: true },
-  { title: "Số lần cược", key: "t_bet_times", ellipsisTooltip: true },
-  { title: "Tiền cược", key: "t_bet_amount", ellipsisTooltip: true },
-  { title: "Tiền cược hợp lệ", key: "t_turnover", ellipsisTooltip: true },
-  { title: "Tiền thưởng", key: "t_prize", ellipsisTooltip: true },
-  { title: "Thắng thua", key: "t_win_lose", ellipsisTooltip: true },
+  { title: "Số lần cược", key: "t_bet_times", customSlot: "num" },
+  { title: "Tiền cược", key: "t_bet_amount", customSlot: "num" },
+  { title: "Tiền cược hợp lệ", key: "t_turnover", customSlot: "num" },
+  { title: "Tiền thưởng", key: "t_prize", customSlot: "num" },
+  { title: "Thắng thua", key: "t_win_lose", customSlot: "num" },
 ];
 
 const summaryColumns = [
-  { title: "Số lần cược", key: "total_bet_times", ellipsisTooltip: true },
-  { title: "Số khách đặt cược", key: "total_bet_number", ellipsisTooltip: true },
-  { title: "Tiền cược", key: "total_bet_amount", ellipsisTooltip: true },
-  { title: "Tiền cược hợp lệ", key: "total_turnover", ellipsisTooltip: true },
-  { title: "Tiền thưởng", key: "total_prize", ellipsisTooltip: true },
-  { title: "Thắng thua", key: "total_win_lose", ellipsisTooltip: true },
+  { title: "Số lần cược", key: "total_bet_times", customSlot: "sumNum" },
+  { title: "Số khách đặt cược", key: "total_bet_number", customSlot: "sumNum" },
+  { title: "Tiền cược", key: "total_bet_amount", customSlot: "sumNum" },
+  { title: "Tiền cược hợp lệ", key: "total_turnover", customSlot: "sumNum" },
+  { title: "Tiền thưởng", key: "total_prize", customSlot: "sumNum" },
+  { title: "Thắng thua", key: "total_win_lose", customSlot: "sumNum" },
 ];
 
 const summaryData = ref([
@@ -93,7 +93,7 @@ const summaryData = ref([
 ]);
 
 async function loadData() {
-  loading.value = true;
+  setLoading(true);
   try {
     const res = await fetchReportThirdGame({
       page: page.current,
@@ -110,7 +110,7 @@ async function loadData() {
   } catch {
     layer.msg("Lỗi tải dữ liệu", { icon: 2 });
   } finally {
-    loading.value = false;
+    setLoading(false);
   }
 }
 
@@ -185,10 +185,17 @@ onMounted(() => loadData());
           :default-toolbar="true"
           :data-source="dataSource"
           @change="change"
-        />
+        >
+          <template #num="{ row, column }">
+            <lay-count-up :end-val="Number(row[column.key]) || 0" :duration="600" :decimal-places="String(row[column.key]).includes('.') ? 2 : 0" :use-grouping="false" />
+          </template>
+        </lay-table>
         <lay-table :columns="summaryColumns" :data-source="summaryData" :default-toolbar="true">
           <template v-slot:toolbar>
             <lay-button size="sm" type="normal"><b>DỮ LIỆU TỔNG HỢP</b></lay-button>
+          </template>
+          <template #sumNum="{ row, column }">
+            <lay-count-up :end-val="Number(row[column.key]) || 0" :duration="600" :decimal-places="String(row[column.key]).includes('.') ? 4 : 0" :use-grouping="false" />
           </template>
         </lay-table>
       </div>

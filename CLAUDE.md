@@ -1,6 +1,7 @@
 ## Tài liệu Layui-Vue
 Toàn bộ tài liệu có sẵn trong thư mục dự án hoặc chỉ lấy tại đây:
-https://www.layui-vue.com/zh-CN/guide/introduce ... https://www.layui-vue.com/zh-CN/resources
+
+layui-vue-features.md
 
 ## Quy tắc bắt buộc
 

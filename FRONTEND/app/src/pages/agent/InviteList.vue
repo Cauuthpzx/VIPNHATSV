@@ -5,7 +5,7 @@ import { fetchInviteList } from "@/api/services/proxy";
 import { layer } from "@layui/layui-vue";
 import { useAgentFilter } from "@/composables/useAgentFilter";
 
-const { dataSource, loading, page, scrollToTable } = useListPage();
+const { dataSource, loading, page, scrollToTable, setLoading } = useListPage();
 const { selectedAgentId, agentOptions, agentWidth } = useAgentFilter();
 
 const searchForm = reactive({
@@ -18,18 +18,18 @@ const columns = [
   { title: "Nhân viên", key: "_agentName", ellipsisTooltip: true },
   { title: "Mã giới thiệu", key: "invite_code", ellipsisTooltip: true },
   { title: "Loại hình giới thiệu", key: "user_type", ellipsisTooltip: true },
-  { title: "Tổng số đã đăng ký", key: "reg_count", ellipsisTooltip: true },
-  { title: "Số lượng người dùng đã đăng ký", key: "scope_reg_count", ellipsisTooltip: true },
-  { title: "Số người nạp tiền", key: "recharge_count", ellipsisTooltip: true },
-  { title: "Nạp đầu trong ngày", key: "first_recharge_count", ellipsisTooltip: true },
-  { title: "Nạp đầu trong ngày (số tiền)", key: "register_recharge_count", ellipsisTooltip: true },
+  { title: "Tổng số đã đăng ký", key: "reg_count", customSlot: "num" },
+  { title: "Số lượng người dùng đã đăng ký", key: "scope_reg_count", customSlot: "num" },
+  { title: "Số người nạp tiền", key: "recharge_count", customSlot: "num" },
+  { title: "Nạp đầu trong ngày", key: "first_recharge_count", customSlot: "num" },
+  { title: "Nạp đầu trong ngày (số tiền)", key: "register_recharge_count", customSlot: "num" },
   { title: "Ghi chú", key: "remark", ellipsisTooltip: true },
   { title: "Thời gian thêm vào", key: "create_time", ellipsisTooltip: true },
   { title: "Thao tác", key: "action", customSlot: "action" },
 ];
 
 async function loadData() {
-  loading.value = true;
+  setLoading(true);
   try {
     const res = await fetchInviteList({
       page: page.current,
@@ -43,7 +43,7 @@ async function loadData() {
   } catch {
     layer.msg("Lỗi tải dữ liệu", { icon: 2 });
   } finally {
-    loading.value = false;
+    setLoading(false);
   }
 }
 
@@ -116,6 +116,9 @@ onMounted(() => loadData());
             <lay-button type="normal" size="xs">+ Thêm mã giới thiệu</lay-button>
             <lay-button type="normal" size="xs">Copy đường link</lay-button>
             <lay-button type="normal" size="xs">Xem cài đặt</lay-button>
+          </template>
+          <template #num="{ row, column }">
+            <lay-count-up :end-val="Number(row[column.key]) || 0" :duration="600" :decimal-places="String(row[column.key]).includes('.') ? 2 : 0" :use-grouping="false" />
           </template>
           <template v-slot:action>
             <lay-button size="xs" type="primary">Chi tiết</lay-button>

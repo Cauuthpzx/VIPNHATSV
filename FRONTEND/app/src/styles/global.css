@@ -96,9 +96,9 @@ body {
   font-size: 14px;
 }
 
-/* Table container — giữ chiều cao ổn định khi chuyển trang, tránh giật layout */
-.table-container {
-  min-height: 500px;
+/* Tắt transition trên table body — tránh giật khi data thay đổi */
+.table-container .layui-table-body {
+  transition: none !important;
 }
 
 

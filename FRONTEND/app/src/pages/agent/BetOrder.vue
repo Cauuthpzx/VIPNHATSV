@@ -5,7 +5,7 @@ import { fetchBetOrder } from "@/api/services/proxy";
 import { layer } from "@layui/layui-vue";
 import { useAgentFilter } from "@/composables/useAgentFilter";
 
-const { dataSource, loading, page, scrollToTable } = useListPage();
+const { dataSource, loading, page, scrollToTable, setLoading } = useListPage();
 const { selectedAgentId, agentOptions, agentWidth } = useAgentFilter();
 
 const searchForm = reactive({
@@ -21,15 +21,15 @@ const columns = [
   { title: "Tên tài khoản thuộc nhà cái", key: "platform_username", ellipsisTooltip: true },
   { title: "Loại hình trò chơi", key: "c_name", ellipsisTooltip: true },
   { title: "Tên trò chơi bên thứ 3", key: "game_name", ellipsisTooltip: true },
-  { title: "Tiền cược", key: "bet_amount", ellipsisTooltip: true },
-  { title: "Tiền cược hợp lệ", key: "turnover", ellipsisTooltip: true },
-  { title: "Tiền thưởng", key: "prize", ellipsisTooltip: true },
-  { title: "Thắng/Thua", key: "win_lose", ellipsisTooltip: true },
+  { title: "Tiền cược", key: "bet_amount", customSlot: "num" },
+  { title: "Tiền cược hợp lệ", key: "turnover", customSlot: "num" },
+  { title: "Tiền thưởng", key: "prize", customSlot: "num" },
+  { title: "Thắng/Thua", key: "win_lose", customSlot: "num" },
   { title: "Thời gian cược", key: "bet_time", ellipsisTooltip: true },
 ];
 
 async function loadData() {
-  loading.value = true;
+  setLoading(true);
   try {
     const res = await fetchBetOrder({
       page: page.current,
@@ -44,7 +44,7 @@ async function loadData() {
   } catch {
     layer.msg("Lỗi tải dữ liệu", { icon: 2 });
   } finally {
-    loading.value = false;
+    setLoading(false);
   }
 }
 
@@ -112,7 +112,11 @@ onMounted(() => loadData());
           :default-toolbar="true"
           :data-source="dataSource"
           @change="change"
-        />
+        >
+          <template #num="{ row, column }">
+            <lay-count-up :end-val="Number(row[column.key]) || 0" :duration="600" :decimal-places="String(row[column.key]).includes('.') ? 2 : 0" :use-grouping="false" />
+          </template>
+        </lay-table>
       </div>
     </lay-card>
   </div>

@@ -7,7 +7,7 @@ import { layer } from "@layui/layui-vue";
 import { useAgentFilter } from "@/composables/useAgentFilter";
 
 const { dateRange, dateQuickSelect, dateQuickOptions, dateQuickWidth, resetDateRange } = useDateRange("today");
-const { dataSource, loading, page, scrollToTable } = useListPage();
+const { dataSource, loading, page, scrollToTable, setLoading } = useListPage();
 const { selectedAgentId, agentOptions, agentWidth } = useAgentFilter();
 
 const searchForm = reactive({
@@ -18,26 +18,26 @@ const columns = [
   { title: "Nhân viên", key: "_agentName", ellipsisTooltip: true },
   { title: "Tên tài khoản", key: "username", ellipsisTooltip: true },
   { title: "Thuộc đại lý", key: "user_parent_format", ellipsisTooltip: true },
-  { title: "Số lần nạp", key: "deposit_count", ellipsisTooltip: true },
-  { title: "Số tiền nạp", key: "deposit_amount", ellipsisTooltip: true },
-  { title: "Số lần rút", key: "withdrawal_count", ellipsisTooltip: true },
-  { title: "Số tiền rút", key: "withdrawal_amount", ellipsisTooltip: true },
-  { title: "Phí dịch vụ", key: "charge_fee", ellipsisTooltip: true },
-  { title: "Hoa hồng đại lý", key: "agent_commission", ellipsisTooltip: true },
-  { title: "Ưu đãi", key: "promotion", ellipsisTooltip: true },
-  { title: "Hoàn trả bên thứ 3", key: "third_rebate", ellipsisTooltip: true },
-  { title: "Tiền thưởng từ bên thứ 3", key: "third_activity_amount", ellipsisTooltip: true },
+  { title: "Số lần nạp", key: "deposit_count", customSlot: "num" },
+  { title: "Số tiền nạp", key: "deposit_amount", customSlot: "num" },
+  { title: "Số lần rút", key: "withdrawal_count", customSlot: "num" },
+  { title: "Số tiền rút", key: "withdrawal_amount", customSlot: "num" },
+  { title: "Phí dịch vụ", key: "charge_fee", customSlot: "num" },
+  { title: "Hoa hồng đại lý", key: "agent_commission", customSlot: "num" },
+  { title: "Ưu đãi", key: "promotion", customSlot: "num" },
+  { title: "Hoàn trả bên thứ 3", key: "third_rebate", customSlot: "num" },
+  { title: "Tiền thưởng từ bên thứ 3", key: "third_activity_amount", customSlot: "num" },
   { title: "Thời gian", key: "date", ellipsisTooltip: true },
 ];
 
 const summaryColumns = [
-  { title: "Số tiền nạp", key: "total_deposit_amount", ellipsisTooltip: true },
-  { title: "Số tiền rút", key: "total_withdrawal_amount", ellipsisTooltip: true },
-  { title: "Phí dịch vụ", key: "total_charge_fee", ellipsisTooltip: true },
-  { title: "Hoa hồng đại lý", key: "total_agent_commission", ellipsisTooltip: true },
-  { title: "Ưu đãi", key: "total_promotion", ellipsisTooltip: true },
-  { title: "Hoàn trả bên thứ 3", key: "total_third_rebate", ellipsisTooltip: true },
-  { title: "Tiền thưởng từ bên thứ 3", key: "third_activity_amount", ellipsisTooltip: true },
+  { title: "Số tiền nạp", key: "total_deposit_amount", customSlot: "sumNum" },
+  { title: "Số tiền rút", key: "total_withdrawal_amount", customSlot: "sumNum" },
+  { title: "Phí dịch vụ", key: "total_charge_fee", customSlot: "sumNum" },
+  { title: "Hoa hồng đại lý", key: "total_agent_commission", customSlot: "sumNum" },
+  { title: "Ưu đãi", key: "total_promotion", customSlot: "sumNum" },
+  { title: "Hoàn trả bên thứ 3", key: "total_third_rebate", customSlot: "sumNum" },
+  { title: "Tiền thưởng từ bên thứ 3", key: "third_activity_amount", customSlot: "sumNum" },
 ];
 
 const summaryData = ref([
@@ -53,7 +53,7 @@ const summaryData = ref([
 ]);
 
 async function loadData() {
-  loading.value = true;
+  setLoading(true);
   try {
     const res = await fetchReportFunds({
       page: page.current,
@@ -69,7 +69,7 @@ async function loadData() {
   } catch {
     layer.msg("Lỗi tải dữ liệu", { icon: 2 });
   } finally {
-    loading.value = false;
+    setLoading(false);
   }
 }
 
@@ -137,10 +137,17 @@ onMounted(() => loadData());
           :default-toolbar="true"
           :data-source="dataSource"
           @change="change"
-        />
+        >
+          <template #num="{ row, column }">
+            <lay-count-up :end-val="Number(row[column.key]) || 0" :duration="600" :decimal-places="String(row[column.key]).includes('.') ? 2 : 0" :use-grouping="false" />
+          </template>
+        </lay-table>
         <lay-table :columns="summaryColumns" :data-source="summaryData" :default-toolbar="true">
           <template v-slot:toolbar>
             <lay-button size="sm" type="normal"><b>DỮ LIỆU TỔNG HỢP</b></lay-button>
+          </template>
+          <template #sumNum="{ row, column }">
+            <lay-count-up :end-val="Number(row[column.key]) || 0" :duration="600" :decimal-places="String(row[column.key]).includes('.') ? 4 : 0" :use-grouping="false" />
           </template>
         </lay-table>
       </div>

@@ -8,7 +8,7 @@ import { fetchReportLottery, fetchLotteryDropdown } from "@/api/services/proxy";
 import { layer } from "@layui/layui-vue";
 
 const { dateRange, dateQuickSelect, dateQuickOptions, dateQuickWidth, resetDateRange } = useDateRange("today");
-const { dataSource, loading, page, scrollToTable } = useListPage();
+const { dataSource, loading, page, scrollToTable, setLoading } = useListPage();
 const { selectedAgentId, agentOptions, agentWidth } = useAgentFilter();
 
 const searchForm = reactive({
@@ -39,25 +39,25 @@ const columns = [
   { title: "Nhân viên", key: "_agentName", ellipsisTooltip: true },
   { title: "Tên tài khoản", key: "username", ellipsisTooltip: true },
   { title: "Thuộc đại lý", key: "user_parent_format", ellipsisTooltip: true },
-  { title: "Số lần cược", key: "bet_count", ellipsisTooltip: true },
-  { title: "Tiền cược", key: "bet_amount", ellipsisTooltip: true },
-  { title: "Tiền cược hợp lệ (trừ cược hoà)", key: "valid_amount", ellipsisTooltip: true },
-  { title: "Hoàn trả", key: "rebate_amount", ellipsisTooltip: true },
-  { title: "Thắng thua", key: "result", ellipsisTooltip: true },
-  { title: "Kết quả thắng thua (không gồm hoàn trả)", key: "win_lose", ellipsisTooltip: true },
-  { title: "Tiền trúng", key: "prize", ellipsisTooltip: true },
+  { title: "Số lần cược", key: "bet_count", customSlot: "num" },
+  { title: "Tiền cược", key: "bet_amount", customSlot: "num" },
+  { title: "Tiền cược hợp lệ (trừ cược hoà)", key: "valid_amount", customSlot: "num" },
+  { title: "Hoàn trả", key: "rebate_amount", customSlot: "num" },
+  { title: "Thắng thua", key: "result", customSlot: "num" },
+  { title: "Kết quả thắng thua (không gồm hoàn trả)", key: "win_lose", customSlot: "num" },
+  { title: "Tiền trúng", key: "prize", customSlot: "num" },
   { title: "Tên loại xổ", key: "lottery_name", ellipsisTooltip: true },
 ];
 
 const summaryColumns = [
-  { title: "Số khách đặt cược", key: "total_bet_number", ellipsisTooltip: true },
-  { title: "Số lần cược", key: "total_bet_count", ellipsisTooltip: true },
-  { title: "Tiền cược", key: "total_bet_amount", ellipsisTooltip: true },
-  { title: "Tiền cược hợp lệ (trừ cược hoà)", key: "total_valid_amount", ellipsisTooltip: true },
-  { title: "Hoàn trả", key: "total_rebate_amount", ellipsisTooltip: true },
-  { title: "Thắng thua", key: "total_result", ellipsisTooltip: true },
-  { title: "Kết quả thắng thua (không gồm hoàn trả)", key: "total_win_lose", ellipsisTooltip: true },
-  { title: "Tiền trúng", key: "total_prize", ellipsisTooltip: true },
+  { title: "Số khách đặt cược", key: "total_bet_number", customSlot: "sumNum" },
+  { title: "Số lần cược", key: "total_bet_count", customSlot: "sumNum" },
+  { title: "Tiền cược", key: "total_bet_amount", customSlot: "sumNum" },
+  { title: "Tiền cược hợp lệ (trừ cược hoà)", key: "total_valid_amount", customSlot: "sumNum" },
+  { title: "Hoàn trả", key: "total_rebate_amount", customSlot: "sumNum" },
+  { title: "Thắng thua", key: "total_result", customSlot: "sumNum" },
+  { title: "Kết quả thắng thua (không gồm hoàn trả)", key: "total_win_lose", customSlot: "sumNum" },
+  { title: "Tiền trúng", key: "total_prize", customSlot: "sumNum" },
 ];
 
 const summaryData = ref([
@@ -74,7 +74,7 @@ const summaryData = ref([
 ]);
 
 async function loadData() {
-  loading.value = true;
+  setLoading(true);
   try {
     const res = await fetchReportLottery({
       page: page.current,
@@ -91,7 +91,7 @@ async function loadData() {
   } catch {
     layer.msg("Lỗi tải dữ liệu", { icon: 2 });
   } finally {
-    loading.value = false;
+    setLoading(false);
   }
 }
 
@@ -169,10 +169,17 @@ onMounted(() => {
           :default-toolbar="true"
           :data-source="dataSource"
           @change="change"
-        />
+        >
+          <template #num="{ row, column }">
+            <lay-count-up :end-val="Number(row[column.key]) || 0" :duration="600" :decimal-places="String(row[column.key]).includes('.') ? 2 : 0" :use-grouping="false" />
+          </template>
+        </lay-table>
         <lay-table :columns="summaryColumns" :data-source="summaryData" :default-toolbar="true">
           <template v-slot:toolbar>
             <lay-button size="sm" type="normal"><b>DỮ LIỆU TỔNG HỢP</b></lay-button>
+          </template>
+          <template #sumNum="{ row, column }">
+            <lay-count-up :end-val="Number(row[column.key]) || 0" :duration="600" :decimal-places="String(row[column.key]).includes('.') ? 4 : 0" :use-grouping="false" />
           </template>
         </lay-table>
       </div>
