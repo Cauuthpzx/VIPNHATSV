@@ -96,9 +96,9 @@ body {
   font-size: 14px;
 }
 
-/* Table container — wrapper chung cho lay-table ở tất cả trang */
+/* Table container — giữ chiều cao ổn định khi chuyển trang, tránh giật layout */
 .table-container {
-  /* No fixed height — table grows naturally, page scrolls */
+  min-height: 500px;
 }
 
 

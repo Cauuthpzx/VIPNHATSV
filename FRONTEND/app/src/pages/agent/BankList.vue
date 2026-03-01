@@ -5,7 +5,7 @@ import { fetchBankList } from "@/api/services/proxy";
 import { layer } from "@layui/layui-vue";
 import { useAgentFilter } from "@/composables/useAgentFilter";
 
-const { dataSource, loading, page } = useListPage();
+const { dataSource, loading, page, scrollToTable } = useListPage();
 const { selectedAgentId, agentOptions, agentWidth } = useAgentFilter();
 
 const searchForm = reactive({
@@ -66,7 +66,7 @@ function handleDelete(row: any) {
 function change(p: { current: number; limit: number }) {
   page.current = p.current;
   page.limit = p.limit;
-  loadData();
+  scrollToTable(); loadData();
 }
 
 watch(selectedAgentId, () => { page.current = 1; loadData(); });

@@ -6,7 +6,7 @@ import { useAgentFilter } from "@/composables/useAgentFilter";
 import { fetchUserList } from "@/api/services/proxy";
 import { layer } from "@layui/layui-vue";
 
-const { dataSource, loading, page } = useListPage();
+const { dataSource, loading, page, scrollToTable } = useListPage();
 const { selectedAgentId, agentOptions, agentWidth } = useAgentFilter();
 
 const searchForm = reactive({
@@ -91,7 +91,7 @@ function handleReset() {
 function change(p: { current: number; limit: number }) {
   page.current = p.current;
   page.limit = p.limit;
-  loadData();
+  scrollToTable(); loadData();
 }
 
 watch(selectedAgentId, () => { page.current = 1; loadData(); });

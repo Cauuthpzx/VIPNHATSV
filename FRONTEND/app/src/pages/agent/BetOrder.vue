@@ -5,7 +5,7 @@ import { fetchBetOrder } from "@/api/services/proxy";
 import { layer } from "@layui/layui-vue";
 import { useAgentFilter } from "@/composables/useAgentFilter";
 
-const { dataSource, loading, page } = useListPage();
+const { dataSource, loading, page, scrollToTable } = useListPage();
 const { selectedAgentId, agentOptions, agentWidth } = useAgentFilter();
 
 const searchForm = reactive({
@@ -56,7 +56,7 @@ function handleSearch() {
 function change(p: { current: number; limit: number }) {
   page.current = p.current;
   page.limit = p.limit;
-  loadData();
+  scrollToTable(); loadData();
 }
 
 function handleReset() {
