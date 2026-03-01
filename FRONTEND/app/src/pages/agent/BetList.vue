@@ -8,7 +8,7 @@ import { layer } from "@layui/layui-vue";
 import StatusBadge from "@/components/StatusBadge.vue";
 
 const { dateRange, dateQuickSelect, dateQuickOptions, dateQuickWidth, resetDateRange } = useDateRange("today");
-const { dataSource, loading, page, handlePageChange: _pageChange, handleLimitChange: _limitChange } = useListPage();
+const { dataSource, loading, page } = useListPage();
 
 const searchForm = reactive({
   username: "",
@@ -54,27 +54,27 @@ const BET_STATUS_MAP: Record<string, { label: string; color: string }> = {
 };
 
 const columns = [
-  { title: "Mã giao dịch", key: "serial_no", width: "200.5px", align: "center" },
-  { title: "Tên người dùng", key: "username", width: "151px", align: "center" },
-  { title: "Thời gian cược", key: "buy_time", width: "161px", align: "center" },
-  { title: "Trò chơi", key: "lottery_name", width: "157px", align: "center" },
-  { title: "Loại trò chơi", key: "play_type_name", width: "157px", align: "center" },
-  { title: "Kiểu chơi", key: "play_name", align: "center" },
-  { title: "Nội dung cược", key: "bet_number", align: "center" },
-  { title: "Tiền cược", key: "total_money", align: "center" },
-  { title: "Tỉ lệ cược", key: "odds", align: "center" },
-  { title: "Kết quả", key: "money", align: "center" },
-  { title: "Hoàn trả", key: "rebate", align: "center" },
-  { title: "Trạng thái", key: "status", customSlot: "status", align: "center" },
-  { title: "Thời gian xổ", key: "open_time", align: "center" },
-  { title: "Kỳ xổ", key: "qishu", align: "center" },
-  { title: "Thao tác", key: "action", customSlot: "action", align: "center" },
+  { title: "Mã giao dịch", key: "serial_no" },
+  { title: "Tên người dùng", key: "username" },
+  { title: "Thời gian cược", key: "buy_time" },
+  { title: "Trò chơi", key: "lottery_name" },
+  { title: "Loại trò chơi", key: "play_type_name" },
+  { title: "Kiểu chơi", key: "play_name" },
+  { title: "Nội dung cược", key: "bet_number" },
+  { title: "Tiền cược", key: "total_money" },
+  { title: "Tỉ lệ cược", key: "odds" },
+  { title: "Kết quả", key: "money" },
+  { title: "Hoàn trả", key: "rebate" },
+  { title: "Trạng thái", key: "status", customSlot: "status" },
+  { title: "Thời gian xổ", key: "open_time" },
+  { title: "Kỳ xổ", key: "qishu" },
+  { title: "Thao tác", key: "action", customSlot: "action" },
 ];
 
 const summaryColumns = [
-  { title: "Tổng tiền cược", key: "total_money", align: "center" },
-  { title: "Tổng kết quả", key: "total_result", align: "center" },
-  { title: "Tổng hoàn trả", key: "total_rebate_amount", align: "center" },
+  { title: "Tổng tiền cược", key: "total_money" },
+  { title: "Tổng kết quả", key: "total_result" },
+  { title: "Tổng hoàn trả", key: "total_rebate_amount" },
 ];
 
 const summaryData = ref([
@@ -115,13 +115,9 @@ function handleSearch() {
   loadData();
 }
 
-function handlePageChange(val: { current: number }) {
-  _pageChange(val);
-  loadData();
-}
-
-function handleLimitChange(limit: number) {
-  _limitChange(limit);
+function change(p: { current: number; limit: number }) {
+  page.current = p.current;
+  page.limit = p.limit;
   loadData();
 }
 
@@ -136,15 +132,12 @@ function handleReset() {
 }
 
 onMounted(() => loadData());
-
 </script>
 
 <template>
   <div>
-    <!-- Search form -->
     <lay-card title="Danh sách đơn cược">
       <div class="search-form-wrap">
-        <!-- Row 1 -->
         <div class="layui-inline">
           <span class="form-label">Thời gian :</span>
           <lay-date-picker v-model="dateRange" range single-panel range-separator="-" :placeholder="['Ngày bắt đầu', 'Ngày kết thúc']" />
@@ -168,7 +161,6 @@ onMounted(() => loadData());
             <lay-select-option v-for="opt in lotteryOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
           </lay-select>
         </div>
-        <!-- Row 2 -->
         <div class="layui-inline">
           <span class="form-label">Kiểu chơi :</span>
           <lay-select v-model="searchForm.playType" :style="{ width: playTypeWidth }">
@@ -197,23 +189,25 @@ onMounted(() => loadData());
         </div>
       </div>
 
-      <lay-table :columns="columns" :data-source="dataSource" :default-toolbar="true" :loading="loading">
-        <template #status="{ row }">
-          <StatusBadge :status="row.status" :map="BET_STATUS_MAP" />
-        </template>
-        <template #action="{ row }">
-          <lay-button size="xs" type="primary">Chi tiết</lay-button>
-        </template>
-      </lay-table>
-      <lay-page
-        v-model="page.current"
-        :limit="page.limit"
-        :total="page.total"
-        :layout="['prev', 'page', 'next', 'skip', 'count', 'limits']"
-        style="margin-top: 10px"
-        @change="handlePageChange"
-        @limit-change="handleLimitChange"
-      />
+      <div class="table-container">
+        <lay-table
+          :page="page"
+          :resize="true"
+          :height="'100%'"
+          :columns="columns"
+          :loading="loading"
+          :default-toolbar="true"
+          :data-source="dataSource"
+          @change="change"
+        >
+          <template #status="{ row }">
+            <StatusBadge :status="row.status" :map="BET_STATUS_MAP" />
+          </template>
+          <template #action="{ row }">
+            <lay-button size="xs" type="primary">Chi tiết</lay-button>
+          </template>
+        </lay-table>
+      </div>
 
       <div class="summary-section">
         <div class="summary-title">Dữ liệu tổng hợp :</div>

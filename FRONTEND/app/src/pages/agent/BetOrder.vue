@@ -4,7 +4,7 @@ import { useListPage } from "@/composables/useListPage";
 import { fetchBetOrder } from "@/api/services/proxy";
 import { layer } from "@layui/layui-vue";
 
-const { dataSource, loading, page, handlePageChange: _pageChange, handleLimitChange: _limitChange } = useListPage();
+const { dataSource, loading, page } = useListPage();
 
 const searchForm = reactive({
   dateRange: [] as string[],
@@ -13,16 +13,16 @@ const searchForm = reactive({
 });
 
 const columns = [
-  { title: "Mã giao dịch", key: "serial_no", width: "250.5px", align: "center" },
-  { title: "Nhà cung cấp game bên thứ 3", key: "platform_id_name", width: "151px", align: "center" },
-  { title: "Tên tài khoản thuộc nhà cái", key: "platform_username", width: "151px", align: "center" },
-  { title: "Loại hình trò chơi", key: "c_name", width: "151px", align: "center" },
-  { title: "Tên trò chơi bên thứ 3", key: "game_name", width: "151px", align: "center" },
-  { title: "Tiền cược", key: "bet_amount", align: "center" },
-  { title: "Tiền cược hợp lệ", key: "turnover", align: "center" },
-  { title: "Tiền thưởng", key: "prize", align: "center" },
-  { title: "Thắng/Thua", key: "win_lose", align: "center" },
-  { title: "Thời gian cược", key: "bet_time", align: "center" },
+  { title: "Mã giao dịch", key: "serial_no" },
+  { title: "Nhà cung cấp game bên thứ 3", key: "platform_id_name" },
+  { title: "Tên tài khoản thuộc nhà cái", key: "platform_username" },
+  { title: "Loại hình trò chơi", key: "c_name" },
+  { title: "Tên trò chơi bên thứ 3", key: "game_name" },
+  { title: "Tiền cược", key: "bet_amount" },
+  { title: "Tiền cược hợp lệ", key: "turnover" },
+  { title: "Tiền thưởng", key: "prize" },
+  { title: "Thắng/Thua", key: "win_lose" },
+  { title: "Thời gian cược", key: "bet_time" },
 ];
 
 async function loadData() {
@@ -49,13 +49,9 @@ function handleSearch() {
   loadData();
 }
 
-function handlePageChange(val: { current: number }) {
-  _pageChange(val);
-  loadData();
-}
-
-function handleLimitChange(limit: number) {
-  _limitChange(limit);
+function change(p: { current: number; limit: number }) {
+  page.current = p.current;
+  page.limit = p.limit;
   loadData();
 }
 
@@ -70,7 +66,6 @@ onMounted(() => loadData());
 
 <template>
   <div>
-    <!-- Search form -->
     <lay-card title="Đơn cược bên thứ 3">
       <div class="search-form-wrap">
         <div class="layui-inline">
@@ -95,16 +90,18 @@ onMounted(() => loadData());
         </div>
       </div>
 
-      <lay-table :columns="columns" :data-source="dataSource" :default-toolbar="true" :loading="loading" />
-      <lay-page
-        v-model="page.current"
-        :limit="page.limit"
-        :total="page.total"
-        :layout="['prev', 'page', 'next', 'skip', 'count', 'limits']"
-        style="margin-top: 10px"
-        @change="handlePageChange"
-        @limit-change="handleLimitChange"
-      />
+      <div class="table-container">
+        <lay-table
+          :page="page"
+          :resize="true"
+          :height="'100%'"
+          :columns="columns"
+          :loading="loading"
+          :default-toolbar="true"
+          :data-source="dataSource"
+          @change="change"
+        />
+      </div>
     </lay-card>
   </div>
 </template>

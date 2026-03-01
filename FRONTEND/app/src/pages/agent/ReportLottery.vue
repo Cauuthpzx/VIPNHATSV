@@ -6,7 +6,7 @@ import { fetchReportLottery } from "@/api/services/proxy";
 import { layer } from "@layui/layui-vue";
 
 const { dateRange, dateQuickSelect, dateQuickOptions, dateQuickWidth, resetDateRange } = useDateRange("today");
-const { dataSource, loading, page, handlePageChange: _pageChange, handleLimitChange: _limitChange } = useListPage();
+const { dataSource, loading, page } = useListPage();
 
 const searchForm = reactive({
   lotteryType: "",
@@ -14,27 +14,27 @@ const searchForm = reactive({
 });
 
 const columns = [
-  { title: "Tên tài khoản", key: "username", width: "150.5px", align: "center" },
-  { title: "Thuộc đại lý", key: "user_parent_format", width: "151px", align: "center" },
-  { title: "Số lần cược", key: "bet_count", width: "201px", align: "center" },
-  { title: "Tiền cược", key: "bet_amount", width: "201px", align: "center" },
-  { title: "Tiền cược hợp lệ (trừ cược hoà)", key: "valid_amount", width: "201px", align: "center" },
-  { title: "Hoàn trả", key: "rebate_amount", align: "center" },
-  { title: "Kết quả thắng thua (không gồm hoàn trả)", key: "result", align: "center" },
-  { title: "Thắng thua", key: "win_lose", align: "center" },
-  { title: "Tiền trúng", key: "prize", align: "center" },
-  { title: "Tên loại xổ", key: "lottery_name", align: "center" },
+  { title: "Tên tài khoản", key: "username" },
+  { title: "Thuộc đại lý", key: "user_parent_format" },
+  { title: "Số lần cược", key: "bet_count" },
+  { title: "Tiền cược", key: "bet_amount" },
+  { title: "Tiền cược hợp lệ (trừ cược hoà)", key: "valid_amount" },
+  { title: "Hoàn trả", key: "rebate_amount" },
+  { title: "Kết quả thắng thua (không gồm hoàn trả)", key: "result" },
+  { title: "Thắng thua", key: "win_lose" },
+  { title: "Tiền trúng", key: "prize" },
+  { title: "Tên loại xổ", key: "lottery_name" },
 ];
 
 const summaryColumns = [
-  { title: "Số khách đặt cược", key: "total_bet_number", align: "center" },
-  { title: "Số lần cược", key: "total_bet_count", align: "center" },
-  { title: "Tiền cược", key: "total_bet_amount", align: "center" },
-  { title: "Tiền cược hợp lệ (trừ cược hoà)", key: "total_valid_amount", align: "center" },
-  { title: "Hoàn trả", key: "total_rebate_amount", align: "center" },
-  { title: "Kết quả thắng thua (không gồm hoàn trả)", key: "total_result", align: "center" },
-  { title: "Thắng thua", key: "total_win_lose", align: "center" },
-  { title: "Tiền trúng", key: "total_prize", align: "center" },
+  { title: "Số khách đặt cược", key: "total_bet_number" },
+  { title: "Số lần cược", key: "total_bet_count" },
+  { title: "Tiền cược", key: "total_bet_amount" },
+  { title: "Tiền cược hợp lệ (trừ cược hoà)", key: "total_valid_amount" },
+  { title: "Hoàn trả", key: "total_rebate_amount" },
+  { title: "Kết quả thắng thua (không gồm hoàn trả)", key: "total_result" },
+  { title: "Thắng thua", key: "total_win_lose" },
+  { title: "Tiền trúng", key: "total_prize" },
 ];
 
 const summaryData = ref([
@@ -77,13 +77,9 @@ function handleSearch() {
   loadData();
 }
 
-function handlePageChange(val: number) {
-  _pageChange(val);
-  loadData();
-}
-
-function handleLimitChange(val: number) {
-  _limitChange(val);
+function change(p: { current: number; limit: number }) {
+  page.current = p.current;
+  page.limit = p.limit;
   loadData();
 }
 
@@ -127,16 +123,18 @@ onMounted(() => loadData());
         </div>
       </div>
 
-      <lay-table :columns="columns" :data-source="dataSource" :default-toolbar="true" :loading="loading" />
-      <lay-page
-        v-model="page.current"
-        :limit="page.limit"
-        :total="page.total"
-        :layout="['prev', 'page', 'next', 'skip', 'count', 'limits']"
-        style="margin-top: 10px"
-        @change="handlePageChange"
-        @limit-change="handleLimitChange"
-      />
+      <div class="table-container">
+        <lay-table
+          :page="page"
+          :resize="true"
+          :height="'100%'"
+          :columns="columns"
+          :loading="loading"
+          :default-toolbar="true"
+          :data-source="dataSource"
+          @change="change"
+        />
+      </div>
 
       <div class="summary-section">
         <div class="summary-title">Dữ liệu tổng hợp :</div>

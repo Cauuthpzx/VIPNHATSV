@@ -4,9 +4,12 @@
 }
 
 /* === RESET === */
-* {
+html, body, div, h1, h2, h3, h4, h5, h6, p, ul, ol, li, form, fieldset {
   margin: 0;
   padding: 0;
+}
+
+*, *::before, *::after {
   box-sizing: border-box;
 }
 
@@ -26,187 +29,7 @@ body {
   position: relative;
 }
 
-/* === LAYUI OVERRIDES - Match original site exactly === */
-
-/* Card */
-.layui-card {
-  background: #fff;
-  border-radius: 2px;
-  box-shadow: 0 1px 2px 0 rgba(0,0,0,.05);
-}
-
-.layui-card-header {
-  height: 42px;
-  line-height: 42px;
-  padding: 0 15px;
-  border-bottom: 1px solid #f6f6f6;
-  color: #333;
-  font-size: 14px;
-}
-
-.layui-card-body {
-  padding: 0 15px 10px;
-  font-size: 14px;
-  line-height: 24px;
-}
-
-/* Form */
-.layui-form-item {
-  margin-bottom: 15px;
-}
-
-.layui-form-label {
-  float: left;
-  display: block;
-  padding: 9px 15px;
-  width: 110px;
-  font-weight: 400;
-  line-height: 20px;
-  text-align: right;
-}
-
-.layui-input-block {
-  margin-left: 110px;
-  min-height: 38px;
-}
-
-.layui-input-inline {
-  display: inline-block;
-  vertical-align: middle;
-}
-
-/* Input - exact original sizing */
-.layui-input,
-.layui-textarea {
-  height: 38px;
-  line-height: 38px;
-  padding: 0 10px;
-  border: 1px solid #e6e6e6;
-  background-color: #fff;
-  border-radius: 2px;
-  font-size: 14px;
-  color: #666;
-}
-
-/* Select wrapper - no extra border/padding (inner .layui-input handles that) */
-.layui-select {
-  height: 38px;
-  font-size: 14px;
-  color: #666;
-  border: none;
-  padding: 0;
-  background: transparent;
-}
-
-.layui-input:focus,
-.layui-textarea:focus {
-  border-color: var(--input-focus-border-color);
-}
-
-.layui-input::placeholder {
-  color: #aaa;
-}
-
-/* Button - exact original sizing */
-.layui-btn {
-  height: 38px;
-  line-height: 38px;
-  padding: 0 18px;
-  font-size: 14px;
-  border: none;
-  border-radius: 2px;
-  cursor: pointer;
-  display: inline-block;
-  vertical-align: middle;
-  text-align: center;
-  white-space: nowrap;
-  text-decoration: none;
-  -webkit-appearance: none;
-}
-
-.layui-btn-normal {
-  background-color: #009688;
-  color: #fff;
-}
-
-.layui-btn-primary {
-  background-color: #fff;
-  color: #333;
-  border: 1px solid #e6e6e6;
-}
-
-.layui-btn-sm {
-  height: 30px;
-  line-height: 30px;
-  padding: 0 15px;
-  font-size: 12px;
-}
-
-.layui-btn-xs {
-  height: 22px;
-  line-height: 22px;
-  padding: 0 5px;
-  font-size: 12px;
-}
-
-/* Table - exact original */
-.layui-table {
-  width: 100%;
-  background-color: #fff;
-  color: #666;
-}
-
-.layui-table th {
-  font-weight: 400;
-  font-size: 14px;
-  padding: 5px 8px;
-  text-align: center;
-  min-height: 38.5px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 0;
-}
-
-.layui-table td {
-  font-size: 14px;
-  padding: 5px 0;
-  text-align: center;
-  min-height: 38.5px;
-}
-
-.layui-table thead tr {
-  background: #fafafa;
-}
-
-/* Pagination */
-.layui-laypage {
-  padding: 7px 7px 0;
-  font-size: 12px;
-}
-
-.layui-page-limits {
-  display: inline-block;
-  vertical-align: middle;
-}
-
-.layui-page-limits .layui-select {
-  min-width: 140px;
-  height: 28px;
-}
-
-.layui-page-limits .layui-select .layui-input {
-  height: 28px;
-  line-height: 28px;
-  font-size: 12px;
-}
-
-/* Inline form layout */
-.layui-inline {
-  display: inline-block;
-  vertical-align: middle;
-  margin-right: 10px;
-}
+/* Không override bất kỳ class .layui-* nào — để layui-vue component tự quản lý */
 
 /* === Page common styles - used by all sub-pages === */
 
@@ -231,11 +54,6 @@ body {
   color: #666;
   white-space: nowrap;
   padding-right: 5px;
-}
-
-/* Consistent form field sizing in search forms */
-.search-form-wrap .layui-select {
-  width: 120px;
 }
 
 /* Standalone lay-input: min-width để không quá nhỏ */
@@ -267,6 +85,11 @@ body {
   line-height: 38px;
   padding: 0 10px;
   font-size: 14px;
+}
+
+/* Table container — wrapper chung cho lay-table ở tất cả trang */
+.table-container {
+  height: 800px;
 }
 
 /* Summary section */

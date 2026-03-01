@@ -6,7 +6,7 @@ import { fetchReportThirdGame } from "@/api/services/proxy";
 import { layer } from "@layui/layui-vue";
 
 const { dateRange, dateQuickSelect, dateQuickOptions, dateQuickWidth, resetDateRange } = useDateRange("today");
-const { dataSource, loading, page, handlePageChange: _pageChange, handleLimitChange: _limitChange } = useListPage();
+const { dataSource, loading, page } = useListPage();
 
 const searchForm = reactive({
   username: "",
@@ -14,22 +14,22 @@ const searchForm = reactive({
 });
 
 const columns = [
-  { title: "Tên tài khoản", key: "username", width: "266.5px", align: "center" },
-  { title: "Nhà cung cấp game", key: "platform_id_name", width: "267px", align: "center" },
-  { title: "Số lần cược", key: "t_bet_times", width: "267px", align: "center" },
-  { title: "Tiền cược", key: "t_bet_amount", width: "267px", align: "center" },
-  { title: "Tiền cược hợp lệ", key: "t_turnover", width: "267px", align: "center" },
-  { title: "Tiền trúng", key: "t_prize", align: "center" },
-  { title: "Thắng thua", key: "t_win_lose", align: "center" },
+  { title: "Tên tài khoản", key: "username" },
+  { title: "Nhà cung cấp game", key: "platform_id_name" },
+  { title: "Số lần cược", key: "t_bet_times" },
+  { title: "Tiền cược", key: "t_bet_amount" },
+  { title: "Tiền cược hợp lệ", key: "t_turnover" },
+  { title: "Tiền trúng", key: "t_prize" },
+  { title: "Thắng thua", key: "t_win_lose" },
 ];
 
 const summaryColumns = [
-  { title: "Số người chơi", key: "total_bet_number", align: "center" },
-  { title: "Số lần cược", key: "total_bet_times", align: "center" },
-  { title: "Tiền cược", key: "total_bet_amount", align: "center" },
-  { title: "Tiền cược hợp lệ", key: "total_turnover", align: "center" },
-  { title: "Tiền trúng", key: "total_prize", align: "center" },
-  { title: "Thắng thua", key: "total_win_lose", align: "center" },
+  { title: "Số người chơi", key: "total_bet_number" },
+  { title: "Số lần cược", key: "total_bet_times" },
+  { title: "Tiền cược", key: "total_bet_amount" },
+  { title: "Tiền cược hợp lệ", key: "total_turnover" },
+  { title: "Tiền trúng", key: "total_prize" },
+  { title: "Thắng thua", key: "total_win_lose" },
 ];
 
 const summaryData = ref([
@@ -70,13 +70,9 @@ function handleSearch() {
   loadData();
 }
 
-function handlePageChange(val: number) {
-  _pageChange(val);
-  loadData();
-}
-
-function handleLimitChange(val: number) {
-  _limitChange(val);
+function change(p: { current: number; limit: number }) {
+  page.current = p.current;
+  page.limit = p.limit;
   loadData();
 }
 
@@ -120,16 +116,18 @@ onMounted(() => loadData());
         </div>
       </div>
 
-      <lay-table :columns="columns" :data-source="dataSource" :default-toolbar="true" :loading="loading" />
-      <lay-page
-        v-model="page.current"
-        :limit="page.limit"
-        :total="page.total"
-        :layout="['prev', 'page', 'next', 'skip', 'count', 'limits']"
-        style="margin-top: 10px"
-        @change="handlePageChange"
-        @limit-change="handleLimitChange"
-      />
+      <div class="table-container">
+        <lay-table
+          :page="page"
+          :resize="true"
+          :height="'100%'"
+          :columns="columns"
+          :loading="loading"
+          :default-toolbar="true"
+          :data-source="dataSource"
+          @change="change"
+        />
+      </div>
 
       <div class="summary-section">
         <div class="summary-title">Dữ liệu tổng hợp :</div>

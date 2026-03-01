@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { reactive, onMounted } from "vue";
 import { useListPage } from "@/composables/useListPage";
+import { useAutoFitSelect } from "@/composables/useAutoFitSelect";
 import { fetchUserList } from "@/api/services/proxy";
 import { layer } from "@layui/layui-vue";
 
-const { dataSource, loading, page, handlePageChange: _pageChange, handleLimitChange: _limitChange } = useListPage();
+const { dataSource, loading, page } = useListPage();
 
 const searchForm = reactive({
   username: "",
@@ -26,7 +27,7 @@ const columns = [
   { title: "Thời gian đăng nhập cuối", key: "login_time" },
   { title: "Thời gian đăng ký", key: "register_time" },
   { title: "Trạng thái", key: "status_format" },
-  { title: "Thao tác", key: "action" },
+  { title: "Thao tác", key: "action", customSlot: "action" },
 ];
 
 const statusOptions = [
@@ -45,6 +46,10 @@ const sortOrderOptions = [
   { label: "Từ lớn đến bé", value: "desc" },
   { label: "Từ bé đến lớn", value: "asc" },
 ];
+
+const { selectWidth: statusWidth } = useAutoFitSelect(statusOptions);
+const { selectWidth: sortFieldWidth } = useAutoFitSelect(sortFieldOptions);
+const { selectWidth: sortOrderWidth } = useAutoFitSelect(sortOrderOptions);
 
 async function loadData() {
   loading.value = true;
@@ -79,13 +84,9 @@ function handleReset() {
   loadData();
 }
 
-function handlePageChange(val: { current: number }) {
-  _pageChange(val);
-  loadData();
-}
-
-function handleLimitChange(limit: number) {
-  _limitChange(limit);
+function change(p: { current: number; limit: number }) {
+  page.current = p.current;
+  page.limit = p.limit;
   loadData();
 }
 
@@ -94,7 +95,6 @@ onMounted(() => loadData());
 
 <template>
   <div>
-    <!-- Search form -->
     <lay-card title="Quản lí hội viên thuộc cấp">
       <div class="search-form-wrap">
         <div class="layui-inline">
@@ -107,19 +107,19 @@ onMounted(() => loadData());
         </div>
         <div class="layui-inline">
           <span class="form-label">Trạng thái:</span>
-          <lay-select v-model="searchForm.status">
+          <lay-select v-model="searchForm.status" :style="{ width: statusWidth }">
             <lay-select-option v-for="opt in statusOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
           </lay-select>
         </div>
         <div class="layui-inline">
           <span class="form-label">Sắp xếp theo trường:</span>
-          <lay-select v-model="searchForm.sortField">
+          <lay-select v-model="searchForm.sortField" :style="{ width: sortFieldWidth }">
             <lay-select-option v-for="opt in sortFieldOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
           </lay-select>
         </div>
         <div class="layui-inline">
           <span class="form-label">Sắp xếp theo hướng:</span>
-          <lay-select v-model="searchForm.sortOrder">
+          <lay-select v-model="searchForm.sortOrder" :style="{ width: sortOrderWidth }">
             <lay-select-option v-for="opt in sortOrderOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
           </lay-select>
         </div>
@@ -133,24 +133,27 @@ onMounted(() => loadData());
         </div>
       </div>
 
-      <lay-table :columns="columns" :data-source="dataSource" :default-toolbar="true" :loading="loading">
-        <template #toolbar>
-          <lay-button type="normal" size="xs">+ Thêm hội viên</lay-button>
-          <lay-button type="normal" size="xs">+ Đại lý mới thêm</lay-button>
-          <lay-button type="normal" size="xs">Cài đặt hoàn trả</lay-button>
-        </template>
-        <template #action>
-          <lay-button size="xs" type="normal">Cài đặt hoàn trả</lay-button>
-        </template>
-      </lay-table>
-      <lay-page
-        v-model="page.current"
-        :limit="page.limit"
-        :total="page.total"
-        :layout="['prev', 'page', 'next', 'skip', 'count', 'limits']"
-        @change="handlePageChange"
-        @limit-change="handleLimitChange"
-      />
+      <div class="table-container">
+        <lay-table
+          :page="page"
+          :resize="true"
+          :height="'100%'"
+          :columns="columns"
+          :loading="loading"
+          :default-toolbar="true"
+          :data-source="dataSource"
+          @change="change"
+        >
+          <template v-slot:toolbar>
+            <lay-button type="normal" size="xs">+ Thêm hội viên</lay-button>
+            <lay-button type="normal" size="xs">+ Đại lý mới thêm</lay-button>
+            <lay-button type="normal" size="xs">Cài đặt hoàn trả</lay-button>
+          </template>
+          <template v-slot:action>
+            <lay-button size="xs" type="normal">Cài đặt hoàn trả</lay-button>
+          </template>
+        </lay-table>
+      </div>
     </lay-card>
   </div>
 </template>

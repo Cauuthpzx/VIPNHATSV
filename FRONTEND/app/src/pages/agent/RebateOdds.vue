@@ -2,6 +2,7 @@
 import { ref, watch, onMounted } from "vue";
 import { fetchLotteryDropdown, fetchRebateOdds } from "@/api/services/proxy";
 import { layer } from "@layui/layui-vue";
+import { useAutoFitSelect } from "@/composables/useAutoFitSelect";
 
 const selectedSeries = ref("");
 const selectedLottery = ref("");
@@ -9,7 +10,10 @@ const seriesOptions = ref<{ value: string; label: string }[]>([]);
 const lotteryOptions = ref<{ value: string; label: string }[]>([]);
 const loading = ref(false);
 
-const columns = ref<{ title: string; key: string; width?: string; align?: string }[]>([]);
+const { selectWidth: seriesWidth } = useAutoFitSelect(seriesOptions);
+const { selectWidth: lotteryWidth } = useAutoFitSelect(lotteryOptions);
+
+const columns = ref<{ title: string; key: string }[]>([]);
 const dataSource = ref<Record<string, any>[]>([]);
 
 async function fetchInit() {
@@ -67,7 +71,6 @@ async function fetchRebateData() {
       columns.value = (items.tableHead as any[]).map((h: any) => ({
         title: h.title || h,
         key: h.key || h.field || h,
-        align: "center" as const,
       }));
       dataSource.value = items.tableBody;
     } else {
@@ -82,17 +85,17 @@ async function fetchRebateData() {
 
 function buildFallbackData() {
   columns.value = [
-    { title: "Kiểu chơi", key: "playType", width: "231.8px", align: "center" },
-    { title: "Hoàn trả 10", key: "rebate10", width: "174.5px", align: "center" },
-    { title: "Hoàn trả 9", key: "rebate9", width: "161.4px", align: "center" },
-    { title: "Hoàn trả 8", key: "rebate8", width: "161.4px", align: "center" },
-    { title: "Hoàn trả 7", key: "rebate7", width: "161.4px", align: "center" },
-    { title: "Hoàn trả 6", key: "rebate6", width: "161.4px", align: "center" },
-    { title: "Hoàn trả 5", key: "rebate5", width: "161.4px", align: "center" },
-    { title: "Hoàn trả 4", key: "rebate4", width: "161.4px", align: "center" },
-    { title: "Hoàn trả 3", key: "rebate3", width: "161.4px", align: "center" },
-    { title: "Hoàn trả 2", key: "rebate2", width: "161.4px", align: "center" },
-    { title: "Hoàn trả 1", key: "rebate1", width: "161.4px", align: "center" },
+    { title: "Kiểu chơi", key: "playType" },
+    { title: "Hoàn trả 10", key: "rebate10" },
+    { title: "Hoàn trả 9", key: "rebate9" },
+    { title: "Hoàn trả 8", key: "rebate8" },
+    { title: "Hoàn trả 7", key: "rebate7" },
+    { title: "Hoàn trả 6", key: "rebate6" },
+    { title: "Hoàn trả 5", key: "rebate5" },
+    { title: "Hoàn trả 4", key: "rebate4" },
+    { title: "Hoàn trả 3", key: "rebate3" },
+    { title: "Hoàn trả 2", key: "rebate2" },
+    { title: "Hoàn trả 1", key: "rebate1" },
   ];
 
   const generateRow = (playType: string, base: number, step: number) => ({
@@ -162,7 +165,7 @@ onMounted(() => {
       <div class="search-form-wrap">
         <div class="layui-inline">
           <span class="form-label">Chọn loại xổ :</span>
-          <lay-select v-model="selectedSeries">
+          <lay-select v-model="selectedSeries" :style="{ width: seriesWidth }">
             <lay-select-option
               v-for="opt in seriesOptions"
               :key="opt.value"
@@ -172,7 +175,7 @@ onMounted(() => {
           </lay-select>
         </div>
         <div class="layui-inline">
-          <lay-select v-model="selectedLottery">
+          <lay-select v-model="selectedLottery" :style="{ width: lotteryWidth }">
             <lay-select-option
               v-for="opt in lotteryOptions"
               :key="opt.value"
@@ -183,7 +186,16 @@ onMounted(() => {
         </div>
       </div>
 
-      <lay-table :columns="columns" :data-source="dataSource" :default-toolbar="true" :loading="loading" />
+      <div class="table-container">
+        <lay-table
+          :resize="true"
+          :height="'100%'"
+          :columns="columns"
+          :loading="loading"
+          :default-toolbar="true"
+          :data-source="dataSource"
+        />
+      </div>
     </lay-card>
   </div>
 </template>

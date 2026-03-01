@@ -6,32 +6,32 @@ import { fetchReportFunds } from "@/api/services/proxy";
 import { layer } from "@layui/layui-vue";
 
 const { dateRange, dateQuickSelect, dateQuickOptions, dateQuickWidth, resetDateRange } = useDateRange("today");
-const { dataSource, loading, page, handlePageChange: _pageChange, handleLimitChange: _limitChange } = useListPage();
+const { dataSource, loading, page } = useListPage();
 
 const searchForm = reactive({
   username: "",
 });
 
 const columns = [
-  { title: "Tên tài khoản", key: "username", align: "center" },
-  { title: "Thuộc đại lý", key: "user_parent_format", align: "center" },
-  { title: "Số lần nạp", key: "deposit_count", align: "center" },
-  { title: "Số tiền nạp", key: "deposit_amount", align: "center" },
-  { title: "Số lần rút", key: "withdrawal_count", align: "center" },
-  { title: "Số tiền rút", key: "withdrawal_amount", align: "center" },
-  { title: "Phí giao dịch", key: "charge_fee", align: "center" },
-  { title: "Hoa hồng đại lý", key: "agent_commission", align: "center" },
-  { title: "Khuyến mãi", key: "promotion", align: "center" },
+  { title: "Tên tài khoản", key: "username" },
+  { title: "Thuộc đại lý", key: "user_parent_format" },
+  { title: "Số lần nạp", key: "deposit_count" },
+  { title: "Số tiền nạp", key: "deposit_amount" },
+  { title: "Số lần rút", key: "withdrawal_count" },
+  { title: "Số tiền rút", key: "withdrawal_amount" },
+  { title: "Phí giao dịch", key: "charge_fee" },
+  { title: "Hoa hồng đại lý", key: "agent_commission" },
+  { title: "Khuyến mãi", key: "promotion" },
 ];
 
 const summaryColumns = [
-  { title: "Số lần nạp", key: "total_deposit_count", align: "center" },
-  { title: "Số tiền nạp", key: "total_deposit_amount", align: "center" },
-  { title: "Số lần rút", key: "total_withdrawal_count", align: "center" },
-  { title: "Số tiền rút", key: "total_withdrawal_amount", align: "center" },
-  { title: "Phí giao dịch", key: "total_charge_fee", align: "center" },
-  { title: "Hoa hồng đại lý", key: "total_agent_commission", align: "center" },
-  { title: "Khuyến mãi", key: "total_promotion", align: "center" },
+  { title: "Số lần nạp", key: "total_deposit_count" },
+  { title: "Số tiền nạp", key: "total_deposit_amount" },
+  { title: "Số lần rút", key: "total_withdrawal_count" },
+  { title: "Số tiền rút", key: "total_withdrawal_amount" },
+  { title: "Phí giao dịch", key: "total_charge_fee" },
+  { title: "Hoa hồng đại lý", key: "total_agent_commission" },
+  { title: "Khuyến mãi", key: "total_promotion" },
 ];
 
 const summaryData = ref([
@@ -72,13 +72,9 @@ function handleSearch() {
   loadData();
 }
 
-function handlePageChange(val: number) {
-  _pageChange(val);
-  loadData();
-}
-
-function handleLimitChange(val: number) {
-  _limitChange(val);
+function change(p: { current: number; limit: number }) {
+  page.current = p.current;
+  page.limit = p.limit;
   loadData();
 }
 
@@ -117,16 +113,18 @@ onMounted(() => loadData());
         </div>
       </div>
 
-      <lay-table :columns="columns" :data-source="dataSource" :default-toolbar="true" :loading="loading" />
-      <lay-page
-        v-model="page.current"
-        :limit="page.limit"
-        :total="page.total"
-        :layout="['prev', 'page', 'next', 'skip', 'count', 'limits']"
-        style="margin-top: 10px"
-        @change="handlePageChange"
-        @limit-change="handleLimitChange"
-      />
+      <div class="table-container">
+        <lay-table
+          :page="page"
+          :resize="true"
+          :height="'100%'"
+          :columns="columns"
+          :loading="loading"
+          :default-toolbar="true"
+          :data-source="dataSource"
+          @change="change"
+        />
+      </div>
 
       <div class="summary-section">
         <div class="summary-title">Dữ liệu tổng hợp :</div>

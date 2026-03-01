@@ -4,7 +4,7 @@ import { useListPage } from "@/composables/useListPage";
 import { fetchInviteList } from "@/api/services/proxy";
 import { layer } from "@layui/layui-vue";
 
-const { dataSource, loading, page, handlePageChange: _pageChange, handleLimitChange: _limitChange } = useListPage();
+const { dataSource, loading, page } = useListPage();
 
 const searchForm = reactive({
   dateAdded: [] as string[],
@@ -22,7 +22,7 @@ const columns = [
   { title: "Nạp đầu trong ngày (số tiền)", key: "register_recharge_count" },
   { title: "Ghi chú", key: "remark" },
   { title: "Thời gian thêm vào", key: "create_time" },
-  { title: "Thao tác", key: "action" },
+  { title: "Thao tác", key: "action", customSlot: "action" },
 ];
 
 async function loadData() {
@@ -49,13 +49,9 @@ function handleSearch() {
   loadData();
 }
 
-function handlePageChange(val: { current: number }) {
-  _pageChange(val);
-  loadData();
-}
-
-function handleLimitChange(limit: number) {
-  _limitChange(limit);
+function change(p: { current: number; limit: number }) {
+  page.current = p.current;
+  page.limit = p.limit;
   loadData();
 }
 
@@ -70,7 +66,6 @@ onMounted(() => loadData());
 
 <template>
   <div>
-    <!-- Search form -->
     <lay-card title="Danh sách liên kết giới thiệu">
       <div class="search-form-wrap">
         <div class="layui-inline">
@@ -95,24 +90,27 @@ onMounted(() => loadData());
         </div>
       </div>
 
-      <lay-table :columns="columns" :data-source="dataSource" :default-toolbar="true" :loading="loading">
-        <template #toolbar>
-          <lay-button type="normal" size="xs">+ Thêm mã giới thiệu</lay-button>
-          <lay-button type="normal" size="xs">Copy đường link</lay-button>
-          <lay-button type="normal" size="xs">Xem cài đặt</lay-button>
-        </template>
-        <template #action>
-          <lay-button size="xs" type="primary">Chi tiết</lay-button>
-        </template>
-      </lay-table>
-      <lay-page
-        v-model="page.current"
-        :limit="page.limit"
-        :total="page.total"
-        :layout="['prev', 'page', 'next', 'skip', 'count', 'limits']"
-        @change="handlePageChange"
-        @limit-change="handleLimitChange"
-      />
+      <div class="table-container">
+        <lay-table
+          :page="page"
+          :resize="true"
+          :height="'100%'"
+          :columns="columns"
+          :loading="loading"
+          :default-toolbar="true"
+          :data-source="dataSource"
+          @change="change"
+        >
+          <template v-slot:toolbar>
+            <lay-button type="normal" size="xs">+ Thêm mã giới thiệu</lay-button>
+            <lay-button type="normal" size="xs">Copy đường link</lay-button>
+            <lay-button type="normal" size="xs">Xem cài đặt</lay-button>
+          </template>
+          <template v-slot:action>
+            <lay-button size="xs" type="primary">Chi tiết</lay-button>
+          </template>
+        </lay-table>
+      </div>
     </lay-card>
   </div>
 </template>

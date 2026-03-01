@@ -8,7 +8,7 @@ import { layer } from "@layui/layui-vue";
 import StatusBadge from "@/components/StatusBadge.vue";
 
 const { dateRange, dateQuickSelect, dateQuickOptions, dateQuickWidth, resetDateRange } = useDateRange("today");
-const { dataSource, loading, page, handlePageChange: _pageChange, handleLimitChange: _limitChange } = useListPage();
+const { dataSource, loading, page } = useListPage();
 
 const searchForm = reactive({
   username: "",
@@ -39,12 +39,12 @@ const DEPOSIT_STATUS_MAP: Record<string, { label: string; color: string }> = {
 };
 
 const columns = [
-  { title: "Tên tài khoản", key: "username", width: "311.5px", align: "center" },
-  { title: "Thuộc đại lý", key: "user_parent_format", width: "312px", align: "center" },
-  { title: "Số tiền", key: "amount", width: "312px", align: "center" },
-  { title: "Loại hình giao dịch", key: "type", width: "312px", align: "center" },
-  { title: "Trạng thái giao dịch", key: "status", width: "312px", align: "center", customSlot: "status" },
-  { title: "Thời gian", key: "create_time", align: "center" },
+  { title: "Tên tài khoản", key: "username" },
+  { title: "Thuộc đại lý", key: "user_parent_format" },
+  { title: "Số tiền", key: "amount" },
+  { title: "Loại hình giao dịch", key: "type" },
+  { title: "Trạng thái giao dịch", key: "status", customSlot: "status" },
+  { title: "Thời gian", key: "create_time" },
 ];
 
 async function loadData() {
@@ -79,13 +79,9 @@ function handleReset() {
   loadData();
 }
 
-function handlePageChange(val: { current: number }) {
-  _pageChange(val);
-  loadData();
-}
-
-function handleLimitChange(limit: number) {
-  _limitChange(limit);
+function change(p: { current: number; limit: number }) {
+  page.current = p.current;
+  page.limit = p.limit;
   loadData();
 }
 
@@ -94,7 +90,6 @@ onMounted(() => loadData());
 
 <template>
   <div>
-    <!-- Search form -->
     <lay-card title="Danh sách nạp tiền">
       <div class="search-form-wrap">
         <div class="layui-inline">
@@ -132,19 +127,22 @@ onMounted(() => loadData());
         </div>
       </div>
 
-      <lay-table :columns="columns" :data-source="dataSource" :default-toolbar="true" :loading="loading">
-        <template #status="{ row }">
-          <StatusBadge :status="row.status" :map="DEPOSIT_STATUS_MAP" />
-        </template>
-      </lay-table>
-      <lay-page
-        v-model="page.current"
-        :limit="page.limit"
-        :total="page.total"
-        :layout="['prev', 'page', 'next', 'skip', 'count', 'limits']"
-        @change="handlePageChange"
-        @limit-change="handleLimitChange"
-      />
+      <div class="table-container">
+        <lay-table
+          :page="page"
+          :resize="true"
+          :height="'100%'"
+          :columns="columns"
+          :loading="loading"
+          :default-toolbar="true"
+          :data-source="dataSource"
+          @change="change"
+        >
+          <template #status="{ row }">
+            <StatusBadge :status="row.status" :map="DEPOSIT_STATUS_MAP" />
+          </template>
+        </lay-table>
+      </div>
     </lay-card>
   </div>
 </template>

@@ -35,8 +35,8 @@ function measureMaxLabelWidth(
   return max;
 }
 
-// Padding inside select: left input padding (10) + suffix icon area (30) + border (2) + buffer (8)
-const SELECT_PADDING = 50;
+// left padding (10) + suffix icon+padding (24) + border (2)
+const SELECT_PADDING = 36;
 
 /**
  * Returns a computed CSS width string that fits the longest option label.

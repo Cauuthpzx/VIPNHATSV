@@ -2,12 +2,13 @@
 import { reactive, onMounted } from "vue";
 import { useDateRange } from "@/composables/useDateRange";
 import { useListPage } from "@/composables/useListPage";
+import { useAutoFitSelect } from "@/composables/useAutoFitSelect";
 import { fetchWithdrawalsRecord } from "@/api/services/proxy";
 import { layer } from "@layui/layui-vue";
 import StatusBadge from "@/components/StatusBadge.vue";
 
-const { dateRange, dateQuickSelect, dateQuickOptions, resetDateRange } = useDateRange("today");
-const { dataSource, loading, page, handlePageChange: _pageChange, handleLimitChange: _limitChange } = useListPage();
+const { dateRange, dateQuickSelect, dateQuickOptions, dateQuickWidth, resetDateRange } = useDateRange("today");
+const { dataSource, loading, page } = useListPage();
 
 const searchForm = reactive({
   username: "",
@@ -23,6 +24,8 @@ const statusOptions = [
   { label: "Đã hủy", value: "cancelled" },
 ];
 
+const { selectWidth: statusWidth } = useAutoFitSelect(statusOptions);
+
 const WITHDRAWAL_STATUS_MAP: Record<string, { label: string; color: string }> = {
   pending: { label: "Chờ xử lý", color: "#e6a23c" },
   success: { label: "Thành công", color: "#67c23a" },
@@ -31,13 +34,13 @@ const WITHDRAWAL_STATUS_MAP: Record<string, { label: string; color: string }> = 
 };
 
 const columns = [
-  { title: "Mã giao dịch", key: "serial_number", width: "180.5px", align: "center" },
-  { title: "Thời gian tạo đơn", key: "create_time", width: "161px", align: "center" },
-  { title: "Tên tài khoản", key: "username", width: "255px", align: "center" },
-  { title: "Thuộc đại lý", key: "user_parent_format", width: "255px", align: "center" },
-  { title: "Số tiền", key: "money", width: "255px", align: "center" },
-  { title: "Trạng thái", key: "status", align: "center", customSlot: "status" },
-  { title: "Thao tác", key: "operation", align: "center", customSlot: "operation" },
+  { title: "Mã giao dịch", key: "serial_number" },
+  { title: "Thời gian tạo đơn", key: "create_time" },
+  { title: "Tên tài khoản", key: "username" },
+  { title: "Thuộc đại lý", key: "user_parent_format" },
+  { title: "Số tiền", key: "money" },
+  { title: "Trạng thái", key: "status", customSlot: "status" },
+  { title: "Thao tác", key: "operation", customSlot: "operation" },
 ];
 
 async function loadData() {
@@ -74,17 +77,12 @@ function handleReset() {
 }
 
 function handleDetail(row: any) {
-  // TODO: open detail dialog
   console.log("Detail:", row);
 }
 
-function handlePageChange(val: { current: number }) {
-  _pageChange(val);
-  loadData();
-}
-
-function handleLimitChange(limit: number) {
-  _limitChange(limit);
+function change(p: { current: number; limit: number }) {
+  page.current = p.current;
+  page.limit = p.limit;
   loadData();
 }
 
@@ -93,7 +91,6 @@ onMounted(() => loadData());
 
 <template>
   <div>
-    <!-- Search form -->
     <lay-card title="Lịch sử rút tiền">
       <div class="search-form-wrap">
         <div class="layui-inline">
@@ -101,7 +98,7 @@ onMounted(() => loadData());
           <lay-date-picker v-model="dateRange" range single-panel range-separator="-" :placeholder="['Ngày bắt đầu', 'Ngày kết thúc']" />
         </div>
         <div class="layui-inline">
-          <lay-select v-model="dateQuickSelect">
+          <lay-select v-model="dateQuickSelect" :style="{ width: dateQuickWidth }">
             <lay-select-option v-for="opt in dateQuickOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
           </lay-select>
         </div>
@@ -115,7 +112,7 @@ onMounted(() => loadData());
         </div>
         <div class="layui-inline">
           <span class="form-label">Trạng thái:</span>
-          <lay-select v-model="searchForm.status">
+          <lay-select v-model="searchForm.status" :style="{ width: statusWidth }">
             <lay-select-option v-for="opt in statusOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
           </lay-select>
         </div>
@@ -129,22 +126,25 @@ onMounted(() => loadData());
         </div>
       </div>
 
-      <lay-table :columns="columns" :data-source="dataSource" :default-toolbar="true" :loading="loading">
-        <template #status="{ row }">
-          <StatusBadge :status="row.status" :map="WITHDRAWAL_STATUS_MAP" />
-        </template>
-        <template #operation="{ row }">
-          <lay-button size="xs" type="primary" @click="handleDetail(row)">Chi tiết</lay-button>
-        </template>
-      </lay-table>
-      <lay-page
-        v-model="page.current"
-        :limit="page.limit"
-        :total="page.total"
-        :layout="['prev', 'page', 'next', 'skip', 'count', 'limits']"
-        @change="handlePageChange"
-        @limit-change="handleLimitChange"
-      />
+      <div class="table-container">
+        <lay-table
+          :page="page"
+          :resize="true"
+          :height="'100%'"
+          :columns="columns"
+          :loading="loading"
+          :default-toolbar="true"
+          :data-source="dataSource"
+          @change="change"
+        >
+          <template #status="{ row }">
+            <StatusBadge :status="row.status" :map="WITHDRAWAL_STATUS_MAP" />
+          </template>
+          <template #operation="{ row }">
+            <lay-button size="xs" type="primary" @click="handleDetail(row)">Chi tiết</lay-button>
+          </template>
+        </lay-table>
+      </div>
     </lay-card>
   </div>
 </template>
