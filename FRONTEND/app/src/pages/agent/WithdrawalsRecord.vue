@@ -1,21 +1,17 @@
 <script setup lang="ts">
-import { ref, reactive, watch } from "vue";
+import { reactive } from "vue";
+import { useDateRange } from "@/composables/useDateRange";
+import { useListPage } from "@/composables/useListPage";
+import StatusBadge from "@/components/StatusBadge.vue";
+
+const { dateRange, dateQuickSelect, dateQuickOptions, resetDateRange } = useDateRange("today");
+const { dataSource, loading, page, handlePageChange: _pageChange, handleLimitChange: _limitChange } = useListPage();
 
 const searchForm = reactive({
-  dateRange: [] as string[],
   username: "",
   serialNumber: "",
   status: "",
 });
-
-const dateQuickSelect = ref("today");
-const dateQuickOptions = [
-  { label: "Hôm nay", value: "today" },
-  { label: "Hôm qua", value: "yesterday" },
-  { label: "Tuần này", value: "thisWeek" },
-  { label: "Tháng này", value: "thisMonth" },
-  { label: "Tháng trước", value: "lastMonth" },
-];
 
 const statusOptions = [
   { label: "Chọn", value: "" },
@@ -24,6 +20,13 @@ const statusOptions = [
   { label: "Thất bại", value: "failed" },
   { label: "Đã hủy", value: "cancelled" },
 ];
+
+const WITHDRAWAL_STATUS_MAP: Record<string, { label: string; color: string }> = {
+  pending: { label: "Chờ xử lý", color: "#e6a23c" },
+  success: { label: "Thành công", color: "#67c23a" },
+  failed: { label: "Thất bại", color: "#f56c6c" },
+  cancelled: { label: "Đã hủy", color: "#909399" },
+};
 
 const columns = [
   { title: "Mã giao dịch", key: "transactionId", width: "180.5px", align: "center" },
@@ -35,52 +38,11 @@ const columns = [
   { title: "Thao tác", key: "operation", align: "center", customSlot: "operation" },
 ];
 
-const dataSource = ref([]);
-const loading = ref(false);
-const page = reactive({ current: 1, limit: 10, total: 0 });
-
-function getDateRange(type: string): string[] {
-  const today = new Date();
-  const fmt = (d: Date) => d.toISOString().slice(0, 10);
-  let start = fmt(today);
-  let end = fmt(today);
-  switch (type) {
-    case "yesterday": {
-      const y = new Date(today);
-      y.setDate(y.getDate() - 1);
-      start = fmt(y);
-      end = fmt(y);
-      break;
-    }
-    case "thisWeek": {
-      const day = today.getDay() || 7;
-      const mon = new Date(today);
-      mon.setDate(today.getDate() - day + 1);
-      start = fmt(mon);
-      break;
-    }
-    case "thisMonth": {
-      const first = new Date(today.getFullYear(), today.getMonth(), 1);
-      start = fmt(first);
-      break;
-    }
-    case "lastMonth": {
-      const first = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-      const last = new Date(today.getFullYear(), today.getMonth(), 0);
-      start = fmt(first);
-      end = fmt(last);
-      break;
-    }
-  }
-  return [start, end];
+function loadData() {
+  loading.value = true;
+  // TODO: API call
+  loading.value = false;
 }
-
-// Initialize with today's date
-searchForm.dateRange = getDateRange("today");
-
-watch(dateQuickSelect, (val) => {
-  searchForm.dateRange = getDateRange(val);
-});
 
 function handleSearch() {
   page.current = 1;
@@ -88,7 +50,7 @@ function handleSearch() {
 }
 
 function handleReset() {
-  searchForm.dateRange = [];
+  resetDateRange();
   searchForm.username = "";
   searchForm.serialNumber = "";
   searchForm.status = "";
@@ -102,20 +64,13 @@ function handleDetail(row: any) {
 }
 
 function handlePageChange(val: { current: number }) {
-  page.current = val.current;
+  _pageChange(val);
   loadData();
 }
 
 function handleLimitChange(limit: number) {
-  page.limit = limit;
-  page.current = 1;
+  _limitChange(limit);
   loadData();
-}
-
-function loadData() {
-  loading.value = true;
-  // TODO: API call
-  loading.value = false;
 }
 </script>
 
@@ -126,10 +81,10 @@ function loadData() {
       <div class="search-form-wrap">
         <div class="layui-inline">
           <span class="form-label">Thời gian :</span>
-          <lay-date-picker v-model="searchForm.dateRange" range single-panel range-separator="-" :placeholder="['Ngày bắt đầu', 'Ngày kết thúc']" />
+          <lay-date-picker v-model="dateRange" range single-panel range-separator="-" :placeholder="['Ngày bắt đầu', 'Ngày kết thúc']" />
         </div>
         <div class="layui-inline">
-          <lay-select v-model="dateQuickSelect" style="width: 150px" @change="onDateQuickChange">
+          <lay-select v-model="dateQuickSelect" style="width: 150px">
             <lay-select-option v-for="opt in dateQuickOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
           </lay-select>
         </div>
@@ -159,10 +114,7 @@ function loadData() {
 
       <lay-table :columns="columns" :data-source="dataSource" :default-toolbar="true" :loading="loading">
         <template #status="{ row }">
-          <span v-if="row.status === 'pending'" style="color: #e6a23c">Chờ xử lý</span>
-          <span v-else-if="row.status === 'success'" style="color: #67c23a">Thành công</span>
-          <span v-else-if="row.status === 'failed'" style="color: #f56c6c">Thất bại</span>
-          <span v-else-if="row.status === 'cancelled'" style="color: #909399">Đã hủy</span>
+          <StatusBadge :status="row.status" :map="WITHDRAWAL_STATUS_MAP" />
         </template>
         <template #operation="{ row }">
           <lay-button size="xs" type="primary" @click="handleDetail(row)">Chi tiết</lay-button>

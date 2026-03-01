@@ -1,5 +1,8 @@
 <script setup lang="ts">
-import { ref, reactive } from "vue";
+import { reactive } from "vue";
+import { useListPage } from "@/composables/useListPage";
+
+const { dataSource, loading, page, handlePageChange, handleLimitChange } = useListPage();
 
 const searchForm = reactive({
   dateAdded: [] as string[],
@@ -19,10 +22,6 @@ const columns = [
   { title: "Thời gian thêm vào", key: "addedTime" },
   { title: "Thao tác", key: "action" },
 ];
-
-const dataSource = ref([]);
-const loading = ref(false);
-const page = reactive({ current: 1, limit: 10, total: 0 });
 
 function handleSearch() {
   page.current = 1;
@@ -78,6 +77,8 @@ function handleReset() {
         :limit="page.limit"
         :total="page.total"
         :layout="['prev', 'page', 'next', 'skip', 'count', 'limits']"
+        @change="handlePageChange"
+        @limit-change="handleLimitChange"
       />
     </lay-card>
   </div>

@@ -1,5 +1,8 @@
 <script setup lang="ts">
-import { ref, reactive } from "vue";
+import { reactive } from "vue";
+import { useListPage } from "@/composables/useListPage";
+
+const { dataSource, loading, page, handlePageChange, handleLimitChange } = useListPage();
 
 const searchForm = reactive({
   username: "",
@@ -24,10 +27,6 @@ const columns = [
   { title: "Trạng thái", key: "status" },
   { title: "Thao tác", key: "action" },
 ];
-
-const dataSource = ref([]);
-const loading = ref(false);
-const page = reactive({ current: 1, limit: 10, total: 0 });
 
 const statusOptions = [
   { label: "Chọn", value: "" },
@@ -116,6 +115,8 @@ function handleReset() {
         :limit="page.limit"
         :total="page.total"
         :layout="['prev', 'page', 'next', 'skip', 'count', 'limits']"
+        @change="handlePageChange"
+        @limit-change="handleLimitChange"
       />
     </lay-card>
   </div>

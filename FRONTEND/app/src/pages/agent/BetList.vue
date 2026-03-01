@@ -1,66 +1,19 @@
 <script setup lang="ts">
-import { ref, reactive, watch } from "vue";
+import { reactive, ref } from "vue";
+import { useDateRange } from "@/composables/useDateRange";
+import { useListPage } from "@/composables/useListPage";
+import StatusBadge from "@/components/StatusBadge.vue";
+
+const { dateRange, dateQuickSelect, dateQuickOptions, resetDateRange } = useDateRange("today");
+const { dataSource, loading, page, handlePageChange, handleLimitChange } = useListPage();
 
 const searchForm = reactive({
-  dateRange: [] as string[],
   username: "",
   serialNo: "",
   lotteryType: "",
   playType: "",
   play: "",
   status: "",
-});
-
-const dateQuickSelect = ref("today");
-const dateQuickOptions = [
-  { label: "Hôm nay", value: "today" },
-  { label: "Hôm qua", value: "yesterday" },
-  { label: "Tuần này", value: "thisWeek" },
-  { label: "Tháng này", value: "thisMonth" },
-  { label: "Tháng trước", value: "lastMonth" },
-];
-
-function getDateRange(type: string): string[] {
-  const today = new Date();
-  const fmt = (d: Date) => d.toISOString().slice(0, 10);
-  let start = fmt(today);
-  let end = fmt(today);
-  switch (type) {
-    case "yesterday": {
-      const y = new Date(today);
-      y.setDate(y.getDate() - 1);
-      start = fmt(y);
-      end = fmt(y);
-      break;
-    }
-    case "thisWeek": {
-      const day = today.getDay() || 7;
-      const mon = new Date(today);
-      mon.setDate(today.getDate() - day + 1);
-      start = fmt(mon);
-      break;
-    }
-    case "thisMonth": {
-      const first = new Date(today.getFullYear(), today.getMonth(), 1);
-      start = fmt(first);
-      break;
-    }
-    case "lastMonth": {
-      const first = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-      const last = new Date(today.getFullYear(), today.getMonth(), 0);
-      start = fmt(first);
-      end = fmt(last);
-      break;
-    }
-  }
-  return [start, end];
-}
-
-// Initialize with today's date
-searchForm.dateRange = getDateRange("today");
-
-watch(dateQuickSelect, (val) => {
-  searchForm.dateRange = getDateRange(val);
 });
 
 const lotteryOptions = [
@@ -83,6 +36,14 @@ const statusOptions = [
   { label: "Hoà", value: "draw" },
   { label: "Đã hủy", value: "cancelled" },
 ];
+
+const BET_STATUS_MAP: Record<string, { label: string; color: string }> = {
+  pending: { label: "Chờ xử lý", color: "#e6a23c" },
+  won: { label: "Thắng", color: "#67c23a" },
+  lost: { label: "Thua", color: "#f56c6c" },
+  draw: { label: "Hoà", color: "#909399" },
+  cancelled: { label: "Đã hủy", color: "#909399" },
+};
 
 const columns = [
   { title: "Mã giao dịch", key: "serialNo", width: "200.5px", align: "center" },
@@ -109,10 +70,6 @@ const summaryColumns = [
   { title: "Tổng thắng thua", key: "totalWinLoss", align: "center" },
 ];
 
-const dataSource = ref([]);
-const loading = ref(false);
-const page = reactive({ current: 1, limit: 10, total: 0 });
-
 const summaryData = ref([
   {
     totalBetAmount: "0.0000",
@@ -128,7 +85,7 @@ function handleSearch() {
 }
 
 function handleReset() {
-  searchForm.dateRange = [];
+  resetDateRange();
   searchForm.username = "";
   searchForm.serialNo = "";
   searchForm.lotteryType = "";
@@ -137,25 +94,6 @@ function handleReset() {
   searchForm.status = "";
 }
 
-function handlePageChange(val: { current: number }) {
-  page.current = val.current;
-}
-
-function handleLimitChange(limit: number) {
-  page.limit = limit;
-  page.current = 1;
-}
-
-function getStatusColor(status: string): string {
-  const map: Record<string, string> = {
-    pending: "#e6a23c",
-    won: "#67c23a",
-    lost: "#f56c6c",
-    draw: "#909399",
-    cancelled: "#909399",
-  };
-  return map[status] || "#333";
-}
 </script>
 
 <template>
@@ -166,10 +104,10 @@ function getStatusColor(status: string): string {
         <!-- Row 1 -->
         <div class="layui-inline">
           <span class="form-label">Thời gian :</span>
-          <lay-date-picker v-model="searchForm.dateRange" range single-panel range-separator="-" :placeholder="['Ngày bắt đầu', 'Ngày kết thúc']" />
+          <lay-date-picker v-model="dateRange" range single-panel range-separator="-" :placeholder="['Ngày bắt đầu', 'Ngày kết thúc']" />
         </div>
         <div class="layui-inline">
-          <lay-select v-model="dateQuickSelect" style="width: 150px" @change="onDateQuickChange">
+          <lay-select v-model="dateQuickSelect" style="width: 150px">
             <lay-select-option v-for="opt in dateQuickOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
           </lay-select>
         </div>
@@ -218,7 +156,7 @@ function getStatusColor(status: string): string {
 
       <lay-table :columns="columns" :data-source="dataSource" :default-toolbar="true" :loading="loading">
         <template #status="{ row }">
-          <span :style="{ color: getStatusColor(row.status) }">{{ row.statusText }}</span>
+          <StatusBadge :status="row.status" :map="BET_STATUS_MAP" />
         </template>
         <template #action="{ row }">
           <lay-button size="xs" type="primary">Chi tiết</lay-button>

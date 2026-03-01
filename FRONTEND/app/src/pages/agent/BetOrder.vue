@@ -1,5 +1,8 @@
 <script setup lang="ts">
-import { ref, reactive } from "vue";
+import { reactive } from "vue";
+import { useListPage } from "@/composables/useListPage";
+
+const { dataSource, loading, page, handlePageChange, handleLimitChange } = useListPage();
 
 const searchForm = reactive({
   dateRange: [] as string[],
@@ -21,10 +24,6 @@ const columns = [
   { title: "Thời gian thanh toán", key: "settleTime", align: "center" },
 ];
 
-const dataSource = ref([]);
-const loading = ref(false);
-const page = reactive({ current: 1, limit: 10, total: 0 });
-
 function handleSearch() {
   page.current = 1;
   // TODO: call API
@@ -34,15 +33,6 @@ function handleReset() {
   searchForm.dateRange = [];
   searchForm.serialNo = "";
   searchForm.platformUsername = "";
-}
-
-function handlePageChange(val: { current: number }) {
-  page.current = val.current;
-}
-
-function handleLimitChange(limit: number) {
-  page.limit = limit;
-  page.current = 1;
 }
 </script>
 

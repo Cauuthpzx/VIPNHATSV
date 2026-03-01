@@ -1,28 +1,46 @@
-toàn bộ tài liệu có sẵn trong thư mục dự án hoặc chỉ lấy tại đây 
+## Tài liệu Layui-Vue
+Toàn bộ tài liệu có sẵn trong thư mục dự án hoặc chỉ lấy tại đây:
+https://www.layui-vue.com/zh-CN/guide/introduce ... https://www.layui-vue.com/zh-CN/resources
 
-https://www.layui-vue.com/zh-CN/guide/introduce
-https://www.layui-vue.com/zh-CN/guide/getStarted
-https://www.layui-vue.com/zh-CN/guide/changelog
-https://www.layui-vue.com/zh-CN/guide/theme
-https://www.layui-vue.com/zh-CN/guide/dark
-https://www.layui-vue.com/zh-CN/components/animation
-https://www.layui-vue.com/zh-CN/components/button
-https://www.layui-vue.com/zh-CN/components/color
-............
+## Quy tắc bắt buộc
 
-https://www.layui-vue.com/zh-CN/resources
+- PHẢI LÀ CLIENT SPA VUE3 HOÀN TOÀN.
+- TOÀN BỘ THAY ĐỔI PHẢI THỰC HIỆN TRỰC TIẾP TRONG SOURCE CODE, KHÔNG TRÊN FILE ĐÃ BUILD.
+- HẠN CHẾ TỐI ĐA OVERRIDE CSS VÀ !important. FIX TRIỆT ĐỂ TRONG SOURCE GỐC.
+- YÊU CẦU KHÔNG ĐƯỢC THAY ĐỔI GIAO DIỆN HIỆN TẠI (khi refactor).
+- Tổ chức gom file tập trung, không hard code styles inline, dùng composables/utils chung.
+- Bố trí thư mục sạch sẽ, không trùng lặp, tránh deadcode.
 
+## Kiến trúc dự án
 
-PHẢI LÀ CLIENT SPA VUE3 HOÀN TOÀN.
+### Frontend (`FRONTEND/`)
+- **Framework**: Vue 3 Composition API + TypeScript
+- **UI Library**: Layui-Vue (monorepo local tại `packages/`)
+- **State**: Pinia (`stores/app.ts`)
+- **Router**: Vue Router (`router/index.ts`)
+- **Build**: Vite
+- **Thay đổi trong `packages/`** cần restart dev server (HMR chỉ watch `app/src/`)
 
-TOÀN BỘ THAY ĐỔI, SỬA CHỮA PHẢI THỰC HIỆN TRỰC TIẾP TRONG SOURCE CODE. KHÔNG THỰC HIỆN TRÊN FILE ĐÃ BUILD.
+### Backend (`BACKEND/`)
+- **Framework**: Fastify (Node.js/TypeScript) — KHÔNG phải FastAPI/Python
+- **ORM**: Prisma + PostgreSQL
+- **Auth**: JWT-based
 
-HẠN CHẾ TỐI ĐA OVERRIDE CSS VÀ !important. FIX TRIỆT ĐỂ TRONG SOURCE GỐC CỦA COMPONENT/MODULE.
+### Composables đã tạo (`app/src/composables/`)
+- `useDateRange.ts` — Date range picker + quick select (Hôm nay, Hôm qua, Tuần này, Tháng này, Tháng trước)
+- `useListPage.ts` — dataSource, loading, page state, handlePageChange, handleLimitChange
 
+### Pattern sử dụng composables
+- Trang KHÔNG có `loadData()`: Destructure trực tiếp handlers từ composable
+- Trang CÓ `loadData()`: Alias handlers (`_pageChange`, `_limitChange`) và wrap trong local functions gọi thêm `loadData()`
+- `resetDateRange()` sẽ clear cả `dateRange` và reset `dateQuickSelect` về initial
+- Template: `v-model="dateRange"` (ref riêng), KHÔNG dùng `searchForm.dateRange`
 
-Phải tổ chức  gom lại thành  các  file tập trung sử dụng trung , không sử dụng hard code  styles inline khi có thể sử dụng các  hàm tiện ích chung , bố trí thư mục sạch sẽ gọn gàng ko trùng lặp tránh deadcode và  duplite  , hiệu năng và  ổn định cực kì quan trọng .
+### Trang đặc biệt
+- `RebateOdds.vue` — Dynamic columns, không dùng useListPage (cấu trúc riêng)
+- `EditPassword.vue` & `EditFundPassword.vue` — Gần như 100% giống nhau, cần extract thành shared component
 
-FastAPI Backend - Lưu ý quan trọng từ chuyên gia
+## Backend - Lưu ý quan trọng
 🔴 Cực kì quan trọng
 Architecture & Structure
 

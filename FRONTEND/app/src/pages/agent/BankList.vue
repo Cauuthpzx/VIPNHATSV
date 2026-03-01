@@ -1,5 +1,8 @@
 <script setup lang="ts">
-import { ref, reactive } from "vue";
+import { reactive } from "vue";
+import { useListPage } from "@/composables/useListPage";
+
+const { dataSource, loading, page, handlePageChange: _pageChange, handleLimitChange: _limitChange } = useListPage();
 
 const searchForm = reactive({
   accountNumber: "",
@@ -15,9 +18,11 @@ const columns = [
   { title: "Thao tác", key: "operation", customSlot: "operation", align: "center" },
 ];
 
-const dataSource = ref([]);
-const loading = ref(false);
-const page = reactive({ current: 1, limit: 10, total: 0 });
+function loadData() {
+  loading.value = true;
+  // TODO: API call
+  loading.value = false;
+}
 
 function handleSearch() {
   page.current = 1;
@@ -45,20 +50,13 @@ function handleDelete(row: any) {
 }
 
 function handlePageChange(val: { current: number }) {
-  page.current = val.current;
+  _pageChange(val);
   loadData();
 }
 
 function handleLimitChange(limit: number) {
-  page.limit = limit;
-  page.current = 1;
+  _limitChange(limit);
   loadData();
-}
-
-function loadData() {
-  loading.value = true;
-  // TODO: API call
-  loading.value = false;
 }
 </script>
 
