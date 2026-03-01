@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, ref, onMounted } from "vue";
+import { reactive, ref, watch, onMounted } from "vue";
 import { useDateRange } from "@/composables/useDateRange";
 import { useListPage } from "@/composables/useListPage";
 import { useAutoFitSelect } from "@/composables/useAutoFitSelect";
@@ -112,6 +112,7 @@ function handleReset() {
   searchForm.username = "";
 }
 
+watch(selectedAgentId, () => { page.current = 1; loadData(); });
 onMounted(() => {
   loadLotteryOptions();
   loadData();

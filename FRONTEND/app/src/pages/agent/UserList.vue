@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, onMounted } from "vue";
+import { reactive, watch, onMounted } from "vue";
 import { useListPage } from "@/composables/useListPage";
 import { useAutoFitSelect } from "@/composables/useAutoFitSelect";
 import { useAgentFilter } from "@/composables/useAgentFilter";
@@ -94,6 +94,7 @@ function change(p: { current: number; limit: number }) {
   loadData();
 }
 
+watch(selectedAgentId, () => { page.current = 1; loadData(); });
 onMounted(() => loadData());
 </script>
 

@@ -161,6 +161,7 @@ watch(selectedLottery, (val) => {
   }
 });
 
+watch(selectedAgentId, () => { if (selectedLottery.value) fetchRebateData(); });
 onMounted(() => {
   fetchInit();
 });

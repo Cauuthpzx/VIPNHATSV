@@ -186,6 +186,7 @@ function handleReset() {
   searchForm.status = "";
 }
 
+watch(selectedAgentId, () => { page.current = 1; loadData(); });
 onMounted(() => {
   loadDropdownData();
   loadData();

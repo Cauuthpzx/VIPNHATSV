@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, onMounted } from "vue";
+import { reactive, watch, onMounted } from "vue";
 import { useListPage } from "@/composables/useListPage";
 import { fetchBetOrder } from "@/api/services/proxy";
 import { layer } from "@layui/layui-vue";
@@ -65,6 +65,7 @@ function handleReset() {
   searchForm.platformUsername = "";
 }
 
+watch(selectedAgentId, () => { page.current = 1; loadData(); });
 onMounted(() => loadData());
 </script>
 

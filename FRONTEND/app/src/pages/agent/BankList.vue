@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, onMounted } from "vue";
+import { reactive, watch, onMounted } from "vue";
 import { useListPage } from "@/composables/useListPage";
 import { fetchBankList } from "@/api/services/proxy";
 import { layer } from "@layui/layui-vue";
@@ -69,6 +69,7 @@ function change(p: { current: number; limit: number }) {
   loadData();
 }
 
+watch(selectedAgentId, () => { page.current = 1; loadData(); });
 onMounted(() => loadData());
 </script>
 
