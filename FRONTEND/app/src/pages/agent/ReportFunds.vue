@@ -131,7 +131,6 @@ onMounted(() => loadData());
         <lay-table
           :page="page"
           :resize="true"
-          :max-height="'100%'"
           :columns="columns"
           :loading="loading"
           :default-toolbar="true"

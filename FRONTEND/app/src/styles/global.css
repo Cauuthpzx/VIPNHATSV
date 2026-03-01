@@ -98,7 +98,7 @@ body {
 
 /* Table container — wrapper chung cho lay-table ở tất cả trang */
 .table-container {
-  height: 800px;
+  /* No fixed height — table grows naturally, page scrolls */
 }
 
 

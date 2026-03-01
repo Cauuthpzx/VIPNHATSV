@@ -246,12 +246,10 @@ async function cachedProxyCall<T = unknown>(
 
     if (explicitAgentId) {
       cookie = await agentService.getAgentCookie(app, explicitAgentId);
-      // Get agent name for the stamp
       const agents = await agentService.listActiveAgents(app);
       const found = agents.find((a) => a.id === explicitAgentId);
       agentName = found?.name ?? "";
     } else {
-      // Reference request — use first active agent
       const agents = await agentService.listActiveAgents(app);
       if (agents.length === 0) {
         return { items: [] as unknown as T[], total: 0 };
@@ -269,26 +267,38 @@ async function cachedProxyCall<T = unknown>(
   }
 
   // -----------------------------------------------------------------------
-  // Multi-agent mode: fetch ALL active agents in parallel
+  // Multi-agent mode: fetch ALL active agents in parallel, paginate locally
   // -----------------------------------------------------------------------
   const agents = await agentService.listActiveAgents(app);
   if (agents.length === 0) {
     return { items: [] as unknown as T[], total: 0 };
   }
 
+  // Extract page/limit from the original request — we'll paginate after merge
+  const requestedPage = Math.max(1, Number(input.page) || 1);
+  const requestedLimit = Math.max(1, Number(input.limit) || 10);
+
+  // Build upstream params WITHOUT page/limit — fetch all items from each agent
+  // so we can merge, sort, and paginate the unified dataset ourselves
+  const allParams = { ...params };
+  delete allParams.page;
+  delete allParams.limit;
+  // Request max items from upstream to get the full dataset per agent
+  allParams.limit = "200";
+  allParams.page = "1";
+
   const results = await promisePool(
     agents,
     MAX_CONCURRENCY,
     async (agent) => {
       try {
-        // Validate cookie expiry
         if (agent.cookieExpires && agent.cookieExpires < new Date()) {
           logger.warn("Skipping agent with expired cookie", { agentId: agent.id, name: agent.name });
           return { items: [] as T[], total: 0 } as SingleResult<T>;
         }
 
         const cookie = decryptSessionCookie(agent.sessionCookie);
-        return await fetchSingleAgent<T>(app, path, params, agent.id, agent.name, cookie, ttl);
+        return await fetchSingleAgent<T>(app, path, allParams, agent.id, agent.name, cookie, ttl);
       } catch (err) {
         logger.warn("Agent fetch failed, skipping", {
           agentId: agent.id,
@@ -300,20 +310,22 @@ async function cachedProxyCall<T = unknown>(
     },
   );
 
-  // Merge results — collect all items then sort by natural key so the
-  // combined dataset looks like it came from a single source
-  const mergedItems = sortMergedItems(
+  // Merge all items, sort naturally, then paginate
+  const allItems = sortMergedItems(
     results.flatMap((r) => (Array.isArray(r.items) ? r.items : [])),
     path,
   );
-  const mergedTotal = results.reduce((sum, r) => sum + r.total, 0);
+  const mergedTotal = allItems.length;
   const mergedTotalData = mergeTotalData(results);
 
-  // Broadcast once for the merged result
+  // Server-side pagination on the merged dataset
+  const start = (requestedPage - 1) * requestedLimit;
+  const pageItems = allItems.slice(start, start + requestedLimit);
+
   wsManager.broadcast({ type: "data_update", endpoint: path, timestamp: Date.now() });
 
   return {
-    items: mergedItems as T[] | T,
+    items: pageItems as T[] | T,
     total: mergedTotal,
     totalData: mergedTotalData,
   };

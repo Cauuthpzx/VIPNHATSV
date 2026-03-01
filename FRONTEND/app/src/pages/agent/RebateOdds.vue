@@ -204,7 +204,6 @@ onMounted(() => {
       <div class="table-container">
         <lay-table
           :resize="true"
-          :max-height="'100%'"
           :columns="columns"
           :loading="loading"
           :default-toolbar="true"
