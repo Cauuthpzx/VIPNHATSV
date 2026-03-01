@@ -1,13 +1,28 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, ref, onMounted } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useAppStore } from "@/stores/app";
+import { useAgentStore } from "@/stores/agent";
 import { menuData } from "@/config/menu";
 import HubNav from "@/components/HubNav.vue";
 
 const router = useRouter();
 const route = useRoute();
 const store = useAppStore();
+const agentStore = useAgentStore();
+
+// Key counter to force re-render when agent changes
+const pageKey = ref(0);
+
+onMounted(() => {
+  agentStore.loadAgents();
+});
+
+function onAgentChange(agentId: string) {
+  agentStore.selectAgent(agentId);
+  // Force re-render all child pages so they reload data with new agent
+  pageKey.value++;
+}
 
 const openKeys = ref<string[]>([]);
 const selectedKey = computed({
@@ -171,6 +186,23 @@ function closeTabMenu() {
         </a>
       </div>
       <div class="admin-header-right">
+        <div class="agent-selector">
+          <i class="layui-icon layui-icon-group"></i>
+          <lay-select
+            v-model="agentStore.selectedAgentId"
+            :style="{ width: '180px' }"
+            size="sm"
+            @change="onAgentChange"
+          >
+            <lay-select-option value="" label="Mặc định (tự động)" />
+            <lay-select-option
+              v-for="agent in agentStore.activeAgents"
+              :key="agent.id"
+              :value="agent.id"
+              :label="agent.name"
+            />
+          </lay-select>
+        </div>
         <HubNav />
       </div>
     </lay-header>
@@ -211,7 +243,7 @@ function closeTabMenu() {
       <div class="layadmin-tabsbody-item layui-show">
         <router-view v-slot="{ Component }">
           <transition name="page-upbit" mode="out-in">
-            <component :is="Component" :key="route.path" />
+            <component :is="Component" :key="`${route.path}-${pageKey}`" />
           </transition>
         </router-view>
       </div>
@@ -410,6 +442,21 @@ function closeTabMenu() {
   display: flex;
   align-items: center;
   margin-right: 50px;
+  gap: 4px;
+}
+
+.agent-selector {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  height: 50px;
+  border-right: 1px solid #f2f2f2;
+}
+
+.agent-selector .layui-icon {
+  font-size: 16px;
+  color: #666;
 }
 
 

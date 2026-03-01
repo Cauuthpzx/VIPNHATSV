@@ -22,11 +22,35 @@ async function getAuthStore() {
   return _authStore;
 }
 
+// Lazy import agent store
+let _agentStore: ReturnType<typeof import("@/stores/agent").useAgentStore> | null = null;
+async function getAgentStore() {
+  if (!_agentStore) {
+    const { useAgentStore } = await import("@/stores/agent");
+    _agentStore = useAgentStore();
+  }
+  return _agentStore;
+}
+
 api.interceptors.request.use(async (config) => {
   const authStore = await getAuthStore();
   if (authStore.accessToken) {
     config.headers.Authorization = `Bearer ${authStore.accessToken}`;
   }
+
+  // Inject agentId into proxy POST requests
+  if (
+    config.method === "post" &&
+    config.url?.startsWith("/proxy/") &&
+    config.data &&
+    typeof config.data === "object"
+  ) {
+    const agentStore = await getAgentStore();
+    if (agentStore.selectedAgentId) {
+      config.data = { ...config.data, agentId: agentStore.selectedAgentId };
+    }
+  }
+
   return config;
 });
 

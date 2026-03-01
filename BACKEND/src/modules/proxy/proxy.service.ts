@@ -21,14 +21,15 @@ const CACHE_TTL: Record<string, number> = {
   "/agent/getLottery": 600,
 };
 
-function buildCacheKey(path: string, params: Record<string, string>): string {
+function buildCacheKey(path: string, params: Record<string, string>, agentId?: string): string {
   const sorted = Object.entries(params)
     .filter(([, v]) => v !== "" && v !== undefined)
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([k, v]) => `${k}=${v}`)
     .join("&");
   const hash = createHash("md5").update(sorted).digest("hex").slice(0, 12);
-  return `proxy:${path}:${hash}`;
+  const agentPrefix = agentId ? `agent:${agentId}:` : "";
+  return `proxy:${agentPrefix}${path}:${hash}`;
 }
 
 // Endpoints that use start_date + end_date instead of a single date range string
@@ -66,7 +67,8 @@ async function cachedProxyCall<T = unknown>(
   input: Record<string, unknown>,
 ): Promise<{ items: T[] | T; total: number; totalData?: Record<string, unknown> }> {
   const params = buildUpstreamParams(input, path);
-  const cacheKey = buildCacheKey(path, params);
+  const agentId = input.agentId as string | undefined;
+  const cacheKey = buildCacheKey(path, params, agentId);
   const ttl = CACHE_TTL[path] ?? 60;
 
   // 1. Check Redis cache
@@ -81,7 +83,6 @@ async function cachedProxyCall<T = unknown>(
   }
 
   // 2. Fetch from upstream
-  const agentId = input.agentId as string | undefined;
   const cookie = agentId
     ? await agentService.getAgentCookie(app, agentId)
     : await agentService.getDefaultAgentCookie(app);
