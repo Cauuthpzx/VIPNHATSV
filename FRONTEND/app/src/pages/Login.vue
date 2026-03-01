@@ -125,6 +125,7 @@ import { ref, reactive } from "vue";
 import { useRouter } from "vue-router";
 import { layer } from "@layui/layui-vue";
 import { useAuthStore } from "@/stores/auth";
+import { useNotificationStore } from "@/stores/notification";
 import { api } from "@/api/client";
 import loginBgUrl from "@/assets/login/login-bg.svg";
 import iconZalo from "@/assets/login/social/icon-zalo.svg";
@@ -174,6 +175,13 @@ async function handleLogin() {
 
   try {
     await authStore.login(loginForm.email, loginForm.password);
+    // Add login notification
+    const notifStore = useNotificationStore();
+    notifStore.add({
+      type: "success",
+      title: "Đăng nhập thành công",
+      message: `Xin chào ${authStore.user?.name || loginForm.email}! Phiên làm việc đã bắt đầu.`,
+    });
     layer.msg("Đăng nhập thành công!", { icon: 1, time: 1500 });
     setTimeout(() => router.push("/agent/welcome"), 500);
   } catch (err: any) {

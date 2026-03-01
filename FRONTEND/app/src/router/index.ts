@@ -146,15 +146,7 @@ export const router = createRouter({
 router.beforeEach(async (to) => {
   const authStore = useAuthStore();
 
-  // Auth initialization is handled by App.vue before any route renders.
-  // If somehow we get here before init (e.g. direct URL), wait for it.
-  if (!authStore.initialized) {
-    try {
-      await authStore.init();
-    } catch {
-      authStore.initialized = true;
-    }
-  }
+  // Auth is initialized in main.ts before app.mount(), so it's always ready here.
 
   if (to.meta.public) {
     // If already logged in and going to login page, redirect to welcome

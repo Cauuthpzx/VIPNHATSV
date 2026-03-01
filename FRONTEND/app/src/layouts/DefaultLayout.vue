@@ -6,6 +6,8 @@ import { useAuthStore } from "@/stores/auth";
 import { menuData } from "@/config/menu";
 import type { MenuItem } from "@/config/menu";
 import HubNav from "@/components/HubNav.vue";
+import HubNotification from "@/components/HubNotification.vue";
+import { useNotificationStore } from "@/stores/notification";
 import { useSidebarSlider, useTabsSlider } from "@/composables/useSidebarSlider";
 
 const router = useRouter();
@@ -94,6 +96,10 @@ function closeTabMenu() {
 
 useSidebarSlider(openKeys);
 useTabsSlider();
+
+// Seed demo notifications on first visit
+const notificationStore = useNotificationStore();
+notificationStore.seedDemoIfEmpty();
 </script>
 
 <template>
@@ -193,6 +199,7 @@ useTabsSlider();
         </a>
       </div>
       <div class="admin-header-right">
+        <HubNotification />
         <HubNav />
       </div>
     </lay-header>
@@ -495,6 +502,7 @@ useTabsSlider();
   height: 50px;
   display: flex;
   align-items: center;
+  gap: 4px;
   margin-right: 50px;
 }
 
