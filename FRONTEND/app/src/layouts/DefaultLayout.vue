@@ -4,6 +4,7 @@ import { useRouter, useRoute } from "vue-router";
 import { useAppStore } from "@/stores/app";
 import { menuData } from "@/config/menu";
 import HubNav from "@/components/HubNav.vue";
+import { useSidebarSlider, useTabsSlider } from "@/composables/useSidebarSlider";
 
 const router = useRouter();
 const route = useRoute();
@@ -72,6 +73,9 @@ function toggleTabMenu() {
 function closeTabMenu() {
   showTabMenu.value = false;
 }
+
+useSidebarSlider(openKeys);
+useTabsSlider();
 </script>
 
 <template>
@@ -314,7 +318,27 @@ function closeTabMenu() {
   height: 50px;
   line-height: 50px;
   font-size: 14px;
+  position: relative;
   transition: all 0.3s;
+}
+
+/* Parent menu indicator bar */
+.layui-side-menu .layui-nav .layui-nav-item > a::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 5px;
+  height: 100%;
+  border-radius: 0 3px 3px 0;
+  background: #009688;
+  transform: scaleY(0);
+  transform-origin: var(--bar-origin, top);
+  transition: transform 0.3s ease;
+}
+
+.layui-side-menu .layui-nav .layui-nav-item > a:hover::before {
+  transform: scaleY(1);
 }
 
 .layui-side-menu .layui-nav-tree .layui-nav-child {
@@ -346,23 +370,24 @@ function closeTabMenu() {
   color: #fff;
 }
 
-/* Active indicator bar - left side */
+/* Active indicator bar - left side, slides from mouse direction */
 .layui-side-menu .layui-nav-tree .layui-nav-child .layui-nav-item a::before {
   content: "";
   position: absolute;
   left: 0;
-  top: 50%;
-  transform: translateY(-50%) scaleY(0);
-  width: 3px;
-  height: 60%;
+  top: 0;
+  width: 5px;
+  height: 100%;
   border-radius: 0 3px 3px 0;
   background: #009688;
-  transition: transform 0.3s;
+  transform: scaleY(0);
+  transform-origin: var(--bar-origin, top);
+  transition: transform 0.3s ease;
 }
 
 .layui-side-menu .layui-nav-tree .layui-nav-child .layui-nav-item a:hover::before,
 .layui-side-menu .layui-nav-tree .layui-nav-child .layui-nav-item.layui-this a::before {
-  transform: translateY(-50%) scaleY(1);
+  transform: scaleY(1);
 }
 
 /* Parent menu hover */
@@ -576,14 +601,23 @@ function closeTabMenu() {
   background: #fff;
 }
 
-.layadmin-pagetabs .layui-tab-title li.layui-this::after {
+/* Tab indicator bar — slides from mouse direction (horizontal) */
+.layadmin-pagetabs .layui-tab-title li::after {
   content: "";
   position: absolute;
   left: 0;
-  right: 0;
   bottom: 0;
+  width: 100%;
   height: 2px;
   background: #5fb878;
+  transform: scaleX(0);
+  transform-origin: var(--bar-origin, left);
+  transition: transform 0.3s ease;
+}
+
+.layadmin-pagetabs .layui-tab-title li:hover::after,
+.layadmin-pagetabs .layui-tab-title li.layui-this::after {
+  transform: scaleX(1);
 }
 
 .layadmin-pagetabs .layui-tab-close {
