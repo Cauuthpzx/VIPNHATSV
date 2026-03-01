@@ -17,3 +17,11 @@ __pycache__/
 # Data files
 *.xlsx
 *.csv
+
+# Scripts with credentials
+ssh_connect.py
+check_server.py
+deploy_*.py
+
+# Claude Code
+.claude/

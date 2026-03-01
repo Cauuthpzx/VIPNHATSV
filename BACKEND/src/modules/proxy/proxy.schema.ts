@@ -94,6 +94,20 @@ export const updateAgentCookieSchema = z.object({
   cookieExpires: z.string().optional(),
 });
 
+export const editPasswordSchema = z.object({
+  old_password: z.string().min(1),
+  new_password: z.string().min(6),
+  confirm_password: z.string().min(6),
+  agentId: z.string().min(1, "agentId is required"),
+});
+
+export const editFundPasswordSchema = z.object({
+  old_fund_password: z.string().optional(),
+  new_fund_password: z.string().min(6),
+  confirm_fund_password: z.string().min(6),
+  agentId: z.string().min(1, "agentId is required"),
+});
+
 export type UserListInput = z.infer<typeof userListSchema>;
 export type BetListInput = z.infer<typeof betListSchema>;
 export type RebateOddsInput = z.infer<typeof rebateOddsSchema>;

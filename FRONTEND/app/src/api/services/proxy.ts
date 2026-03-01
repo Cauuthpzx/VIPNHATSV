@@ -156,10 +156,22 @@ export function updateProfile(data: { name: string }) {
   return api.put("/auth/profile", data);
 }
 
-export function changePassword(data: { oldPassword: string; newPassword: string }) {
-  return api.put("/auth/change-password", data);
+// --- Upstream password change (agent ee88) ---
+
+export function editUpstreamPassword(params: {
+  old_password: string;
+  new_password: string;
+  confirm_password: string;
+  agentId: string;
+}) {
+  return api.post("/proxy/edit-password", params);
 }
 
-export function changeFundPassword(data: { oldPassword?: string; newPassword: string }) {
-  return api.put("/auth/change-fund-password", data);
+export function editUpstreamFundPassword(params: {
+  old_fund_password?: string;
+  new_fund_password: string;
+  confirm_fund_password: string;
+  agentId: string;
+}) {
+  return api.post("/proxy/edit-fund-password", params);
 }

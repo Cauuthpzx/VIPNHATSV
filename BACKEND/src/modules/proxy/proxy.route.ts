@@ -14,6 +14,8 @@ import {
   getLotteryHandler,
   listAgentsHandler,
   updateAgentCookieHandler,
+  editPasswordHandler,
+  editFundPasswordHandler,
 } from "./proxy.controller.js";
 
 export async function proxyRoutes(app: FastifyInstance) {
@@ -32,6 +34,10 @@ export async function proxyRoutes(app: FastifyInstance) {
   app.post("/bet-order", betOrderHandler);
   app.post("/rebate-odds", rebateOddsHandler);
   app.post("/lottery-dropdown", getLotteryHandler);
+
+  // Action endpoints (upstream password change)
+  app.post("/edit-password", editPasswordHandler);
+  app.post("/edit-fund-password", editFundPasswordHandler);
 }
 
 export async function agentRoutes(app: FastifyInstance) {

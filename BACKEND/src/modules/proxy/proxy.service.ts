@@ -367,3 +367,26 @@ export function fetchRebateOdds(app: FastifyInstance, input: Record<string, unkn
 export function fetchLotteryDropdown(app: FastifyInstance, input: Record<string, unknown>) {
   return cachedProxyCall(app, "/agent/getLottery", input);
 }
+
+// ---------------------------------------------------------------------------
+// Action endpoints — forward to upstream without caching (write operations)
+// ---------------------------------------------------------------------------
+
+async function actionProxyCall(
+  app: FastifyInstance,
+  path: string,
+  input: Record<string, unknown>,
+) {
+  const agentId = input.agentId as string;
+  const cookie = await agentService.getAgentCookie(app, agentId);
+  const params = buildUpstreamParams(input, path);
+  return fetchUpstream({ path, cookie, params });
+}
+
+export function editPasswordUpstream(app: FastifyInstance, input: Record<string, unknown>) {
+  return actionProxyCall(app, "/agent/editPassword.html", input);
+}
+
+export function editFundPasswordUpstream(app: FastifyInstance, input: Record<string, unknown>) {
+  return actionProxyCall(app, "/agent/editFundPassword.html", input);
+}

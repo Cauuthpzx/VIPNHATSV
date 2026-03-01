@@ -16,6 +16,8 @@ import {
   rebateOddsSchema,
   getLotterySchema,
   updateAgentCookieSchema,
+  editPasswordSchema,
+  editFundPasswordSchema,
 } from "./proxy.schema.js";
 import { sendSuccess } from "../../utils/response.js";
 import { ValidationError } from "../../errors/ValidationError.js";
@@ -48,6 +50,8 @@ export const betListHandler = createProxyHandler(betListSchema, proxyService.fet
 export const betOrderHandler = createProxyHandler(betOrderSchema, proxyService.fetchBetOrder);
 export const rebateOddsHandler = createProxyHandler(rebateOddsSchema, proxyService.fetchRebateOdds);
 export const getLotteryHandler = createProxyHandler(getLotterySchema, proxyService.fetchLotteryDropdown);
+export const editPasswordHandler = createProxyHandler(editPasswordSchema, proxyService.editPasswordUpstream);
+export const editFundPasswordHandler = createProxyHandler(editFundPasswordSchema, proxyService.editFundPasswordUpstream);
 
 // Agent management
 export async function listAgentsHandler(
