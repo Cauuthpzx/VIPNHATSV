@@ -10,7 +10,6 @@
   },
   "dependencies": {
     "@layui/layui-vue": "workspace:*",
-    "@vueuse/core": "^10.7.0",
     "axios": "^1.6.0",
     "pinia": "^2.1.7",
     "vue": "3.3.13",

@@ -1,10 +1,11 @@
 import { PrismaClient, RoleType } from "@prisma/client";
-import { createHash } from "node:crypto";
+import bcrypt from "bcrypt";
 
 const prisma = new PrismaClient();
+const BCRYPT_ROUNDS = 12;
 
-function hashPassword(password: string): string {
-  return createHash("sha256").update(password).digest("hex");
+async function hashPassword(password: string): Promise<string> {
+  return bcrypt.hash(password, BCRYPT_ROUNDS);
 }
 
 async function main() {
@@ -43,10 +44,10 @@ async function main() {
 
   await prisma.user.upsert({
     where: { email: "admin@example.com" },
-    update: {},
+    update: { password: await hashPassword("admin123") },
     create: {
       email: "admin@example.com",
-      password: hashPassword("admin123"),
+      password: await hashPassword("admin123"),
       name: "Admin",
       roleId: adminRole.id,
     },
@@ -54,10 +55,10 @@ async function main() {
 
   await prisma.user.upsert({
     where: { email: "manager@example.com" },
-    update: {},
+    update: { password: await hashPassword("manager123") },
     create: {
       email: "manager@example.com",
-      password: hashPassword("manager123"),
+      password: await hashPassword("manager123"),
       name: "Manager",
       roleId: managerRole.id,
     },

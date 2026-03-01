@@ -111,6 +111,11 @@ const routes = [
       },
     ],
   },
+  {
+    path: "/:pathMatch(.*)*",
+    name: "NotFound",
+    redirect: "/agent/welcome",
+  },
 ];
 
 export const router = createRouter({
@@ -121,9 +126,16 @@ export const router = createRouter({
 router.beforeEach(async (to) => {
   const authStore = useAuthStore();
 
-  // Initialize auth on first navigation
+  // Initialize auth on first navigation (timeout 5s to prevent white screen)
   if (!authStore.initialized) {
-    await authStore.init();
+    try {
+      await Promise.race([
+        authStore.init(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 5000)),
+      ]);
+    } catch {
+      authStore.initialized = true;
+    }
   }
 
   if (to.meta.public) {

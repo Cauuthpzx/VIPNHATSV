@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { loginSchema, refreshSchema } from "./auth.schema.js";
 import * as authService from "./auth.service.js";
+import * as usersService from "../users/users.service.js";
 import { sendSuccess } from "../../utils/response.js";
 import { ValidationError } from "../../errors/ValidationError.js";
 import { HTTP_STATUS } from "../../constants/http.js";
@@ -46,9 +47,6 @@ export async function meHandler(
   request: FastifyRequest,
   reply: FastifyReply,
 ) {
-  const user = await this.prisma.user.findUnique({
-    where: { id: request.user.userId },
-    select: { id: true, email: true, name: true, isActive: true, role: true },
-  });
+  const user = await usersService.getUserById(this, request.user.userId);
   return sendSuccess(reply, user, HTTP_STATUS.OK);
 }

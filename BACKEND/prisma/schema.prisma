@@ -67,3 +67,214 @@ model Agent {
 
   @@map("agents")
 }
+
+// ===================================================================
+// PROXY DATA TABLES — synced from upstream via background job
+// ===================================================================
+
+model ProxyUser {
+  id               String   @id @default(cuid())
+  agentId          String   @map("agent_id")
+  username         String   @unique
+  typeFormat       String?  @map("type_format")
+  parentUser       String?  @map("parent_user")
+  money            Decimal? @db.Decimal(18, 4)
+  depositCount     Int?     @default(0) @map("deposit_count")
+  withdrawalCount  Int?     @default(0) @map("withdrawal_count")
+  depositAmount    Decimal? @default(0) @db.Decimal(18, 4) @map("deposit_amount")
+  withdrawalAmount Decimal? @default(0) @db.Decimal(18, 4) @map("withdrawal_amount")
+  loginTime        String?  @map("login_time")
+  registerTime     String?  @map("register_time")
+  statusFormat     String?  @map("status_format")
+  raw              Json     @default("{}")
+  syncedAt         DateTime @default(now()) @map("synced_at")
+
+  @@index([agentId])
+  @@index([registerTime(sort: Desc)])
+  @@index([agentId, registerTime(sort: Desc)])
+  @@map("proxy_users")
+}
+
+model ProxyInvite {
+  id               String   @id @default(cuid())
+  agentId          String   @map("agent_id")
+  inviteCode       String   @map("invite_code")
+  userType         String?  @map("user_type")
+  regCount         Int?     @default(0) @map("reg_count")
+  scopeRegCount    Int?     @default(0) @map("scope_reg_count")
+  rechargeCount    Int?     @default(0) @map("recharge_count")
+  firstRechargeCount Int?   @default(0) @map("first_recharge_count")
+  registerRechargeCount Int? @default(0) @map("register_recharge_count")
+  remark           String?
+  createTime       String?  @map("create_time")
+  raw              Json     @default("{}")
+  syncedAt         DateTime @default(now()) @map("synced_at")
+
+  @@unique([agentId, inviteCode], name: "uq_invite")
+  @@index([createTime(sort: Desc)])
+  @@map("proxy_invites")
+}
+
+model ProxyDeposit {
+  id               String   @id @default(cuid())
+  agentId          String   @map("agent_id")
+  username         String
+  userParentFormat String?  @map("user_parent_format")
+  amount           Decimal? @db.Decimal(18, 4)
+  type             String?
+  status           String?
+  createTime       String?  @map("create_time")
+  raw              Json     @default("{}")
+  syncedAt         DateTime @default(now()) @map("synced_at")
+
+  @@unique([agentId, username, amount, type, createTime], name: "uq_deposit")
+  @@index([createTime(sort: Desc)])
+  @@index([username, createTime(sort: Desc)])
+  @@map("proxy_deposits")
+}
+
+model ProxyWithdrawal {
+  id               String   @id @default(cuid())
+  agentId          String   @map("agent_id")
+  serialNo         String   @unique @map("serial_no")
+  username         String
+  userParentFormat String?  @map("user_parent_format")
+  amount           Decimal? @db.Decimal(18, 4)
+  userFee          Decimal? @db.Decimal(18, 4) @map("user_fee")
+  trueAmount       Decimal? @db.Decimal(18, 4) @map("true_amount")
+  statusFormat     String?  @map("status_format")
+  createTime       String?  @map("create_time")
+  raw              Json     @default("{}")
+  syncedAt         DateTime @default(now()) @map("synced_at")
+
+  @@index([createTime(sort: Desc)])
+  @@index([username, createTime(sort: Desc)])
+  @@map("proxy_withdrawals")
+}
+
+model ProxyBet {
+  id             String   @id @default(cuid())
+  agentId        String   @map("agent_id")
+  serialNo       String   @unique @map("serial_no")
+  username       String
+  lotteryName    String?  @map("lottery_name")
+  playTypeName   String?  @map("play_type_name")
+  playName       String?  @map("play_name")
+  issue          String?
+  content        String?
+  money          Decimal? @db.Decimal(18, 4)
+  rebateAmount   Decimal? @db.Decimal(18, 4) @map("rebate_amount")
+  result         Decimal? @db.Decimal(18, 4)
+  statusText     String?  @map("status_text")
+  createTime     String?  @map("create_time")
+  raw            Json     @default("{}")
+  syncedAt       DateTime @default(now()) @map("synced_at")
+
+  @@index([createTime(sort: Desc)])
+  @@index([username, createTime(sort: Desc)])
+  @@map("proxy_bets")
+}
+
+model ProxyBetOrder {
+  id               String   @id @default(cuid())
+  agentId          String   @map("agent_id")
+  serialNo         String   @unique @map("serial_no")
+  platformIdName   String?  @map("platform_id_name")
+  platformUsername  String?  @map("platform_username")
+  cName            String?  @map("c_name")
+  gameName         String?  @map("game_name")
+  betAmount        Decimal? @db.Decimal(18, 4) @map("bet_amount")
+  turnover         Decimal? @db.Decimal(18, 4)
+  prize            Decimal? @db.Decimal(18, 4)
+  winLose          Decimal? @db.Decimal(18, 4) @map("win_lose")
+  betTime          String?  @map("bet_time")
+  raw              Json     @default("{}")
+  syncedAt         DateTime @default(now()) @map("synced_at")
+
+  @@index([betTime(sort: Desc)])
+  @@index([platformUsername, betTime(sort: Desc)])
+  @@map("proxy_bet_orders")
+}
+
+model ProxyReportLottery {
+  id               String   @id @default(cuid())
+  agentId          String   @map("agent_id")
+  username         String
+  userParentFormat String?  @map("user_parent_format")
+  lotteryName      String   @map("lottery_name")
+  betCount         Int?     @default(0) @map("bet_count")
+  betAmount        Decimal? @db.Decimal(18, 4) @map("bet_amount")
+  validAmount      Decimal? @db.Decimal(18, 4) @map("valid_amount")
+  rebateAmount     Decimal? @db.Decimal(18, 4) @map("rebate_amount")
+  result           Decimal? @db.Decimal(18, 4)
+  winLose          Decimal? @db.Decimal(18, 4) @map("win_lose")
+  prize            Decimal? @db.Decimal(18, 4)
+  reportDate       String   @map("report_date")
+  raw              Json     @default("{}")
+  syncedAt         DateTime @default(now()) @map("synced_at")
+
+  @@unique([agentId, username, lotteryName, reportDate], name: "uq_report_lottery")
+  @@index([reportDate(sort: Desc)])
+  @@index([username, reportDate(sort: Desc)])
+  @@map("proxy_report_lottery")
+}
+
+model ProxyReportFunds {
+  id                   String   @id @default(cuid())
+  agentId              String   @map("agent_id")
+  username             String
+  userParentFormat     String?  @map("user_parent_format")
+  depositCount         Int?     @default(0) @map("deposit_count")
+  depositAmount        Decimal? @db.Decimal(18, 4) @map("deposit_amount")
+  withdrawalCount      Int?     @default(0) @map("withdrawal_count")
+  withdrawalAmount     Decimal? @db.Decimal(18, 4) @map("withdrawal_amount")
+  chargeFee            Decimal? @db.Decimal(18, 4) @map("charge_fee")
+  agentCommission      Decimal? @db.Decimal(18, 4) @map("agent_commission")
+  promotion            Decimal? @db.Decimal(18, 4)
+  thirdRebate          Decimal? @db.Decimal(18, 4) @map("third_rebate")
+  thirdActivityAmount  Decimal? @db.Decimal(18, 4) @map("third_activity_amount")
+  reportDate           String   @map("report_date")
+  raw                  Json     @default("{}")
+  syncedAt             DateTime @default(now()) @map("synced_at")
+
+  @@unique([agentId, username, reportDate], name: "uq_report_funds")
+  @@index([reportDate(sort: Desc)])
+  @@index([username, reportDate(sort: Desc)])
+  @@map("proxy_report_funds")
+}
+
+model ProxyReportThirdGame {
+  id               String   @id @default(cuid())
+  agentId          String   @map("agent_id")
+  username         String
+  platformIdName   String   @map("platform_id_name")
+  tBetTimes        Int?     @default(0) @map("t_bet_times")
+  tBetAmount       Decimal? @db.Decimal(18, 4) @map("t_bet_amount")
+  tTurnover        Decimal? @db.Decimal(18, 4) @map("t_turnover")
+  tPrize           Decimal? @db.Decimal(18, 4) @map("t_prize")
+  tWinLose         Decimal? @db.Decimal(18, 4) @map("t_win_lose")
+  reportDate       String   @map("report_date")
+  raw              Json     @default("{}")
+  syncedAt         DateTime @default(now()) @map("synced_at")
+
+  @@unique([agentId, username, platformIdName, reportDate], name: "uq_report_third_game")
+  @@index([reportDate(sort: Desc)])
+  @@index([username, reportDate(sort: Desc)])
+  @@map("proxy_report_third_game")
+}
+
+model ProxyBank {
+  id           String   @id @default(cuid())
+  agentId      String   @map("agent_id")
+  upstreamId   String   @unique @map("upstream_id")
+  isDefault    String?  @map("is_default_format")
+  bankName     String?  @map("bank_name")
+  bankBranch   String?  @map("bank_branch")
+  cardNo       String?  @map("card_no")
+  name         String?
+  raw          Json     @default("{}")
+  syncedAt     DateTime @default(now()) @map("synced_at")
+
+  @@index([agentId])
+  @@map("proxy_banks")
+}

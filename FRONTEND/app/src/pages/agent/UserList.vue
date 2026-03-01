@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { reactive, watch, onMounted } from "vue";
+import { reactive } from "vue";
 import { useListPage } from "@/composables/useListPage";
 import { useAutoFitSelect } from "@/composables/useAutoFitSelect";
 import { useAgentFilter } from "@/composables/useAgentFilter";
 import { fetchUserList } from "@/api/services/proxy";
 import { layer } from "@layui/layui-vue";
 
-const { dataSource, loading, page, scrollToTable, setLoading } = useListPage();
+const { dataSource, loading, page, setLoading, bindLoadData } = useListPage();
 const { selectedAgentId, agentOptions, agentWidth, notifySuccess } = useAgentFilter();
 
 const searchForm = reactive({
@@ -63,6 +63,8 @@ async function loadData() {
       limit: page.limit,
       username: searchForm.username || undefined,
       status: searchForm.status || undefined,
+      sort_field: searchForm.sortField || undefined,
+      sort_order: searchForm.sortOrder || undefined,
     });
     dataSource.value = res.data.data.items;
     page.total = res.data.data.total;
@@ -74,10 +76,7 @@ async function loadData() {
   }
 }
 
-function handleSearch() {
-  page.current = 1;
-  loadData();
-}
+const { handlePageChange, handleSearch } = bindLoadData(loadData, selectedAgentId);
 
 function handleReset() {
   searchForm.username = "";
@@ -88,15 +87,6 @@ function handleReset() {
   page.current = 1;
   loadData();
 }
-
-function change(p: { current: number; limit: number }) {
-  page.current = p.current;
-  page.limit = p.limit;
-  scrollToTable(); loadData();
-}
-
-watch(selectedAgentId, () => { page.current = 1; loadData(); });
-onMounted(() => loadData());
 </script>
 
 <template>
@@ -155,7 +145,7 @@ onMounted(() => loadData());
           :loading="loading"
           :default-toolbar="true"
           :data-source="dataSource"
-          @change="change"
+          @change="handlePageChange"
         >
           <template v-slot:toolbar>
             <lay-button type="normal" size="xs">+ Thêm hội viên</lay-button>

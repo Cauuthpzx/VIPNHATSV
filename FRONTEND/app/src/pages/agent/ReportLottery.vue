@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, ref, watch, onMounted } from "vue";
+import { reactive, ref, onMounted } from "vue";
 import { useDateRange } from "@/composables/useDateRange";
 import { useListPage } from "@/composables/useListPage";
 import { useAutoFitSelect } from "@/composables/useAutoFitSelect";
@@ -8,7 +8,7 @@ import { fetchReportLottery, fetchLotteryDropdown } from "@/api/services/proxy";
 import { layer } from "@layui/layui-vue";
 
 const { dateRange, dateQuickSelect, dateQuickOptions, dateQuickWidth, resetDateRange } = useDateRange("today");
-const { dataSource, loading, page, scrollToTable, setLoading } = useListPage();
+const { dataSource, loading, page, setLoading, bindLoadData } = useListPage();
 const { selectedAgentId, agentOptions, agentWidth, notifySuccess } = useAgentFilter();
 
 const searchForm = reactive({
@@ -96,16 +96,7 @@ async function loadData() {
   }
 }
 
-function handleSearch() {
-  page.current = 1;
-  loadData();
-}
-
-function change(p: { current: number; limit: number }) {
-  page.current = p.current;
-  page.limit = p.limit;
-  scrollToTable(); loadData();
-}
+const { handlePageChange, handleSearch } = bindLoadData(loadData, selectedAgentId);
 
 function handleReset() {
   resetDateRange();
@@ -113,11 +104,7 @@ function handleReset() {
   searchForm.username = "";
 }
 
-watch(selectedAgentId, () => { page.current = 1; loadData(); });
-onMounted(() => {
-  loadLotteryOptions();
-  loadData();
-});
+onMounted(() => loadLotteryOptions());
 </script>
 
 <template>
@@ -169,7 +156,7 @@ onMounted(() => {
           :loading="loading"
           :default-toolbar="true"
           :data-source="dataSource"
-          @change="change"
+          @change="handlePageChange"
         >
           <template #num="{ row, column }">
             <lay-count-up :end-val="Number(row[column.key]) || 0" :duration="600" :decimal-places="String(row[column.key]).includes('.') ? 2 : 0" :use-grouping="false" />

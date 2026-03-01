@@ -1,8 +1,8 @@
 import type { FastifyInstance } from "fastify";
-import { createHash } from "node:crypto";
 import { NotFoundError } from "../../errors/NotFoundError.js";
 import { ConflictError } from "../../errors/ConflictError.js";
 import { ERROR_CODES } from "../../constants/error-codes.js";
+import { hashPassword } from "../auth/auth.service.js";
 import type { CreateUserInput, UpdateUserInput, UserQuery } from "./users.schema.js";
 
 const userSelect = {
@@ -15,10 +15,6 @@ const userSelect = {
   createdAt: true,
   updatedAt: true,
 } as const;
-
-function hashPassword(password: string): string {
-  return createHash("sha256").update(password).digest("hex");
-}
 
 export async function listUsers(app: FastifyInstance, query: UserQuery) {
   const where = query.search
@@ -55,7 +51,7 @@ export async function createUser(app: FastifyInstance, input: CreateUserInput) {
   if (existing) throw new ConflictError("Email already exists", ERROR_CODES.EMAIL_EXISTS);
 
   return app.prisma.user.create({
-    data: { ...input, password: hashPassword(input.password) },
+    data: { ...input, password: await hashPassword(input.password) },
     select: userSelect,
   });
 }

@@ -8,3 +8,12 @@ chrome_profile/
 captured/
 __pycache__/
 *.pyc
+
+# Environment & secrets
+.env
+.env.local
+.env.*.local
+
+# Data files
+*.xlsx
+*.csv

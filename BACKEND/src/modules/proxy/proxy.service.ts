@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { fetchUpstream } from "./proxy.client.js";
 import * as agentService from "./agent.service.js";
 import { decryptSessionCookie } from "../../utils/crypto.js";
+import { promisePool } from "../../utils/concurrency.js";
 import { wsManager } from "../../websocket/ws.manager.js";
 import { logger } from "../../utils/logger.js";
 
@@ -95,33 +96,13 @@ function isReferenceRequest(path: string, input: Record<string, unknown>): boole
 }
 
 // ---------------------------------------------------------------------------
-// Worker pool — run N async tasks with bounded concurrency
+// Types
 // ---------------------------------------------------------------------------
 
 interface SingleResult<T> {
   items: T[];
   total: number;
   totalData?: Record<string, unknown>;
-}
-
-async function promisePool<TItem, TResult>(
-  items: TItem[],
-  concurrency: number,
-  fn: (item: TItem) => Promise<TResult>,
-): Promise<TResult[]> {
-  const results: TResult[] = new Array(items.length);
-  let idx = 0;
-
-  async function worker() {
-    while (idx < items.length) {
-      const i = idx++;
-      results[i] = await fn(items[i]);
-    }
-  }
-
-  const workerCount = Math.min(concurrency, items.length);
-  await Promise.all(Array.from({ length: workerCount }, () => worker()));
-  return results;
 }
 
 // ---------------------------------------------------------------------------
@@ -203,16 +184,25 @@ async function fetchSingleAgent<T = unknown>(
   // 2. Fetch from upstream
   const upstream = await fetchUpstream<T>({ path, cookie, params });
 
-  const rawItems = Array.isArray(upstream.data) ? upstream.data : [];
+  let result: SingleResult<T>;
 
-  // Stamp each item with agent name
-  const items = rawItems.map((item: any) => ({ _agentName: agentName, ...item }));
-
-  const result: SingleResult<T> = {
-    items: items as T[],
-    total: upstream.count ?? 0,
-    totalData: upstream.total_data,
-  };
+  if (Array.isArray(upstream.data)) {
+    // List endpoints — stamp each item with agent name
+    const items = upstream.data.map((item: any) => ({ _agentName: agentName, ...item }));
+    result = {
+      items: items as T[],
+      total: upstream.count ?? 0,
+      totalData: upstream.total_data,
+    };
+  } else {
+    // Reference/dropdown endpoints (getLottery, bet.html with play_type) —
+    // upstream.data is an object, pass through as-is
+    result = {
+      items: upstream.data as T[],
+      total: upstream.count ?? 0,
+      totalData: upstream.total_data,
+    };
+  }
 
   // 3. Store in Redis
   try {

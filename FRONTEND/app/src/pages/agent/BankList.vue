@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { reactive, watch, onMounted } from "vue";
+import { reactive } from "vue";
 import { useListPage } from "@/composables/useListPage";
 import { fetchBankList } from "@/api/services/proxy";
 import { layer } from "@layui/layui-vue";
 import { useAgentFilter } from "@/composables/useAgentFilter";
 
-const { dataSource, loading, page, scrollToTable, setLoading } = useListPage();
+const { dataSource, loading, page, setLoading, bindLoadData } = useListPage();
 const { selectedAgentId, agentOptions, agentWidth, notifySuccess } = useAgentFilter();
 
 const searchForm = reactive({
@@ -41,10 +41,7 @@ async function loadData() {
   }
 }
 
-function handleSearch() {
-  page.current = 1;
-  loadData();
-}
+const { handlePageChange, handleSearch } = bindLoadData(loadData, selectedAgentId);
 
 function handleReset() {
   searchForm.accountNumber = "";
@@ -63,15 +60,6 @@ function handleEdit(row: any) {
 function handleDelete(row: any) {
   console.log("Delete:", row);
 }
-
-function change(p: { current: number; limit: number }) {
-  page.current = p.current;
-  page.limit = p.limit;
-  scrollToTable(); loadData();
-}
-
-watch(selectedAgentId, () => { page.current = 1; loadData(); });
-onMounted(() => loadData());
 </script>
 
 <template>
@@ -108,7 +96,7 @@ onMounted(() => loadData());
           :loading="loading"
           :default-toolbar="true"
           :data-source="dataSource"
-          @change="change"
+          @change="handlePageChange"
         >
           <template v-slot:toolbar>
             <lay-button type="normal" size="xs" @click="handleAdd">+ Thêm tài khoản ngân hàng</lay-button>

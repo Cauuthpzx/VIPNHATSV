@@ -8,7 +8,7 @@ import { fetchBetList, fetchLotteryDropdown } from "@/api/services/proxy";
 import { layer } from "@layui/layui-vue";
 
 const { dateRange, dateQuickSelect, dateQuickOptions, dateQuickWidth, resetDateRange } = useDateRange("today");
-const { dataSource, loading, page, scrollToTable, setLoading } = useListPage();
+const { dataSource, loading, page, setLoading, bindLoadData } = useListPage();
 const { selectedAgentId, agentOptions, agentWidth, notifySuccess } = useAgentFilter();
 
 const searchForm = reactive({
@@ -41,6 +41,7 @@ const statusOptions = [
   { label: "Khách hủy đơn", value: "3" },
   { label: "Hệ thống hủy đơn", value: "4" },
   { label: "Đơn cược bất thường", value: "5" },
+  { label: "Chưa thanh toán (khôi phục thủ công)", value: "6" },
 ];
 
 // Store lottery data for series_id lookup in cascading selects
@@ -166,16 +167,7 @@ async function loadData() {
   }
 }
 
-function handleSearch() {
-  page.current = 1;
-  loadData();
-}
-
-function change(p: { current: number; limit: number }) {
-  page.current = p.current;
-  page.limit = p.limit;
-  scrollToTable(); loadData();
-}
+const { handlePageChange, handleSearch } = bindLoadData(loadData, selectedAgentId);
 
 function handleReset() {
   resetDateRange();
@@ -187,11 +179,7 @@ function handleReset() {
   searchForm.status = "";
 }
 
-watch(selectedAgentId, () => { page.current = 1; loadData(); });
-onMounted(() => {
-  loadDropdownData();
-  loadData();
-});
+onMounted(() => loadDropdownData());
 </script>
 
 <template>
@@ -223,19 +211,19 @@ onMounted(() => {
           <lay-input v-model="searchForm.serialNo" placeholder="Nhập mã giao dịch" />
         </div>
         <div class="layui-inline">
-          <span class="form-label">Tên loại xổ :</span>
+          <span class="form-label">Trò chơi :</span>
           <lay-select v-model="searchForm.lotteryType" :style="{ width: lotteryWidth }">
             <lay-select-option v-for="opt in lotteryOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
           </lay-select>
         </div>
         <div class="layui-inline">
-          <span class="form-label">Kiểu chơi :</span>
+          <span class="form-label">Loại trò chơi :</span>
           <lay-select v-model="searchForm.playType" :style="{ width: playTypeWidth }">
             <lay-select-option v-for="opt in playTypeOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
           </lay-select>
         </div>
         <div class="layui-inline">
-          <span class="form-label">Trò chơi :</span>
+          <span class="form-label">Cách chơi :</span>
           <lay-select v-model="searchForm.play" :style="{ width: playWidth }">
             <lay-select-option v-for="opt in playOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
           </lay-select>
@@ -265,7 +253,7 @@ onMounted(() => {
           :loading="loading"
           :default-toolbar="true"
           :data-source="dataSource"
-          @change="change"
+          @change="handlePageChange"
         >
           <template #num="{ row, column }">
             <lay-count-up :end-val="Number(row[column.key]) || 0" :duration="600" :decimal-places="String(row[column.key]).includes('.') ? 2 : 0" :use-grouping="false" />

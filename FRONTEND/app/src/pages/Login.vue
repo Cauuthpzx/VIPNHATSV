@@ -190,7 +190,7 @@ async function handleLogin() {
 }
 </script>
 
-<style lang="less" scoped>
+<style scoped>
 /* ── Page ── */
 .login-page {
   position: relative; width: 100vw; height: 100vh;
@@ -209,8 +209,8 @@ async function handleLogin() {
 /* ── Animated BG ── */
 .login-bg {
   position: absolute; inset: 0; z-index: 0;
-  :deep(svg) { width: 100%; height: 100%; }
 }
+.login-bg :deep(svg) { width: 100%; height: 100%; }
 
 /* ── Card Wrapper ── */
 .login-wrapper {
@@ -277,26 +277,27 @@ async function handleLogin() {
 /* ── Inputs ── */
 .input-group {
   position: relative; margin-bottom: 16px;
-  .icon {
-    position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
-    z-index: 2; font-size: 22px; color: #999; line-height: 1;
-    -webkit-font-smoothing: antialiased;
-    padding-right: 10px; border-right: 1px solid #ddd;
-  }
-  .icon-suffix {
-    position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
-    z-index: 2; font-size: 22px; color: #999; cursor: pointer; line-height: 1;
-    -webkit-font-smoothing: antialiased;
-    &:hover { color: #16baaa; }
-  }
 }
+.input-group .icon {
+  position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+  z-index: 2; font-size: 22px; color: #999; line-height: 1;
+  -webkit-font-smoothing: antialiased;
+  padding-right: 10px; border-right: 1px solid #ddd;
+}
+.input-group .icon-suffix {
+  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+  z-index: 2; font-size: 22px; color: #999; cursor: pointer; line-height: 1;
+  -webkit-font-smoothing: antialiased;
+}
+.input-group .icon-suffix:hover { color: #16baaa; }
+
 .login-input {
   width: 100%; height: 42px; padding: 0 36px 0 48px;
   border: 1px solid #ddd; border-radius: 4px; font-size: 14px;
   outline: none; transition: border-color 0.2s; background: #fff;
-  &:focus { border-color: #16baaa; }
-  &::placeholder { color: #bbb; }
 }
+.login-input:focus { border-color: #16baaa; }
+.login-input::placeholder { color: #bbb; }
 
 /* ── Captcha ── */
 .captcha-row { display: flex; gap: 10px; margin-bottom: 16px; }
@@ -305,17 +306,17 @@ async function handleLogin() {
   flex-shrink: 0; width: 110px; height: 42px;
   border: 1px solid #ddd; border-radius: 4px; overflow: hidden; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
-  &:hover { border-color: #16baaa; }
-  :deep(svg) { width: 100%; height: 100%; }
 }
+.captcha-img:hover { border-color: #16baaa; }
+.captcha-img :deep(svg) { width: 100%; height: 100%; }
 .captcha-placeholder { font-size: 12px; color: #999; }
 
 /* ── Remember ── */
 .remember-row {
   display: flex; align-items: center; gap: 6px;
   margin: 4px 0 18px; font-size: 13px; color: #666; cursor: pointer;
-  input { accent-color: #16baaa; width: 15px; height: 15px; }
 }
+.remember-row input { accent-color: #16baaa; width: 15px; height: 15px; }
 
 /* ── Button ── */
 .login-btn {
@@ -324,10 +325,10 @@ async function handleLogin() {
   color: #fff; font-size: 16px; font-weight: 500; letter-spacing: 2px;
   cursor: pointer; transition: all 0.25s;
   display: flex; align-items: center; justify-content: center; gap: 8px;
-  &:hover { background: linear-gradient(135deg, #13a89a 0%, #0f9b8e 100%); }
-  &:active { transform: scale(0.98); }
-  &:disabled { opacity: 0.7; cursor: not-allowed; }
 }
+.login-btn:hover { background: linear-gradient(135deg, #13a89a 0%, #0f9b8e 100%); }
+.login-btn:active { transform: scale(0.98); }
+.login-btn:disabled { opacity: 0.7; cursor: not-allowed; }
 
 .btn-spinner {
   width: 16px; height: 16px;
@@ -339,19 +340,20 @@ async function handleLogin() {
 /* ── Divider ── */
 .login-divider {
   display: flex; align-items: center; margin: 20px 0; color: #aaa; font-size: 12px;
-  &::before, &::after { content: ''; flex: 1; height: 1px; background: #e8e8e8; }
-  span { padding: 0 12px; white-space: nowrap; }
 }
+.login-divider::before,
+.login-divider::after { content: ''; flex: 1; height: 1px; background: #e8e8e8; }
+.login-divider span { padding: 0 12px; white-space: nowrap; }
 
 /* ── Social ── */
 .social-row { display: flex; justify-content: center; gap: 28px; }
 .social-item {
   display: flex; flex-direction: column; align-items: center; gap: 6px;
   cursor: pointer; transition: transform 0.2s;
-  &:hover { transform: translateY(-2px); }
-  img { width: 32px; height: 32px; }
-  span { font-size: 11px; color: #888; }
 }
+.social-item:hover { transform: translateY(-2px); }
+.social-item img { width: 32px; height: 32px; }
+.social-item span { font-size: 11px; color: #888; }
 
 /* ── Responsive ── */
 @media (max-width: 960px) {

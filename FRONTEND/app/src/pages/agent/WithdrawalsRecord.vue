@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, watch, onMounted } from "vue";
+import { reactive } from "vue";
 import { useDateRange } from "@/composables/useDateRange";
 import { useListPage } from "@/composables/useListPage";
 import { useAutoFitSelect } from "@/composables/useAutoFitSelect";
@@ -7,9 +7,8 @@ import { useAgentFilter } from "@/composables/useAgentFilter";
 import { fetchWithdrawalsRecord } from "@/api/services/proxy";
 import { layer } from "@layui/layui-vue";
 
-
 const { dateRange, dateQuickSelect, dateQuickOptions, dateQuickWidth, resetDateRange } = useDateRange("today");
-const { dataSource, loading, page, scrollToTable, setLoading } = useListPage();
+const { dataSource, loading, page, setLoading, bindLoadData } = useListPage();
 const { selectedAgentId, agentOptions, agentWidth, notifySuccess } = useAgentFilter();
 
 const searchForm = reactive({
@@ -48,6 +47,7 @@ async function loadData() {
       page: page.current,
       limit: page.limit,
       username: searchForm.username || undefined,
+      serial_no: searchForm.serialNumber || undefined,
       status: searchForm.status || undefined,
       date: dateRange.value?.length === 2 ? `${dateRange.value[0]} - ${dateRange.value[1]}` : undefined,
     });
@@ -61,10 +61,7 @@ async function loadData() {
   }
 }
 
-function handleSearch() {
-  page.current = 1;
-  loadData();
-}
+const { handlePageChange, handleSearch } = bindLoadData(loadData, selectedAgentId);
 
 function handleReset() {
   resetDateRange();
@@ -78,15 +75,6 @@ function handleReset() {
 function handleDetail(row: any) {
   console.log("Detail:", row);
 }
-
-function change(p: { current: number; limit: number }) {
-  page.current = p.current;
-  page.limit = p.limit;
-  scrollToTable(); loadData();
-}
-
-watch(selectedAgentId, () => { page.current = 1; loadData(); });
-onMounted(() => loadData());
 </script>
 
 <template>
@@ -142,7 +130,7 @@ onMounted(() => loadData());
           :loading="loading"
           :default-toolbar="true"
           :data-source="dataSource"
-          @change="change"
+          @change="handlePageChange"
         >
           <template #num="{ row, column }">
             <lay-count-up :end-val="Number(row[column.key]) || 0" :duration="600" :decimal-places="String(row[column.key]).includes('.') ? 2 : 0" :use-grouping="false" />

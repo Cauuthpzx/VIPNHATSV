@@ -16,7 +16,7 @@ export const useAuthStore = defineStore("auth", () => {
   const accessToken = ref(localStorage.getItem(TOKEN_KEY) || "");
   const refreshToken = ref(localStorage.getItem(REFRESH_KEY) || "");
   const user = ref<AuthUser | null>(null);
-  const isLoggedIn = computed(() => !!accessToken.value);
+  const isLoggedIn = computed(() => !!accessToken.value && user.value !== null);
   const initialized = ref(false);
 
   // Sync tokens to localStorage whenever they change
@@ -83,6 +83,11 @@ export const useAuthStore = defineStore("auth", () => {
     const ok = await refreshAccessToken();
     if (ok) {
       await fetchMe();
+      // If fetchMe failed to set user, clear tokens to avoid stale state
+      if (!user.value) {
+        accessToken.value = "";
+        refreshToken.value = "";
+      }
     }
     initialized.value = true;
   }

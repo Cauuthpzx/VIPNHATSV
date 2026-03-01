@@ -22,6 +22,9 @@ const envSchema = z.object({
   UPSTREAM_BASE_URL: z.string().default("https://a2u4k.ee88dly.com"),
   UPSTREAM_TIMEOUT_MS: z.coerce.number().default(15_000),
   ENCRYPTION_KEY: z.string().length(64),
+
+  SYNC_ENABLED: z.coerce.boolean().default(true),
+  SYNC_INTERVAL_MS: z.coerce.number().default(300_000),
 });
 
 export type Env = z.infer<typeof envSchema>;

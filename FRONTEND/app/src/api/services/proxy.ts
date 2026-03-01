@@ -17,6 +17,8 @@ export function fetchUserList(params: {
   limit: number;
   username?: string;
   status?: string;
+  sort_field?: string;
+  sort_order?: string;
 }) {
   return api.post<ProxyResponse>("/proxy/user", params);
 }
@@ -87,6 +89,7 @@ export function fetchWithdrawalsRecord(params: {
   page: number;
   limit: number;
   username?: string;
+  serial_no?: string;
   status?: string;
   date?: string;
 }) {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive } from "vue";
+import { reactive, ref } from "vue";
 import { layer } from "@layui/layui-vue";
 
 const props = withDefaults(
@@ -10,6 +10,7 @@ const props = withDefaults(
     confirmLabel?: string;
     validationMsgOld?: string;
     successMsg?: string;
+    onSubmit?: (data: { oldPassword: string; newPassword: string }) => Promise<void>;
   }>(),
   {
     oldPasswordLabel: "Mật khẩu cũ",
@@ -20,17 +21,15 @@ const props = withDefaults(
   }
 );
 
-const emit = defineEmits<{
-  (e: "submit", data: { oldPassword: string; newPassword: string }): void;
-}>();
-
 const formData = reactive({
   oldPassword: "",
   newPassword: "",
   confirmPassword: "",
 });
 
-function handleSubmit() {
+const submitting = ref(false);
+
+async function handleSubmit() {
   if (!formData.oldPassword) {
     layer.msg(props.validationMsgOld, { icon: 2 });
     return;
@@ -48,17 +47,25 @@ function handleSubmit() {
     return;
   }
 
-  emit("submit", {
-    oldPassword: formData.oldPassword,
-    newPassword: formData.newPassword,
-  });
+  if (!props.onSubmit) return;
 
-  layer.msg(props.successMsg, { icon: 1 });
-  Object.assign(formData, {
-    oldPassword: "",
-    newPassword: "",
-    confirmPassword: "",
-  });
+  submitting.value = true;
+  try {
+    await props.onSubmit({
+      oldPassword: formData.oldPassword,
+      newPassword: formData.newPassword,
+    });
+    layer.msg(props.successMsg, { icon: 1 });
+    Object.assign(formData, {
+      oldPassword: "",
+      newPassword: "",
+      confirmPassword: "",
+    });
+  } catch {
+    layer.msg("Thao tác thất bại, vui lòng thử lại", { icon: 2 });
+  } finally {
+    submitting.value = false;
+  }
 }
 </script>
 
@@ -89,7 +96,7 @@ function handleSubmit() {
         </div>
         <div class="layui-form-item">
           <div class="layui-input-block">
-            <lay-button type="normal" @click="handleSubmit">Gửi đi</lay-button>
+            <lay-button type="normal" :loading="submitting" @click="handleSubmit">Gửi đi</lay-button>
           </div>
         </div>
       </div>

@@ -91,9 +91,7 @@ api.interceptors.response.use(
 
       pendingRequests = [];
       isRefreshing = false;
-      authStore.accessToken = "";
-      authStore.refreshToken = "";
-      authStore.user = null;
+      await authStore.logout();
       window.location.href = "/login";
       return Promise.reject(error);
     }

@@ -1,5 +1,7 @@
 import { buildApp } from "./app.js";
 import { appConfig } from "./config/app.js";
+import { env } from "./config/env.js";
+import { startSyncScheduler, stopSyncScheduler } from "./modules/sync/sync.scheduler.js";
 import { logger } from "./utils/logger.js";
 
 async function main() {
@@ -10,6 +12,7 @@ async function main() {
   for (const signal of signals) {
     process.on(signal, () => {
       logger.info(`Received ${signal}, shutting down gracefully...`);
+      stopSyncScheduler();
 
       setTimeout(() => {
         logger.error("Graceful shutdown timed out, forcing exit");
@@ -38,6 +41,11 @@ async function main() {
     logger.info(`Server listening on ${appConfig.host}:${appConfig.port}`, {
       env: appConfig.isProduction ? "production" : "development",
     });
+
+    // Start background sync scheduler
+    if (env.SYNC_ENABLED) {
+      startSyncScheduler(app);
+    }
   } catch (err) {
     logger.fatal("Failed to start server", { error: String(err) });
     process.exit(1);

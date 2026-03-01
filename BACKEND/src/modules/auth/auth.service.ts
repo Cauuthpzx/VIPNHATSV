@@ -1,12 +1,19 @@
 import type { FastifyInstance } from "fastify";
-import { createHash, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
+import bcrypt from "bcrypt";
 import { UnauthorizedError } from "../../errors/UnauthorizedError.js";
 import { ERROR_CODES } from "../../constants/error-codes.js";
 import { appConfig } from "../../config/app.js";
 import type { LoginInput } from "./auth.schema.js";
 
-function hashPassword(password: string): string {
-  return createHash("sha256").update(password).digest("hex");
+const BCRYPT_ROUNDS = 12;
+
+export async function hashPassword(password: string): Promise<string> {
+  return bcrypt.hash(password, BCRYPT_ROUNDS);
+}
+
+async function verifyPassword(password: string, hash: string): Promise<boolean> {
+  return bcrypt.compare(password, hash);
 }
 
 function parseExpiresIn(value: string): Date {
@@ -25,7 +32,7 @@ export async function login(app: FastifyInstance, input: LoginInput) {
     include: { role: true },
   });
 
-  if (!user || hashPassword(input.password) !== user.password) {
+  if (!user || !(await verifyPassword(input.password, user.password))) {
     throw new UnauthorizedError("Invalid credentials", ERROR_CODES.INVALID_CREDENTIALS);
   }
 

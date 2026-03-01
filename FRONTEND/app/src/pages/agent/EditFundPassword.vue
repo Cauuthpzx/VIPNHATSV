@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import PasswordForm from "@/components/PasswordForm.vue";
 
-function handleSubmit(data: { oldPassword: string; newPassword: string }) {
+async function handleSubmit(data: { oldPassword: string; newPassword: string }) {
   // TODO: call API to change fund/transaction password
   console.log("Change fund password:", data);
 }
@@ -15,6 +15,6 @@ function handleSubmit(data: { oldPassword: string; newPassword: string }) {
     confirm-label="Xác nhận"
     validation-msg-old="Vui lòng nhập mật khẩu giao dịch cũ"
     success-msg="Đổi mật khẩu giao dịch thành công"
-    @submit="handleSubmit"
+    :on-submit="handleSubmit"
   />
 </template>
