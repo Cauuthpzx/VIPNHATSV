@@ -9,7 +9,7 @@ import { layer } from "@layui/layui-vue";
 
 const { dateRange, dateQuickSelect, dateQuickOptions, dateQuickWidth, resetDateRange } = useDateRange("today");
 const { dataSource, loading, page, scrollToTable, setLoading } = useListPage();
-const { selectedAgentId, agentOptions, agentWidth } = useAgentFilter();
+const { selectedAgentId, agentOptions, agentWidth, notifySuccess } = useAgentFilter();
 
 const searchForm = reactive({
   lotteryType: "",
@@ -39,25 +39,25 @@ const columns = [
   { title: "Nhân viên", key: "_agentName", ellipsisTooltip: true },
   { title: "Tên tài khoản", key: "username", ellipsisTooltip: true },
   { title: "Thuộc đại lý", key: "user_parent_format", ellipsisTooltip: true },
-  { title: "Số lần cược", key: "bet_count", customSlot: "num" },
-  { title: "Tiền cược", key: "bet_amount", customSlot: "num" },
-  { title: "Tiền cược hợp lệ (trừ cược hoà)", key: "valid_amount", customSlot: "num" },
-  { title: "Hoàn trả", key: "rebate_amount", customSlot: "num" },
-  { title: "Thắng thua", key: "result", customSlot: "num" },
-  { title: "Kết quả thắng thua (không gồm hoàn trả)", key: "win_lose", customSlot: "num" },
-  { title: "Tiền trúng", key: "prize", customSlot: "num" },
+  { title: "Số lần cược", key: "bet_count", customSlot: "num", ellipsisTooltip: true },
+  { title: "Tiền cược", key: "bet_amount", customSlot: "num", ellipsisTooltip: true },
+  { title: "Tiền cược hợp lệ (trừ cược hoà)", key: "valid_amount", customSlot: "num", ellipsisTooltip: true },
+  { title: "Hoàn trả", key: "rebate_amount", customSlot: "num", ellipsisTooltip: true },
+  { title: "Thắng thua", key: "result", customSlot: "num", ellipsisTooltip: true },
+  { title: "Kết quả thắng thua (không gồm hoàn trả)", key: "win_lose", customSlot: "num", ellipsisTooltip: true },
+  { title: "Tiền trúng", key: "prize", customSlot: "num", ellipsisTooltip: true },
   { title: "Tên loại xổ", key: "lottery_name", ellipsisTooltip: true },
 ];
 
 const summaryColumns = [
-  { title: "Số khách đặt cược", key: "total_bet_number", customSlot: "sumNum" },
-  { title: "Số lần cược", key: "total_bet_count", customSlot: "sumNum" },
-  { title: "Tiền cược", key: "total_bet_amount", customSlot: "sumNum" },
-  { title: "Tiền cược hợp lệ (trừ cược hoà)", key: "total_valid_amount", customSlot: "sumNum" },
-  { title: "Hoàn trả", key: "total_rebate_amount", customSlot: "sumNum" },
-  { title: "Thắng thua", key: "total_result", customSlot: "sumNum" },
-  { title: "Kết quả thắng thua (không gồm hoàn trả)", key: "total_win_lose", customSlot: "sumNum" },
-  { title: "Tiền trúng", key: "total_prize", customSlot: "sumNum" },
+  { title: "Số khách đặt cược", key: "total_bet_number", customSlot: "sumNum", ellipsisTooltip: true },
+  { title: "Số lần cược", key: "total_bet_count", customSlot: "sumNum", ellipsisTooltip: true },
+  { title: "Tiền cược", key: "total_bet_amount", customSlot: "sumNum", ellipsisTooltip: true },
+  { title: "Tiền cược hợp lệ (trừ cược hoà)", key: "total_valid_amount", customSlot: "sumNum", ellipsisTooltip: true },
+  { title: "Hoàn trả", key: "total_rebate_amount", customSlot: "sumNum", ellipsisTooltip: true },
+  { title: "Thắng thua", key: "total_result", customSlot: "sumNum", ellipsisTooltip: true },
+  { title: "Kết quả thắng thua (không gồm hoàn trả)", key: "total_win_lose", customSlot: "sumNum", ellipsisTooltip: true },
+  { title: "Tiền trúng", key: "total_prize", customSlot: "sumNum", ellipsisTooltip: true },
 ];
 
 const summaryData = ref([
@@ -88,6 +88,7 @@ async function loadData() {
     if (res.data.data.totalData) {
       summaryData.value = [res.data.data.totalData as any];
     }
+    notifySuccess(page.total);
   } catch {
     layer.msg("Lỗi tải dữ liệu", { icon: 2 });
   } finally {

@@ -10,7 +10,7 @@ import StatusBadge from "@/components/StatusBadge.vue";
 
 const { dateRange, dateQuickSelect, dateQuickOptions, dateQuickWidth, resetDateRange } = useDateRange("today");
 const { dataSource, loading, page, scrollToTable, setLoading } = useListPage();
-const { selectedAgentId, agentOptions, agentWidth } = useAgentFilter();
+const { selectedAgentId, agentOptions, agentWidth, notifySuccess } = useAgentFilter();
 
 const searchForm = reactive({
   username: "",
@@ -44,7 +44,7 @@ const columns = [
   { title: "Nhân viên", key: "_agentName", ellipsisTooltip: true },
   { title: "Tên tài khoản", key: "username", ellipsisTooltip: true },
   { title: "Thuộc đại lý", key: "user_parent_format", ellipsisTooltip: true },
-  { title: "Số tiền", key: "amount", customSlot: "num" },
+  { title: "Số tiền", key: "amount", customSlot: "num", ellipsisTooltip: true },
   { title: "Loại hình giao dịch", key: "type", ellipsisTooltip: true },
   { title: "Trạng thái giao dịch", key: "status", customSlot: "status" },
   { title: "Thời gian", key: "create_time", ellipsisTooltip: true },
@@ -61,6 +61,7 @@ async function loadData() {
     });
     dataSource.value = res.data.data.items;
     page.total = res.data.data.total;
+    notifySuccess(page.total);
   } catch {
     layer.msg("Lỗi tải dữ liệu", { icon: 2 });
   } finally {

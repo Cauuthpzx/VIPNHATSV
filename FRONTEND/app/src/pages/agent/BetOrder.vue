@@ -6,7 +6,7 @@ import { layer } from "@layui/layui-vue";
 import { useAgentFilter } from "@/composables/useAgentFilter";
 
 const { dataSource, loading, page, scrollToTable, setLoading } = useListPage();
-const { selectedAgentId, agentOptions, agentWidth } = useAgentFilter();
+const { selectedAgentId, agentOptions, agentWidth, notifySuccess } = useAgentFilter();
 
 const searchForm = reactive({
   dateRange: [] as string[],
@@ -21,10 +21,10 @@ const columns = [
   { title: "Tên tài khoản thuộc nhà cái", key: "platform_username", ellipsisTooltip: true },
   { title: "Loại hình trò chơi", key: "c_name", ellipsisTooltip: true },
   { title: "Tên trò chơi bên thứ 3", key: "game_name", ellipsisTooltip: true },
-  { title: "Tiền cược", key: "bet_amount", customSlot: "num" },
-  { title: "Tiền cược hợp lệ", key: "turnover", customSlot: "num" },
-  { title: "Tiền thưởng", key: "prize", customSlot: "num" },
-  { title: "Thắng/Thua", key: "win_lose", customSlot: "num" },
+  { title: "Tiền cược", key: "bet_amount", customSlot: "num", ellipsisTooltip: true },
+  { title: "Tiền cược hợp lệ", key: "turnover", customSlot: "num", ellipsisTooltip: true },
+  { title: "Tiền thưởng", key: "prize", customSlot: "num", ellipsisTooltip: true },
+  { title: "Thắng/Thua", key: "win_lose", customSlot: "num", ellipsisTooltip: true },
   { title: "Thời gian cược", key: "bet_time", ellipsisTooltip: true },
 ];
 
@@ -41,6 +41,7 @@ async function loadData() {
     });
     dataSource.value = res.data.data.items;
     page.total = res.data.data.total;
+    notifySuccess(page.total);
   } catch {
     layer.msg("Lỗi tải dữ liệu", { icon: 2 });
   } finally {

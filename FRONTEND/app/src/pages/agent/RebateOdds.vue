@@ -13,7 +13,7 @@ const loading = ref(false);
 
 const { selectWidth: seriesWidth } = useAutoFitSelect(seriesOptions);
 const { selectWidth: lotteryWidth } = useAutoFitSelect(lotteryOptions);
-const { selectedAgentId, agentOptions, agentWidth } = useAgentFilter();
+const { selectedAgentId, agentOptions, agentWidth, notifySuccess } = useAgentFilter();
 
 const agentColumn = { title: "Nhân viên", key: "_agentName" };
 const columns = ref<{ title: string; key: string }[]>([]);
@@ -79,6 +79,7 @@ async function fetchRebateData() {
         })),
       ];
       dataSource.value = items.tableBody;
+      notifySuccess(dataSource.value.length);
     } else {
       buildFallbackData();
     }

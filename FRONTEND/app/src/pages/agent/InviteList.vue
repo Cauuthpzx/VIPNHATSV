@@ -6,7 +6,7 @@ import { layer } from "@layui/layui-vue";
 import { useAgentFilter } from "@/composables/useAgentFilter";
 
 const { dataSource, loading, page, scrollToTable, setLoading } = useListPage();
-const { selectedAgentId, agentOptions, agentWidth } = useAgentFilter();
+const { selectedAgentId, agentOptions, agentWidth, notifySuccess } = useAgentFilter();
 
 const searchForm = reactive({
   dateAdded: [] as string[],
@@ -18,11 +18,11 @@ const columns = [
   { title: "Nhân viên", key: "_agentName", ellipsisTooltip: true },
   { title: "Mã giới thiệu", key: "invite_code", ellipsisTooltip: true },
   { title: "Loại hình giới thiệu", key: "user_type", ellipsisTooltip: true },
-  { title: "Tổng số đã đăng ký", key: "reg_count", customSlot: "num" },
-  { title: "Số lượng người dùng đã đăng ký", key: "scope_reg_count", customSlot: "num" },
-  { title: "Số người nạp tiền", key: "recharge_count", customSlot: "num" },
-  { title: "Nạp đầu trong ngày", key: "first_recharge_count", customSlot: "num" },
-  { title: "Nạp đầu trong ngày (số tiền)", key: "register_recharge_count", customSlot: "num" },
+  { title: "Tổng số đã đăng ký", key: "reg_count", customSlot: "num", ellipsisTooltip: true },
+  { title: "Số lượng người dùng đã đăng ký", key: "scope_reg_count", customSlot: "num", ellipsisTooltip: true },
+  { title: "Số người nạp tiền", key: "recharge_count", customSlot: "num", ellipsisTooltip: true },
+  { title: "Nạp đầu trong ngày", key: "first_recharge_count", customSlot: "num", ellipsisTooltip: true },
+  { title: "Nạp đầu trong ngày (số tiền)", key: "register_recharge_count", customSlot: "num", ellipsisTooltip: true },
   { title: "Ghi chú", key: "remark", ellipsisTooltip: true },
   { title: "Thời gian thêm vào", key: "create_time", ellipsisTooltip: true },
   { title: "Thao tác", key: "action", customSlot: "action" },
@@ -40,6 +40,7 @@ async function loadData() {
     });
     dataSource.value = res.data.data.items;
     page.total = res.data.data.total;
+    notifySuccess(page.total);
   } catch {
     layer.msg("Lỗi tải dữ liệu", { icon: 2 });
   } finally {

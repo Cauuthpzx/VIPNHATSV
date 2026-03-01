@@ -648,12 +648,14 @@ useTabsSlider();
   display: block;
 }
 
-/* Body */
+/* Body — scroll container chính */
 .layui-layout-admin > .layui-body {
   position: fixed;
   top: 90px;
   right: 0;
   bottom: 0;
+  height: auto;
+  min-height: 0;
   z-index: 998;
   overflow-y: auto;
   overflow-x: hidden;

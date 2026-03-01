@@ -101,6 +101,42 @@ body {
   transition: none !important;
 }
 
+/* Tiêu đề cột table: 1 dòng, ellipsis — tooltip qua native title attr */
+.table-container .layui-table-header th {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.table-container .layui-table-header th > span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: default;
+}
+
+/* Layer msg: nền đen, chữ xanh */
+.hub-msg-dark {
+  background: rgba(0, 0, 0, 0.75) !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+.hub-msg-dark .layui-layer-content {
+  color: #5fb878 !important;
+}
+
+/* ellipsisTooltip trong table: nền đen trong suốt 70% */
+.lay-tooltip {
+  background-color: rgba(0, 0, 0, 0.7) !important;
+  color: #fff !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+.lay-tooltip > [data-popper-arrow]::after {
+  background-color: rgba(0, 0, 0, 0.7) !important;
+  border-color: transparent !important;
+}
 
 /* Password form */
 .password-form {

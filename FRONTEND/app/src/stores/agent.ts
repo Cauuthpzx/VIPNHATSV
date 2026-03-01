@@ -28,6 +28,13 @@ export const useAgentStore = defineStore("agent", () => {
     agents.value.find((a) => a.id === selectedAgentId.value) || null,
   );
 
+  /** Số cookies hoạt động / tổng số agent */
+  const cookieStats = computed(() => {
+    const total = agents.value.length;
+    const active = activeAgents.value.length;
+    return { valid: active, total };
+  });
+
   async function loadAgents() {
     try {
       const res = await fetchAgents();
@@ -61,6 +68,7 @@ export const useAgentStore = defineStore("agent", () => {
     selectedAgentId,
     activeAgents,
     selectedAgent,
+    cookieStats,
     loaded,
     loadAgents,
     selectAgent,

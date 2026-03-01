@@ -8,7 +8,7 @@ import { useAgentFilter } from "@/composables/useAgentFilter";
 
 const { dateRange, dateQuickSelect, dateQuickOptions, dateQuickWidth, resetDateRange } = useDateRange("today");
 const { dataSource, loading, page, scrollToTable, setLoading } = useListPage();
-const { selectedAgentId, agentOptions, agentWidth } = useAgentFilter();
+const { selectedAgentId, agentOptions, agentWidth, notifySuccess } = useAgentFilter();
 
 const searchForm = reactive({
   username: "",
@@ -18,26 +18,26 @@ const columns = [
   { title: "Nhân viên", key: "_agentName", ellipsisTooltip: true },
   { title: "Tên tài khoản", key: "username", ellipsisTooltip: true },
   { title: "Thuộc đại lý", key: "user_parent_format", ellipsisTooltip: true },
-  { title: "Số lần nạp", key: "deposit_count", customSlot: "num" },
-  { title: "Số tiền nạp", key: "deposit_amount", customSlot: "num" },
-  { title: "Số lần rút", key: "withdrawal_count", customSlot: "num" },
-  { title: "Số tiền rút", key: "withdrawal_amount", customSlot: "num" },
-  { title: "Phí dịch vụ", key: "charge_fee", customSlot: "num" },
-  { title: "Hoa hồng đại lý", key: "agent_commission", customSlot: "num" },
-  { title: "Ưu đãi", key: "promotion", customSlot: "num" },
-  { title: "Hoàn trả bên thứ 3", key: "third_rebate", customSlot: "num" },
-  { title: "Tiền thưởng từ bên thứ 3", key: "third_activity_amount", customSlot: "num" },
+  { title: "Số lần nạp", key: "deposit_count", customSlot: "num", ellipsisTooltip: true },
+  { title: "Số tiền nạp", key: "deposit_amount", customSlot: "num", ellipsisTooltip: true },
+  { title: "Số lần rút", key: "withdrawal_count", customSlot: "num", ellipsisTooltip: true },
+  { title: "Số tiền rút", key: "withdrawal_amount", customSlot: "num", ellipsisTooltip: true },
+  { title: "Phí dịch vụ", key: "charge_fee", customSlot: "num", ellipsisTooltip: true },
+  { title: "Hoa hồng đại lý", key: "agent_commission", customSlot: "num", ellipsisTooltip: true },
+  { title: "Ưu đãi", key: "promotion", customSlot: "num", ellipsisTooltip: true },
+  { title: "Hoàn trả bên thứ 3", key: "third_rebate", customSlot: "num", ellipsisTooltip: true },
+  { title: "Tiền thưởng từ bên thứ 3", key: "third_activity_amount", customSlot: "num", ellipsisTooltip: true },
   { title: "Thời gian", key: "date", ellipsisTooltip: true },
 ];
 
 const summaryColumns = [
-  { title: "Số tiền nạp", key: "total_deposit_amount", customSlot: "sumNum" },
-  { title: "Số tiền rút", key: "total_withdrawal_amount", customSlot: "sumNum" },
-  { title: "Phí dịch vụ", key: "total_charge_fee", customSlot: "sumNum" },
-  { title: "Hoa hồng đại lý", key: "total_agent_commission", customSlot: "sumNum" },
-  { title: "Ưu đãi", key: "total_promotion", customSlot: "sumNum" },
-  { title: "Hoàn trả bên thứ 3", key: "total_third_rebate", customSlot: "sumNum" },
-  { title: "Tiền thưởng từ bên thứ 3", key: "third_activity_amount", customSlot: "sumNum" },
+  { title: "Số tiền nạp", key: "total_deposit_amount", customSlot: "sumNum", ellipsisTooltip: true },
+  { title: "Số tiền rút", key: "total_withdrawal_amount", customSlot: "sumNum", ellipsisTooltip: true },
+  { title: "Phí dịch vụ", key: "total_charge_fee", customSlot: "sumNum", ellipsisTooltip: true },
+  { title: "Hoa hồng đại lý", key: "total_agent_commission", customSlot: "sumNum", ellipsisTooltip: true },
+  { title: "Ưu đãi", key: "total_promotion", customSlot: "sumNum", ellipsisTooltip: true },
+  { title: "Hoàn trả bên thứ 3", key: "total_third_rebate", customSlot: "sumNum", ellipsisTooltip: true },
+  { title: "Tiền thưởng từ bên thứ 3", key: "third_activity_amount", customSlot: "sumNum", ellipsisTooltip: true },
 ];
 
 const summaryData = ref([
@@ -66,6 +66,7 @@ async function loadData() {
     if (res.data.data.totalData) {
       summaryData.value = [res.data.data.totalData as any];
     }
+    notifySuccess(page.total);
   } catch {
     layer.msg("Lỗi tải dữ liệu", { icon: 2 });
   } finally {

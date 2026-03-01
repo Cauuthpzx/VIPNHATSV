@@ -6,7 +6,7 @@ import { layer } from "@layui/layui-vue";
 import { useAgentFilter } from "@/composables/useAgentFilter";
 
 const { dataSource, loading, page, scrollToTable, setLoading } = useListPage();
-const { selectedAgentId, agentOptions, agentWidth } = useAgentFilter();
+const { selectedAgentId, agentOptions, agentWidth, notifySuccess } = useAgentFilter();
 
 const searchForm = reactive({
   accountNumber: "",
@@ -33,6 +33,7 @@ async function loadData() {
     });
     dataSource.value = res.data.data.items;
     page.total = res.data.data.total;
+    notifySuccess(page.total);
   } catch {
     layer.msg("Lỗi tải dữ liệu", { icon: 2 });
   } finally {

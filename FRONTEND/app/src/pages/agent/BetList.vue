@@ -9,7 +9,7 @@ import { layer } from "@layui/layui-vue";
 
 const { dateRange, dateQuickSelect, dateQuickOptions, dateQuickWidth, resetDateRange } = useDateRange("today");
 const { dataSource, loading, page, scrollToTable, setLoading } = useListPage();
-const { selectedAgentId, agentOptions, agentWidth } = useAgentFilter();
+const { selectedAgentId, agentOptions, agentWidth, notifySuccess } = useAgentFilter();
 
 const searchForm = reactive({
   username: "",
@@ -114,16 +114,16 @@ const columns = [
   { title: "Cách chơi", key: "play_name", ellipsisTooltip: true },
   { title: "Kỳ", key: "issue", ellipsisTooltip: true },
   { title: "Thông tin cược", key: "content", ellipsisTooltip: true },
-  { title: "Tiền cược", key: "money", customSlot: "num" },
-  { title: "Tiền hoàn trả", key: "rebate_amount", customSlot: "num" },
-  { title: "Thắng thua", key: "result", customSlot: "num" },
+  { title: "Tiền cược", key: "money", customSlot: "num", ellipsisTooltip: true },
+  { title: "Tiền hoàn trả", key: "rebate_amount", customSlot: "num", ellipsisTooltip: true },
+  { title: "Thắng thua", key: "result", customSlot: "num", ellipsisTooltip: true },
   { title: "Trạng thái", key: "status_text", ellipsisTooltip: true },
 ];
 
 const summaryColumns = [
-  { title: "Tiền cược", key: "total_money", customSlot: "sumNum" },
-  { title: "Tiền hoàn trả", key: "total_rebate_amount", customSlot: "sumNum" },
-  { title: "Thắng thua", key: "total_result", customSlot: "sumNum" },
+  { title: "Tiền cược", key: "total_money", customSlot: "sumNum", ellipsisTooltip: true },
+  { title: "Tiền hoàn trả", key: "total_rebate_amount", customSlot: "sumNum", ellipsisTooltip: true },
+  { title: "Thắng thua", key: "total_result", customSlot: "sumNum", ellipsisTooltip: true },
 ];
 
 const summaryData = ref([
@@ -158,6 +158,7 @@ async function loadData() {
     if (sumRes.data.data.totalData) {
       summaryData.value = [sumRes.data.data.totalData as any];
     }
+    notifySuccess(page.total);
   } catch {
     layer.msg("Lỗi tải dữ liệu", { icon: 2 });
   } finally {

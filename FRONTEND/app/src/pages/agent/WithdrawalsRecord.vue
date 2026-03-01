@@ -10,7 +10,7 @@ import { layer } from "@layui/layui-vue";
 
 const { dateRange, dateQuickSelect, dateQuickOptions, dateQuickWidth, resetDateRange } = useDateRange("today");
 const { dataSource, loading, page, scrollToTable, setLoading } = useListPage();
-const { selectedAgentId, agentOptions, agentWidth } = useAgentFilter();
+const { selectedAgentId, agentOptions, agentWidth, notifySuccess } = useAgentFilter();
 
 const searchForm = reactive({
   username: "",
@@ -34,9 +34,9 @@ const columns = [
   { title: "Thời gian tạo đơn", key: "create_time", ellipsisTooltip: true },
   { title: "Tên tài khoản", key: "username", ellipsisTooltip: true },
   { title: "Thuộc đại lý", key: "user_parent_format", ellipsisTooltip: true },
-  { title: "Số tiền yêu cầu", key: "amount", customSlot: "num" },
-  { title: "Phí rút", key: "user_fee", customSlot: "num" },
-  { title: "Số tiền thực nhận", key: "true_amount", customSlot: "num" },
+  { title: "Số tiền yêu cầu", key: "amount", customSlot: "num", ellipsisTooltip: true },
+  { title: "Phí rút", key: "user_fee", customSlot: "num", ellipsisTooltip: true },
+  { title: "Số tiền thực nhận", key: "true_amount", customSlot: "num", ellipsisTooltip: true },
   { title: "Trạng thái", key: "status_format", ellipsisTooltip: true },
   { title: "Thao tác", key: "operation", customSlot: "operation" },
 ];
@@ -53,6 +53,7 @@ async function loadData() {
     });
     dataSource.value = res.data.data.items;
     page.total = res.data.data.total;
+    notifySuccess(page.total);
   } catch {
     layer.msg("Lỗi tải dữ liệu", { icon: 2 });
   } finally {

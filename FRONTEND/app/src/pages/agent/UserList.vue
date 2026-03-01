@@ -7,7 +7,7 @@ import { fetchUserList } from "@/api/services/proxy";
 import { layer } from "@layui/layui-vue";
 
 const { dataSource, loading, page, scrollToTable, setLoading } = useListPage();
-const { selectedAgentId, agentOptions, agentWidth } = useAgentFilter();
+const { selectedAgentId, agentOptions, agentWidth, notifySuccess } = useAgentFilter();
 
 const searchForm = reactive({
   username: "",
@@ -22,11 +22,11 @@ const columns = [
   { title: "Hội viên", key: "username", ellipsisTooltip: true },
   { title: "Loại hình hội viên", key: "type_format", ellipsisTooltip: true },
   { title: "Tài khoản đại lý", key: "parent_user", ellipsisTooltip: true },
-  { title: "Số dư", key: "money", customSlot: "num" },
-  { title: "Lần nạp", key: "deposit_count", customSlot: "num" },
-  { title: "Lần rút", key: "withdrawal_count", customSlot: "num" },
-  { title: "Tổng tiền nạp", key: "deposit_amount", customSlot: "num" },
-  { title: "Tổng tiền rút", key: "withdrawal_amount", customSlot: "num" },
+  { title: "Số dư", key: "money", customSlot: "num", ellipsisTooltip: true },
+  { title: "Lần nạp", key: "deposit_count", customSlot: "num", ellipsisTooltip: true },
+  { title: "Lần rút", key: "withdrawal_count", customSlot: "num", ellipsisTooltip: true },
+  { title: "Tổng tiền nạp", key: "deposit_amount", customSlot: "num", ellipsisTooltip: true },
+  { title: "Tổng tiền rút", key: "withdrawal_amount", customSlot: "num", ellipsisTooltip: true },
   { title: "Thời gian đăng nhập cuối", key: "login_time", ellipsisTooltip: true },
   { title: "Thời gian đăng ký", key: "register_time", ellipsisTooltip: true },
   { title: "Trạng thái", key: "status_format", ellipsisTooltip: true },
@@ -66,6 +66,7 @@ async function loadData() {
     });
     dataSource.value = res.data.data.items;
     page.total = res.data.data.total;
+    notifySuccess(page.total);
   } catch {
     layer.msg("Lỗi tải dữ liệu", { icon: 2 });
   } finally {
