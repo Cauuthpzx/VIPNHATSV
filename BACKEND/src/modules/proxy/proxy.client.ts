@@ -22,6 +22,11 @@ const upstreamBreaker = new CircuitBreaker({
   failureThreshold: 5,
   resetTimeout: 30_000,
   successThreshold: 2,
+  // Session expired = credential issue, NOT infrastructure failure → don't trigger circuit
+  shouldCountFailure: (err) => {
+    if (err instanceof AppError && err.code === ERROR_CODES.AGENT_SESSION_EXPIRED) return false;
+    return true;
+  },
 });
 
 // ---------------------------------------------------------------------------

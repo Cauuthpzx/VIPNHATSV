@@ -11,6 +11,8 @@ interface CircuitBreakerOptions {
   resetTimeout?: number;
   /** Number of successful calls in HALF_OPEN to close the circuit */
   successThreshold?: number;
+  /** Return false to exclude certain errors from triggering the circuit (e.g. auth errors) */
+  shouldCountFailure?: (err: unknown) => boolean;
 }
 
 export class CircuitBreaker {
@@ -23,12 +25,14 @@ export class CircuitBreaker {
   private readonly failureThreshold: number;
   private readonly resetTimeout: number;
   private readonly successThreshold: number;
+  private readonly shouldCountFailure: (err: unknown) => boolean;
 
   constructor(options: CircuitBreakerOptions) {
     this.name = options.name;
     this.failureThreshold = options.failureThreshold ?? 5;
     this.resetTimeout = options.resetTimeout ?? 30_000;
     this.successThreshold = options.successThreshold ?? 2;
+    this.shouldCountFailure = options.shouldCountFailure ?? (() => true);
   }
 
   async execute<T>(fn: () => Promise<T>): Promise<T> {
@@ -47,7 +51,10 @@ export class CircuitBreaker {
       this.onSuccess();
       return result;
     } catch (err) {
-      this.onFailure();
+      // Only count infrastructure failures, not auth/credential issues
+      if (this.shouldCountFailure(err)) {
+        this.onFailure();
+      }
       throw err;
     }
   }

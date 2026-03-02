@@ -1,9 +1,9 @@
 import type { FastifyInstance } from "fastify";
 import type { PrismaClient } from "@prisma/client";
-import { createHash } from "crypto";
 import { listActiveAgents } from "../proxy/agent.service.js";
 import { decryptSessionCookie } from "../../utils/crypto.js";
 import { fetchAllPages } from "./sync.fetcher.js";
+import { fetchUpstream } from "../proxy/proxy.client.js";
 import { UPSERT_REGISTRY } from "./sync.upsert.js";
 import {
   SYNC_ENDPOINTS,
@@ -15,6 +15,14 @@ import { logger } from "../../utils/logger.js";
 import { wsManager } from "../../websocket/ws.manager.js";
 import { AppError } from "../../errors/AppError.js";
 import { ERROR_CODES } from "../../constants/error-codes.js";
+
+/** Custom error to signal session expired → abort entire agent stream */
+class AgentSessionExpiredError extends Error {
+  constructor(agentName: string) {
+    super(`Agent session expired: ${agentName}`);
+    this.name = "AgentSessionExpiredError";
+  }
+}
 
 const MAX_TIMEOUT_STRIKES = 3; // Timeout quá 3 lần → tự dừng tiến trình đó
 
@@ -56,12 +64,6 @@ const PROXY_TABLES = [
 // ---------------------------------------------------------------------------
 // Hash — md5 của sorted JSON items, dùng để verify sau upsert
 // ---------------------------------------------------------------------------
-
-/** Tính hash md5 của mảng items (sorted by JSON string để ổn định). */
-function computeHash(items: Record<string, unknown>[]): string {
-  const sorted = items.map((i) => JSON.stringify(i)).sort();
-  return createHash("md5").update(sorted.join("|")).digest("hex");
-}
 
 // ---------------------------------------------------------------------------
 // Sync date tracking — dual-write: DB (durable) + Redis (fast cache)
@@ -182,6 +184,16 @@ const TABLE_DB_MAP: Record<string, string> = {
 // ---------------------------------------------------------------------------
 
 /**
+ * Date column name mapping for verification queries.
+ * Report tables use "report_date", transaction tables use "sync_date".
+ */
+const DATE_COLUMN_MAP: Record<string, string> = {
+  proxy_report_lottery: "report_date",
+  proxy_report_funds: "report_date",
+  proxy_report_third_game: "report_date",
+};
+
+/**
  * Verify after upsert: count rows in DB for this agent+date and compare to fetched count.
  * Returns true if counts match.
  */
@@ -199,8 +211,9 @@ async function verifyUpsert(
   let params: unknown[];
 
   if (syncDate) {
-    // Date-range tables have sync_date column
-    sql = `SELECT count(*)::int as cnt FROM "${dbTable}" WHERE "agent_id" = $1 AND "sync_date" = $2`;
+    // Use correct date column name (report_date for reports, sync_date for others)
+    const dateCol = DATE_COLUMN_MAP[dbTable] ?? "sync_date";
+    sql = `SELECT count(*)::int as cnt FROM "${dbTable}" WHERE "agent_id" = $1 AND "${dateCol}" = $2`;
     params = [agentId, syncDate];
   } else {
     // Non-date tables (user, invite, bank) — count all for agent
@@ -215,26 +228,38 @@ async function verifyUpsert(
 }
 
 // ---------------------------------------------------------------------------
-// Core sync — Agent-centric architecture
+// Catch-up detection — check xem tất cả date-range đã sync hết tới hôm nay chưa
 // ---------------------------------------------------------------------------
 
 /**
- * Sync mode:
- * - "full"      : Lần đầu hoặc manual trigger.
- *                 syncOnce endpoints → sync nếu chưa từng sync.
- *                 date-range endpoints → sync từng ngày từ SYNC_DATE_START đến today:
- *                   skip nếu ngày đã có hash (verified done).
- * - "recurring" : Auto sync.
- *                 syncOnce endpoints → BỎ QUA hoàn toàn.
- *                 date-range endpoints → chỉ sync ngày hôm nay.
- *                 no-date endpoints (user) → sync bình thường.
+ * Check xem agent đã caught up chưa: ngày hôm qua phải done cho TẤT CẢ date-range endpoints.
+ * Nếu hôm qua done → tất cả ngày trước đó cũng done (sync tuần tự từ cũ → mới).
+ * Chỉ cần 7 Redis GETs (1 per date-range endpoint) — rất nhanh.
  */
-export type SyncMode = "full" | "recurring";
+async function isAgentCaughtUp(app: FastifyInstance, agentId: string, today: string): Promise<boolean> {
+  const yesterday = formatDate(new Date(new Date(today + "T00:00:00").getTime() - 86400000));
+  const dateRangeEndpoints = SYNC_ENDPOINTS.filter((ep) => ep.needsDateRange);
+
+  for (const ep of dateRangeEndpoints) {
+    const done = await isDateDone(app, ep.table, agentId, yesterday);
+    if (!done) return false;
+  }
+  return true;
+}
+
+// ---------------------------------------------------------------------------
+// Core sync — Agent-centric architecture
+// ---------------------------------------------------------------------------
 
 type Agent = Awaited<ReturnType<typeof listActiveAgents>>[number];
 type UpsertFn = (typeof UPSERT_REGISTRY)[string];
 
-export async function runFullSync(app: FastifyInstance, mode: SyncMode = "full"): Promise<void> {
+/**
+ * Full sync — luôn sync từ SYNC_DATE_START đến hôm nay.
+ * isDateDone skip ngày đã xong (Redis GET nhanh) → hiệu quả như recurring.
+ * Đảm bảo phải sync hết tới hôm nay, không bỏ sót ngày nào.
+ */
+export async function runFullSync(app: FastifyInstance): Promise<void> {
   if (isSyncing) {
     logger.warn("[Sync] Already in progress, skipping");
     return;
@@ -244,8 +269,8 @@ export async function runFullSync(app: FastifyInstance, mode: SyncMode = "full")
   const startTime = Date.now();
 
   try {
-    logger.info(`[Sync] Started (mode: ${mode})`);
-    wsManager.broadcast({ type: "sync_status", status: "started", mode });
+    logger.info("[Sync] Started");
+    wsManager.broadcast({ type: "sync_status", status: "started" });
     const agents = await listActiveAgents(app);
 
     if (agents.length === 0) {
@@ -257,7 +282,7 @@ export async function runFullSync(app: FastifyInstance, mode: SyncMode = "full")
 
     // Mỗi agent là 1 stream độc lập, chạy song song tất cả
     const agentPromises = agents.map((agent) =>
-      runAgentStream(app, agent, mode).catch((err) => {
+      runAgentStream(app, agent).catch((err) => {
         logger.error(`[Sync] Agent stream fatal error: ${agent.name}`, {
           agentId: agent.id,
           error: err instanceof Error ? err.message : String(err),
@@ -268,8 +293,8 @@ export async function runFullSync(app: FastifyInstance, mode: SyncMode = "full")
     await Promise.all(agentPromises);
 
     const finalStatus = abortRequested ? "aborted" : "completed";
-    logger.info(`[Sync] ${finalStatus} (${mode}) in ${Date.now() - startTime}ms`);
-    wsManager.broadcast({ type: "sync_status", status: finalStatus, mode, durationMs: Date.now() - startTime });
+    logger.info(`[Sync] ${finalStatus} in ${Date.now() - startTime}ms`);
+    wsManager.broadcast({ type: "sync_status", status: finalStatus, durationMs: Date.now() - startTime });
   } catch (err) {
     logger.error("[Sync] Fatal error", {
       error: err instanceof Error ? err.message : String(err),
@@ -296,7 +321,7 @@ export async function runFullSync(app: FastifyInstance, mode: SyncMode = "full")
  * Lỗi ở 1 agent KHÔNG ảnh hưởng agent khác.
  * Lỗi ở 1 endpoint KHÔNG ảnh hưởng endpoint khác.
  */
-async function runAgentStream(app: FastifyInstance, agent: Agent, mode: SyncMode): Promise<void> {
+async function runAgentStream(app: FastifyInstance, agent: Agent): Promise<void> {
   const cookie = decryptSessionCookie(agent.sessionCookie);
   const today = formatDate(new Date());
 
@@ -308,64 +333,98 @@ async function runAgentStream(app: FastifyInstance, agent: Agent, mode: SyncMode
   const noDateEndpoints = SYNC_ENDPOINTS.filter((ep) => !ep.syncOnce && !ep.needsDateRange);
   const dateRangeEndpoints = SYNC_ENDPOINTS.filter((ep) => ep.needsDateRange);
 
-  // ── Nhóm 1: Invite (syncOnce) — tuần tự, chờ xong ──
-  for (const endpoint of syncOnceEndpoints) {
-    if (abortRequested) break;
-    if (mode === "recurring") continue; // recurring bỏ qua invite
-
-    const upsertFn = UPSERT_REGISTRY[endpoint.table];
-    if (!upsertFn) continue;
-
-    try {
-      const done = await isSyncOnceDone(app, endpoint.table, agent.id);
-      if (done) continue;
-      await syncAgentEndpoint(app, agent, cookie, endpoint, upsertFn);
-      await markSyncOnceDone(app, endpoint.table, agent.id);
-      logger.info(`[Sync] ${agent.name} → ${endpoint.table} done (syncOnce)`);
-    } catch (err) {
-      logger.error(`[Sync] ${agent.name} failed on ${endpoint.table}`, {
-        error: err instanceof Error ? err.message : String(err),
-      });
+  // Helper: nếu lỗi là session expired → throw AgentSessionExpiredError để dừng agent ngay
+  const rethrowIfSessionExpired = (err: unknown) => {
+    if (err instanceof AppError && err.code === ERROR_CODES.AGENT_SESSION_EXPIRED) {
+      throw new AgentSessionExpiredError(agent.name);
     }
-  }
+    if (err instanceof AgentSessionExpiredError) throw err;
+  };
 
-  // ── Nhóm 2: Member/User (no date-range) — tuần tự, chờ xong ──
-  for (const endpoint of noDateEndpoints) {
-    if (abortRequested) break;
-
-    const upsertFn = UPSERT_REGISTRY[endpoint.table];
-    if (!upsertFn) continue;
-
-    try {
-      await syncAgentEndpoint(app, agent, cookie, endpoint, upsertFn);
-      logger.info(`[Sync] ${agent.name} → ${endpoint.table} done (no-date)`);
-    } catch (err) {
-      logger.error(`[Sync] ${agent.name} failed on ${endpoint.table}`, {
-        error: err instanceof Error ? err.message : String(err),
-      });
-    }
-  }
-
-  // ── Nhóm 3: Date-range — mỗi endpoint = 1 luồng con, TẤT CẢ song song ──
-  // Mỗi luồng con tự đếm timeout strikes, quá 3 lần → tự dừng luồng đó
-  if (!abortRequested && dateRangeEndpoints.length > 0) {
-    const dateRangeTasks = dateRangeEndpoints.map(async (endpoint) => {
-      if (abortRequested) return;
+  try {
+    // ── Nhóm 1: Invite (syncOnce) — tuần tự, chờ xong ──
+    for (const endpoint of syncOnceEndpoints) {
+      if (abortRequested) break;
 
       const upsertFn = UPSERT_REGISTRY[endpoint.table];
-      if (!upsertFn) return;
+      if (!upsertFn) continue;
 
       try {
-        await syncAgentDateRange(app, agent, cookie, endpoint, upsertFn, mode, today);
-        logger.info(`[Sync] ${agent.name} → ${endpoint.table} done (date-range)`);
+        const done = await isSyncOnceDone(app, endpoint.table, agent.id);
+        if (done) continue;
+        await syncAgentEndpoint(app, agent, cookie, endpoint, upsertFn);
+        await markSyncOnceDone(app, endpoint.table, agent.id);
+        logger.info(`[Sync] ${agent.name} → ${endpoint.table} done (syncOnce)`);
       } catch (err) {
+        rethrowIfSessionExpired(err);
         logger.error(`[Sync] ${agent.name} failed on ${endpoint.table}`, {
           error: err instanceof Error ? err.message : String(err),
         });
       }
-    });
+    }
 
-    await Promise.all(dateRangeTasks);
+    // ── Nhóm 2: Member/User (no date-range) ──
+    // Catch-up phase: member chỉ sync 1 lần đầu (chưa có data).
+    // Sau khi tất cả date-range đã sync hết tới hôm nay → sync member mỗi chu kỳ.
+    const memberHasData = await app.prisma.proxyUser.count({ where: { agentId: agent.id } }) > 0;
+    const caughtUp = memberHasData ? await isAgentCaughtUp(app, agent.id, today) : true;
+
+    if (caughtUp) {
+      for (const endpoint of noDateEndpoints) {
+        if (abortRequested) break;
+
+        const upsertFn = UPSERT_REGISTRY[endpoint.table];
+        if (!upsertFn) continue;
+
+        try {
+          await syncAgentEndpoint(app, agent, cookie, endpoint, upsertFn);
+          logger.info(`[Sync] ${agent.name} → ${endpoint.table} done (no-date)`);
+        } catch (err) {
+          rethrowIfSessionExpired(err);
+          logger.error(`[Sync] ${agent.name} failed on ${endpoint.table}`, {
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+      }
+    } else {
+      logger.debug(`[Sync] ${agent.name} → skip member (đang catch-up date-range)`);
+    }
+
+    // ── Nhóm 3: Date-range — mỗi endpoint = 1 luồng con, TẤT CẢ song song ──
+    // Mỗi luồng con tự đếm timeout strikes, quá 3 lần → tự dừng luồng đó
+    if (!abortRequested && dateRangeEndpoints.length > 0) {
+      const dateRangeTasks = dateRangeEndpoints.map(async (endpoint) => {
+        if (abortRequested) return;
+
+        const upsertFn = UPSERT_REGISTRY[endpoint.table];
+        if (!upsertFn) return;
+
+        try {
+          await syncAgentDateRange(app, agent, cookie, endpoint, upsertFn, today);
+          logger.info(`[Sync] ${agent.name} → ${endpoint.table} done (date-range)`);
+        } catch (err) {
+          // Session expired → let it propagate to abort agent
+          if (err instanceof AgentSessionExpiredError) throw err;
+          logger.error(`[Sync] ${agent.name} failed on ${endpoint.table}`, {
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+      });
+
+      await Promise.all(dateRangeTasks);
+    }
+  } catch (err) {
+    if (err instanceof AgentSessionExpiredError) {
+      logger.warn(`[Sync] ${agent.name} — session expired, DỪNG agent stream`);
+      wsManager.broadcast({
+        type: "sync_progress",
+        agent: agent.name,
+        agentId: agent.id,
+        error: "Session expired — agent stream stopped",
+      });
+    } else {
+      throw err; // Unexpected error, propagate
+    }
   }
 
   logger.info(`[Sync] Agent stream completed: ${agent.name} in ${Date.now() - agentStart}ms`);
@@ -434,18 +493,13 @@ async function syncAgentDateRange(
   cookie: string,
   endpoint: SyncEndpointConfig,
   upsertFn: UpsertFn,
-  mode: SyncMode,
   today: string,
 ): Promise<void> {
   let timeoutStrikes = 0;
+  let consecutiveErrors = 0;
+  const MAX_CONSECUTIVE_ERRORS = 10; // Dừng endpoint nếu lỗi liên tục 10 ngày
 
-  if (mode === "recurring") {
-    // Recurring → chỉ sync ngày hôm nay (không hash)
-    await syncAgentSingleDay(app, agent, cookie, endpoint, upsertFn, today, false);
-    return;
-  }
-
-  // Full mode → từng ngày từ SYNC_DATE_START → today
+  // Từng ngày từ SYNC_DATE_START → today (isDateDone skip ngày đã xong)
   const dates = generateDateRange(SYNC_DATE_START, today);
   logger.debug(`[Sync] ${agent.name} → ${endpoint.table}: ${dates.length} days`);
 
@@ -464,14 +518,20 @@ async function syncAgentDateRange(
       await syncAgentSingleDay(app, agent, cookie, endpoint, upsertFn, date, !isToday);
       // Reset strikes khi thành công
       timeoutStrikes = 0;
+      consecutiveErrors = 0;
     } catch (err) {
+      // Session expired → abort toàn bộ agent stream (throw lên trên)
+      if (err instanceof AppError && err.code === ERROR_CODES.AGENT_SESSION_EXPIRED) {
+        throw new AgentSessionExpiredError(agent.name);
+      }
+
       if (err instanceof AppError && err.code === ERROR_CODES.UPSTREAM_TIMEOUT) {
         timeoutStrikes++;
         logger.warn(`[Sync] Timeout strike ${timeoutStrikes}/${MAX_TIMEOUT_STRIKES}`, {
           agent: agent.name, table: endpoint.table, date,
         });
         if (timeoutStrikes >= MAX_TIMEOUT_STRIKES) {
-          logger.error(`[Sync] ${agent.name} → ${endpoint.table}: ${MAX_TIMEOUT_STRIKES} timeouts liên tiếp, DỪNG tiến trình này`, {
+          logger.error(`[Sync] ${agent.name} → ${endpoint.table}: ${MAX_TIMEOUT_STRIKES} timeouts liên tiếp, DỪNG`, {
             agent: agent.name, table: endpoint.table,
           });
           wsManager.broadcast({
@@ -484,18 +544,26 @@ async function syncAgentDateRange(
           return; // Dừng luồng endpoint này, các luồng khác vẫn chạy
         }
       } else {
-        // Non-timeout error → log but continue to next date
-        logger.error(`[Sync] ${agent.name} → ${endpoint.table} error on ${date}`, {
+        consecutiveErrors++;
+        logger.error(`[Sync] ${agent.name} → ${endpoint.table} error on ${date} (${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS})`, {
           error: err instanceof Error ? err.message : String(err),
         });
+
+        if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+          logger.error(`[Sync] ${agent.name} → ${endpoint.table}: ${MAX_CONSECUTIVE_ERRORS} lỗi liên tiếp, DỪNG`, {
+            agent: agent.name, table: endpoint.table,
+          });
+          return;
+        }
       }
     }
   }
 }
 
 /**
- * Sync 1 ngày cho 1 agent + 1 endpoint:
- * fetch → upsert → verify → hash done (nếu markDone=true và verify OK)
+ * Sync 1 ngày cho 1 agent + 1 endpoint.
+ * Streaming mode: fetch page → upsert ngay → không tích luỹ trong memory.
+ * Quan trọng cho betOrder/bet (400k+ items/ngày/agent).
  */
 async function syncAgentSingleDay(
   app: FastifyInstance,
@@ -508,15 +576,17 @@ async function syncAgentSingleDay(
 ): Promise<void> {
   const params = { ...buildDateParams(endpoint.path, date, date), ...endpoint.extraParams };
 
-  const items = await fetchAllPages({
-    path: endpoint.path,
-    cookie,
-    params,
-    pageSize: endpoint.pageSize,
-    pageConcurrency: SYNC_PAGE_CONCURRENCY,
-  });
+  // ── Page 1: lấy total count ──
+  const firstParams = { ...params, page: "1", limit: String(endpoint.pageSize) };
+  const first = await fetchUpstream({ path: endpoint.path, cookie, params: firstParams });
 
-  if (items.length === 0) {
+  const firstItems = Array.isArray(first.data)
+    ? (first.data as Record<string, unknown>[])
+    : [];
+  const totalCount = first.count ?? firstItems.length;
+  const totalPages = Math.ceil(totalCount / endpoint.pageSize);
+
+  if (totalCount === 0 && firstItems.length === 0) {
     // Ngày không có data → vẫn đánh dấu done (empty hash) để skip lần sau
     if (markDone) {
       await markDateDone(app, endpoint.table, agent.id, date, 0, "empty");
@@ -524,24 +594,63 @@ async function syncAgentSingleDay(
     return;
   }
 
-  // Upsert
-  const upserted = await upsertFn(app.prisma, agent.id, items, date);
+  // ── Streaming: fetch page → upsert ngay → giải phóng memory ──
+  let totalFetched = firstItems.length;
+  let totalUpserted = 0;
 
-  // Verify: so sánh count fetched vs DB
-  const { verified, dbCount } = await verifyUpsert(app.prisma, endpoint.table, agent.id, date, items.length);
+  // Upsert page 1
+  if (firstItems.length > 0) {
+    totalUpserted += await upsertFn(app.prisma, agent.id, firstItems, date);
+  }
+
+  // Fetch + upsert remaining pages (tuần tự để tránh memory spike)
+  if (totalPages > 1) {
+    for (let page = 2; page <= totalPages; page++) {
+      if (abortRequested) break;
+
+      try {
+        const pageParams = { ...params, page: String(page), limit: String(endpoint.pageSize) };
+        const res = await fetchUpstream({ path: endpoint.path, cookie, params: pageParams });
+        const pageItems = Array.isArray(res.data)
+          ? (res.data as Record<string, unknown>[])
+          : [];
+
+        if (pageItems.length > 0) {
+          totalUpserted += await upsertFn(app.prisma, agent.id, pageItems, date);
+        }
+        totalFetched += pageItems.length;
+      } catch (err) {
+        // Session expired / timeout → bubble up
+        if (err instanceof AppError && (
+          err.code === ERROR_CODES.AGENT_SESSION_EXPIRED ||
+          err.code === ERROR_CODES.UPSTREAM_TIMEOUT
+        )) {
+          throw err;
+        }
+        // Non-critical page error → log, continue
+        logger.warn(`[Sync] ${agent.name} → ${endpoint.table} page ${page} failed`, {
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
+  }
+
+  // ── Verify: so sánh upserted count vs DB ──
+  // Dùng totalUpserted (sau dedup) thay vì totalFetched (trước dedup) vì upstream có thể trả duplicate serial_no
+  const { verified, dbCount } = await verifyUpsert(app.prisma, endpoint.table, agent.id, date, totalUpserted);
 
   if (verified && markDone) {
-    // Match → tính hash và đánh dấu done
-    const hash = computeHash(items);
-    await markDateDone(app, endpoint.table, agent.id, date, items.length, hash);
+    // Match → đánh dấu done
+    const hash = `count:${totalUpserted}`;
+    await markDateDone(app, endpoint.table, agent.id, date, totalUpserted, hash);
 
     logger.debug("[Sync] Verified & marked done", {
       agent: agent.name,
       table: endpoint.table,
       date,
-      fetched: items.length,
+      fetched: totalFetched,
+      upserted: totalUpserted,
       dbCount,
-      hash: hash.slice(0, 8),
     });
   } else if (!verified) {
     // Mismatch → log warning, KHÔNG đánh dấu done (sẽ retry lần sau)
@@ -549,7 +658,8 @@ async function syncAgentSingleDay(
       agent: agent.name,
       table: endpoint.table,
       date,
-      fetched: items.length,
+      fetched: totalFetched,
+      upserted: totalUpserted,
       dbCount,
     });
   }
@@ -561,8 +671,8 @@ async function syncAgentSingleDay(
     agent: agent.name,
     agentId: agent.id,
     date,
-    fetched: items.length,
-    upserted,
+    fetched: totalFetched,
+    upserted: totalUpserted,
     dbCount,
     verified,
   });
@@ -642,13 +752,13 @@ export async function runAgentSync(app: FastifyInstance, agentId: string): Promi
     }
 
     logger.info(`[Sync] Single-agent sync started: ${agent.name}`);
-    wsManager.broadcast({ type: "sync_status", status: "started", mode: "full" });
+    wsManager.broadcast({ type: "sync_status", status: "started" });
 
     // Reuse the stream logic for a single agent
-    await runAgentStream(app, agent as Agent, "full");
+    await runAgentStream(app, agent as Agent);
 
     logger.info(`[Sync] Single-agent sync completed: ${agent.name} in ${Date.now() - startTime}ms`);
-    wsManager.broadcast({ type: "sync_status", status: "completed", mode: "full", durationMs: Date.now() - startTime });
+    wsManager.broadcast({ type: "sync_status", status: "completed", durationMs: Date.now() - startTime });
   } catch (err) {
     logger.error("[Sync] Single-agent sync fatal error", {
       error: err instanceof Error ? err.message : String(err),
@@ -696,7 +806,7 @@ export async function runAgentEndpointSync(
     }
 
     logger.info(`[Sync] Single-agent-endpoint sync started: ${agent.name} → ${endpoint.table}`);
-    wsManager.broadcast({ type: "sync_status", status: "started", mode: "full" });
+    wsManager.broadcast({ type: "sync_status", status: "started" });
 
     const cookie = decryptSessionCookie(agent.sessionCookie);
     const today = formatDate(new Date());
@@ -707,11 +817,11 @@ export async function runAgentEndpointSync(
     } else if (!endpoint.needsDateRange) {
       await syncAgentEndpoint(app, agent as Agent, cookie, endpoint, upsertFn);
     } else {
-      await syncAgentDateRange(app, agent as Agent, cookie, endpoint, upsertFn, "full", today);
+      await syncAgentDateRange(app, agent as Agent, cookie, endpoint, upsertFn, today);
     }
 
     logger.info(`[Sync] Single-agent-endpoint sync completed: ${agent.name} → ${endpoint.table} in ${Date.now() - startTime}ms`);
-    wsManager.broadcast({ type: "sync_status", status: "completed", mode: "full", durationMs: Date.now() - startTime });
+    wsManager.broadcast({ type: "sync_status", status: "completed", durationMs: Date.now() - startTime });
   } catch (err) {
     logger.error("[Sync] Single-agent-endpoint sync fatal error", {
       error: err instanceof Error ? err.message : String(err),

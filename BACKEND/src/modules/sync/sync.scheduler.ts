@@ -48,7 +48,11 @@ export function getSyncIntervalMs(): number {
   return currentIntervalMs;
 }
 
-/** Schedule next recurring run using setTimeout (not setInterval). */
+/**
+ * Schedule next run using setTimeout (not setInterval).
+ * Luôn dùng "full" mode — isDateDone skip ngày đã xong (Redis GET nhanh).
+ * Đảm bảo phải sync hết tới hôm nay trước khi chỉ sync ngày hôm nay.
+ */
 function scheduleNextRun(): void {
   if (syncTimer) clearTimeout(syncTimer);
 
@@ -60,7 +64,7 @@ function scheduleNextRun(): void {
 
     if (!getIsSyncing()) {
       try {
-        await runFullSync(appRef, "recurring");
+        await runFullSync(appRef);
       } catch (err) {
         logger.error("[Sync] Scheduled run failed", {
           error: err instanceof Error ? err.message : String(err),
@@ -90,14 +94,13 @@ export async function startSyncScheduler(app: FastifyInstance): Promise<void> {
 
   logger.info(`[Sync] Scheduler started (interval: ${currentIntervalMs / 1000}s)`);
 
-  // First sync after 10s — full mode (backfill past days + syncOnce)
+  // First sync after 10s
   initialTimer = setTimeout(() => {
-    runFullSync(app, "full").catch((err) => {
+    runFullSync(app).catch((err) => {
       logger.error("[Sync] Initial run failed", {
         error: err instanceof Error ? err.message : String(err),
       });
     }).finally(() => {
-      // Sau full sync xong → bắt đầu recurring
       if (schedulerRunning) {
         scheduleNextRun();
       }

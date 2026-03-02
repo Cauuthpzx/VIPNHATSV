@@ -462,10 +462,13 @@ const PROXY_BET_CONFIG: BulkUpsertConfig = {
 
 async function upsertBets(prisma: PrismaClient, agentId: string, items: Item[], syncDate?: string): Promise<number> {
   const now = new Date().toISOString();
+  // Deduplicate by serial_no — upstream có thể trả trùng trong cùng 1 response
+  const seen = new Set<string>();
   const rows: unknown[][] = [];
   for (const item of items) {
     const serialNo = str(item.serial_no);
-    if (!serialNo) continue;
+    if (!serialNo || seen.has(serialNo)) continue;
+    seen.add(serialNo);
     rows.push([
       randomUUID(), agentId, serialNo,
       str(item.username) ?? "", str(item.lottery_name), str(item.play_type_name),
@@ -494,10 +497,13 @@ const PROXY_BET_ORDER_CONFIG: BulkUpsertConfig = {
 
 async function upsertBetOrders(prisma: PrismaClient, agentId: string, items: Item[], syncDate?: string): Promise<number> {
   const now = new Date().toISOString();
+  // Deduplicate by serial_no — upstream có thể trả trùng trong cùng 1 response
+  const seen = new Set<string>();
   const rows: unknown[][] = [];
   for (const item of items) {
     const serialNo = str(item.serial_no);
-    if (!serialNo) continue;
+    if (!serialNo || seen.has(serialNo)) continue;
+    seen.add(serialNo);
     rows.push([
       randomUUID(), agentId, serialNo,
       str(item.platform_id_name), str(item.platform_username),
@@ -524,13 +530,13 @@ const PROXY_REPORT_LOTTERY_CONFIG: BulkUpsertConfig = {
   skipUnchangedColumn: "raw",
 };
 
-async function upsertReportLottery(prisma: PrismaClient, agentId: string, items: Item[]): Promise<number> {
+async function upsertReportLottery(prisma: PrismaClient, agentId: string, items: Item[], syncDate?: string): Promise<number> {
   const now = new Date().toISOString();
   const rows: unknown[][] = [];
   for (const item of items) {
     const username = str(item.username);
     const lotteryName = str(item.lottery_name);
-    const reportDate = str(item.date) ?? str(item.report_date);
+    const reportDate = str(item.date) ?? str(item.report_date) ?? syncDate ?? null;
     if (!username || !lotteryName || !reportDate) continue;
     rows.push([
       randomUUID(), agentId, username,
@@ -593,13 +599,13 @@ const PROXY_REPORT_THIRD_GAME_CONFIG: BulkUpsertConfig = {
   skipUnchangedColumn: "raw",
 };
 
-async function upsertReportThirdGame(prisma: PrismaClient, agentId: string, items: Item[]): Promise<number> {
+async function upsertReportThirdGame(prisma: PrismaClient, agentId: string, items: Item[], syncDate?: string): Promise<number> {
   const now = new Date().toISOString();
   const rows: unknown[][] = [];
   for (const item of items) {
     const username = str(item.username);
     const platformIdName = str(item.platform_id_name);
-    const reportDate = str(item.date) ?? str(item.report_date);
+    const reportDate = str(item.date) ?? str(item.report_date) ?? syncDate ?? null;
     if (!username || !platformIdName || !reportDate) continue;
     rows.push([
       randomUUID(), agentId, username, platformIdName,

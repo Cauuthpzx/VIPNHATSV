@@ -40,9 +40,9 @@ export const SYNC_ENDPOINTS: SyncEndpointConfig[] = [
   { table: "proxyWithdrawal",      path: "/agent/withdrawalsRecord.html",    needsDateRange: true,  pageSize: 5000, syncOnce: false, extraParams: { es: "1" } },
   { table: "proxyBet",             path: "/agent/bet.html",                  needsDateRange: true,  pageSize: 5000, syncOnce: false, extraParams: { es: "1" } },
   { table: "proxyBetOrder",        path: "/agent/betOrder.html",             needsDateRange: true,  pageSize: 5000, syncOnce: false, extraParams: { es: "1" } },
-  { table: "proxyReportLottery",   path: "/agent/reportLottery.html",        needsDateRange: true,  pageSize: 5000, syncOnce: false, extraParams: { username: "", lottery_id: "" } },
+  { table: "proxyReportLottery",   path: "/agent/reportLottery.html",        needsDateRange: true,  pageSize: 5000, syncOnce: false, extraParams: { username: "", lottery_id: "", es: "1", is_summary: "1" } },
   { table: "proxyReportFunds",     path: "/agent/reportFunds.html",          needsDateRange: true,  pageSize: 5000, syncOnce: false, extraParams: { username: "" } },
-  { table: "proxyReportThirdGame", path: "/agent/reportThirdGame.html",      needsDateRange: true,  pageSize: 5000, syncOnce: false, extraParams: { username: "" } },
+  { table: "proxyReportThirdGame", path: "/agent/reportThirdGame.html",      needsDateRange: true,  pageSize: 5000, syncOnce: false, extraParams: { username: "", es: "1", is_summary: "1" } },
 ];
 
 /** Max pages fetched concurrently per agent */

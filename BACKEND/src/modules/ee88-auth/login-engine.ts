@@ -328,8 +328,11 @@ export async function loginAllAgents(
   const agents = await app.prisma.agent.findMany({
     where: {
       isActive: true,
-      status: { in: ["offline", "error"] },
       extPassword: { not: "" },
+      OR: [
+        { status: { in: ["offline", "error"] } },
+        { cookieExpires: { lt: new Date() } },
+      ],
     },
     select: { id: true },
   });
