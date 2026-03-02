@@ -6,10 +6,11 @@ import { useAutoFitSelect } from "@/composables/useAutoFitSelect";
 import { useAgentFilter } from "@/composables/useAgentFilter";
 import { fetchBetList, fetchLotteryDropdown } from "@/api/services/proxy";
 import { layer } from "@layui/layui-vue";
+import CookieBadge from "@/components/CookieBadge.vue";
 
 const { dateRange, dateQuickSelect, dateQuickOptions, dateQuickWidth, resetDateRange } = useDateRange("today");
-const { dataSource, loading, page, setLoading, bindLoadData } = useListPage();
-const { selectedAgentId, agentOptions, agentWidth, notifySuccess } = useAgentFilter();
+const { dataSource, loading, page, setLoading, bindLoadData, guardStale } = useListPage();
+const { selectedAgentId, agentOptions, agentWidth } = useAgentFilter();
 
 const searchForm = reactive({
   username: "",
@@ -208,6 +209,7 @@ const summaryData = ref([
 ]);
 
 async function loadData() {
+  const isStale = guardStale();
   setLoading(true);
   const params = {
     page: page.current,
@@ -226,16 +228,16 @@ async function loadData() {
       fetchBetList(params),
       fetchBetList({ ...params, is_summary: 1 }),
     ]);
+    if (isStale()) return;
     dataSource.value = res.data.data.items;
     page.total = res.data.data.total;
     if (sumRes.data.data.totalData) {
       summaryData.value = [sumRes.data.data.totalData as any];
     }
-    notifySuccess(page.total);
   } catch {
-    layer.msg("Lỗi tải dữ liệu", { icon: 2 });
+    if (!isStale()) layer.msg("Lỗi tải dữ liệu", { icon: 2 });
   } finally {
-    setLoading(false);
+    if (!isStale()) setLoading(false);
   }
 }
 
@@ -327,6 +329,9 @@ onMounted(() => loadDropdownData());
           :data-source="dataSource"
           @change="handlePageChange"
         >
+          <template v-slot:toolbar>
+            <CookieBadge />
+          </template>
           <template #num="{ row, column }">
             <lay-count-up :end-val="Number(row[column.key]) || 0" :duration="600" :decimal-places="String(row[column.key]).includes('.') ? 2 : 0" :use-grouping="false" />
           </template>

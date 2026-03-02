@@ -4,14 +4,15 @@ import { useListPage } from "@/composables/useListPage";
 import { fetchBankList } from "@/api/services/proxy";
 import { layer } from "@layui/layui-vue";
 import { useAgentFilter } from "@/composables/useAgentFilter";
+import CookieBadge from "@/components/CookieBadge.vue";
 import { useAuthStore } from "@/stores/auth";
 import { PERMISSIONS } from "@/constants/permissions";
 
 const authStore = useAuthStore();
 const canWrite = authStore.hasPermission(PERMISSIONS.FINANCE_WRITE);
 
-const { dataSource, loading, page, setLoading, bindLoadData } = useListPage();
-const { selectedAgentId, agentOptions, agentWidth, notifySuccess } = useAgentFilter();
+const { dataSource, loading, page, setLoading, bindLoadData, guardStale } = useListPage();
+const { selectedAgentId, agentOptions, agentWidth } = useAgentFilter();
 
 const searchForm = reactive({
   accountNumber: "",
@@ -29,6 +30,7 @@ const columns = [
 ];
 
 async function loadData() {
+  const isStale = guardStale();
   setLoading(true);
   try {
     const res = await fetchBankList({
@@ -36,13 +38,13 @@ async function loadData() {
       limit: page.limit,
       card_no: searchForm.accountNumber || undefined,
     });
+    if (isStale()) return;
     dataSource.value = res.data.data.items;
     page.total = res.data.data.total;
-    notifySuccess(page.total);
   } catch {
-    layer.msg("Lỗi tải dữ liệu", { icon: 2 });
+    if (!isStale()) layer.msg("Lỗi tải dữ liệu", { icon: 2 });
   } finally {
-    setLoading(false);
+    if (!isStale()) setLoading(false);
   }
 }
 
@@ -104,6 +106,7 @@ function handleDelete(row: any) {
           @change="handlePageChange"
         >
           <template v-slot:toolbar>
+            <CookieBadge />
             <lay-button v-if="canWrite" type="normal" size="xs" @click="handleAdd">+ Thêm tài khoản ngân hàng</lay-button>
           </template>
           <template #operation="{ row }">

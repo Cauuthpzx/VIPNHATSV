@@ -150,10 +150,48 @@ export function fetchAgents() {
   return api.get("/agents");
 }
 
-// --- Profile ---
+export function fetchCookieHealth() {
+  return api.get("/agents/cookie-health");
+}
+
+// --- Registration ---
+
+export function registerAccount(data: { username: string; password: string; name: string; email?: string }) {
+  return api.post("/auth/register", data);
+}
+
+// --- Profile & Auth Management ---
 
 export function updateProfile(data: { name: string }) {
   return api.put("/auth/profile", data);
+}
+
+export function changeSystemPassword(data: { oldPassword: string; newPassword: string }) {
+  return api.put("/auth/change-password", data);
+}
+
+export function changeSystemFundPassword(data: { oldPassword?: string; newPassword: string }) {
+  return api.put("/auth/change-fund-password", data);
+}
+
+export function logoutAllDevices() {
+  return api.post("/auth/logout-all");
+}
+
+export function fetchActiveSessions() {
+  return api.get<{ success: boolean; data: SessionItem[] }>("/auth/sessions");
+}
+
+export function revokeSession(sessionId: string) {
+  return api.delete(`/auth/sessions/${sessionId}`);
+}
+
+export interface SessionItem {
+  id: string;
+  userAgent: string | null;
+  ipAddress: string | null;
+  createdAt: string;
+  expiresAt: string;
 }
 
 // --- Upstream password change (agent ee88) ---

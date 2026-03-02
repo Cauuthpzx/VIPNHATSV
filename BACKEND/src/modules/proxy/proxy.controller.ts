@@ -79,3 +79,12 @@ export async function updateAgentCookieHandler(
   );
   return sendSuccess(reply, result);
 }
+
+export async function cookieHealthHandler(
+  this: FastifyInstance,
+  _request: FastifyRequest,
+  reply: FastifyReply,
+) {
+  const results = await agentService.checkCookieHealth(this);
+  return sendSuccess(reply, results);
+}

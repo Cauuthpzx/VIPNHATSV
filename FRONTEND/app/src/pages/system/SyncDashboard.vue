@@ -1,164 +1,94 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from "vue";
+import { ref, computed, watch, onMounted, onUnmounted } from "vue";
 import { fetchSyncStatus, triggerSync } from "@/api/services/sync";
 import { useAuthStore } from "@/stores/auth";
+import { useAgentStore } from "@/stores/agent";
 import { PERMISSIONS } from "@/constants/permissions";
 import { layer } from "@layui/layui-vue";
 
 const authStore = useAuthStore();
+const agentStore = useAgentStore();
 const canWrite = computed(() => authStore.hasPermission(PERMISSIONS.SYNC_WRITE));
 
 const loading = ref(true);
 const triggering = ref(false);
 
-// --- Data ---
 const totalRows = ref(0);
 const activeAgents = ref(0);
 const totalAgents = ref(0);
 const isSyncing = ref(false);
 const intervalMs = ref(300000);
-
-interface AgentChild {
-  id: string;
-  name: string;
-  extUsername: string;
-  rowCount: number;
-  lastSyncedAt: string | null;
-}
-
-interface TableRow {
-  id: string;
-  table: string;
-  label: string;
-  icon: string;
-  rowCount: number;
-  lastSyncedAt: string | null;
-  agentCount: number;
-  children: AgentChild[];
-}
-
-interface AgentRow {
-  id: string;
-  name: string;
-  extUsername: string;
-  isActive: boolean;
-  status: string;
-  cookieExpires: string | null;
-  totalRows: number;
-}
-
-const tables = ref<TableRow[]>([]);
-const agents = ref<AgentRow[]>([]);
+const tables = ref<any[]>([]);
+const agents = ref<any[]>([]);
 const expandKeys = ref<string[]>([]);
 
-// --- Table columns (expandable) ---
-const tableColumns = [
-  { title: "Bảng dữ liệu", key: "label", customSlot: "label", width: "220px" },
-  { title: "Tổng bản ghi", key: "rowCount", customSlot: "rowCount", width: "130px" },
-  { title: "Đại lý đóng góp", key: "agentCount", customSlot: "agentCount", width: "130px" },
-  { title: "Lần đồng bộ cuối", key: "lastSyncedAt", customSlot: "syncTime" },
-  { title: "Độ tươi", key: "_freshness", customSlot: "freshness", width: "130px" },
-];
-
-// --- Agent table columns ---
 const agentColumns = [
-  { title: "Đại lý", key: "name", customSlot: "agentName", width: "180px" },
+  { title: "Đại lý / Dữ liệu", key: "name", customSlot: "agentName", width: "220px" },
   { title: "Tài khoản", key: "extUsername", ellipsisTooltip: true },
   { title: "Trạng thái", key: "_status", customSlot: "agentStatus", width: "130px" },
   { title: "Cookie", key: "cookieExpires", customSlot: "cookieExp", width: "180px" },
-  { title: "Tổng bản ghi", key: "totalRows", customSlot: "num", width: "130px" },
+  { title: "Bản ghi", key: "totalRows", customSlot: "num", width: "120px" },
+  { title: "Đồng bộ lần cuối", key: "lastSyncedAt", customSlot: "syncTime", width: "170px" },
 ];
 
-// --- Progress theme colors for agents (cycle through) ---
-const PROGRESS_THEMES = ["green", "blue", "orange", "cyan", "red", "black"] as const;
-
-function getProgressTheme(index: number): string {
-  return PROGRESS_THEMES[index % PROGRESS_THEMES.length];
+function getCookieStatusColor(agentId: string): string {
+  const alive = agentStore.cookieHealthMap[agentId];
+  if (alive === undefined) return "#999";
+  return alive ? "#16baaa" : "#ff4d4f";
 }
 
-// Calculate percentage relative to the table's total
-function getAgentPercent(agentRowCount: number, tableRowCount: number): number {
-  if (!tableRowCount) return 0;
-  return Math.round((agentRowCount / tableRowCount) * 100);
+function getCookieStatusText(agentId: string): string {
+  const alive = agentStore.cookieHealthMap[agentId];
+  if (alive === undefined) return "Đang kiểm tra...";
+  return alive ? "Hoạt động" : "Hết hạn";
 }
 
-// --- Formatting helpers ---
-function getMinutesSince(dateStr: string | null): number | null {
-  if (!dateStr) return null;
-  const diff = Date.now() - new Date(dateStr).getTime();
-  return Math.floor(diff / 60000);
+// Accordion: chỉ cho expand 1 agent tại 1 thời điểm
+let lastExpandKey: string | null = null;
+watch(expandKeys, (keys) => {
+  if (keys.length > 1) {
+    const newKey = keys.find((k) => k !== lastExpandKey) ?? keys[keys.length - 1];
+    expandKeys.value = [newKey];
+    lastExpandKey = newKey;
+  } else {
+    lastExpandKey = keys[0] ?? null;
+  }
+}, { deep: true });
+
+function getLatestSync(children: any[]): string | null {
+  let latest: number | null = null;
+  for (const c of children) {
+    if (c.lastSyncedAt) {
+      const t = new Date(c.lastSyncedAt).getTime();
+      if (latest === null || t > latest) latest = t;
+    }
+  }
+  return latest ? new Date(latest).toISOString() : null;
 }
 
-function getFreshnessColor(minutes: number | null): string {
-  if (minutes === null) return "#999";
-  if (minutes < 10) return "#16baaa";
-  if (minutes < 30) return "#ffb800";
-  return "#ff4d4f";
-}
-
-function getFreshnessText(minutes: number | null): string {
-  if (minutes === null) return "Chưa sync";
-  if (minutes < 1) return "Vừa xong";
-  if (minutes < 60) return `${minutes} phút trước`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} giờ trước`;
-  return `${Math.floor(hours / 24)} ngày trước`;
-}
-
-function formatDateTime(dateStr: string | null): string {
-  if (!dateStr) return "—";
-  const d = new Date(dateStr);
-  return d.toLocaleString("vi-VN", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  });
-}
-
-function formatNumber(n: number): string {
-  return n.toLocaleString("vi-VN");
-}
-
-function isCookieExpired(dateStr: string | null): boolean {
-  if (!dateStr) return true;
-  return new Date(dateStr).getTime() < Date.now();
-}
-
-function isCookieExpiringSoon(dateStr: string | null): boolean {
-  if (!dateStr) return true;
-  const diff = new Date(dateStr).getTime() - Date.now();
-  return diff < 24 * 60 * 60 * 1000;
-}
-
-function getCookieStatusColor(dateStr: string | null): string {
-  if (!dateStr || isCookieExpired(dateStr)) return "#ff4d4f";
-  if (isCookieExpiringSoon(dateStr)) return "#ffb800";
-  return "#16baaa";
-}
-
-function getCookieStatusText(dateStr: string | null): string {
-  if (!dateStr) return "Chưa cấu hình";
-  if (isCookieExpired(dateStr)) return "Hết hạn";
-  if (isCookieExpiringSoon(dateStr)) return "Sắp hết hạn";
-  return formatDateTime(dateStr);
-}
-
-// --- Data loading ---
 async function loadStatus() {
   try {
-    const res = await fetchSyncStatus();
-    if (res.data.success) {
-      const d = res.data.data;
+    const [statusRes] = await Promise.all([
+      fetchSyncStatus(),
+      agentStore.loadCookieHealth(),
+    ]);
+    if (statusRes.data.success) {
+      const d = statusRes.data.data;
       totalRows.value = d.totalRows;
       activeAgents.value = d.activeAgents;
       totalAgents.value = d.totalAgents;
       isSyncing.value = d.isSyncing;
       intervalMs.value = d.intervalMs;
       tables.value = d.tables;
-      agents.value = d.agents;
+      agents.value = d.agents.map((a: any) => {
+        const filtered = (a.children ?? []).filter((c: any) => c.rowCount > 0);
+        return {
+          ...a,
+          lastSyncedAt: getLatestSync(a.children ?? []),
+          // Chỉ gán children khi có data, nếu không lay-table sẽ hiện expand icon rỗng
+          ...(filtered.length > 0 ? { children: filtered } : {}),
+        };
+      });
     }
   } catch {
     // silent
@@ -184,7 +114,6 @@ async function handleTrigger() {
   }
 }
 
-// --- Auto-refresh ---
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 
 onMounted(() => {
@@ -271,87 +200,6 @@ onUnmounted(() => {
       </lay-col>
     </lay-row>
 
-    <!-- ===== EXPANDABLE TABLE: Click row → show per-agent progress bars ===== -->
-    <lay-card style="margin-top: 12px">
-      <lay-field title="Chi tiết đồng bộ theo bảng dữ liệu">
-        <div class="table-container">
-          <lay-table
-            :columns="tableColumns"
-            :data-source="tables"
-            :loading="loading"
-            :default-toolbar="true"
-            v-model:expandKeys="expandKeys"
-          >
-            <template v-slot:toolbar>
-              <lay-button size="sm" type="normal" @click="loadStatus">
-                <i class="layui-icon layui-icon-refresh"></i> Làm mới
-              </lay-button>
-            </template>
-
-            <!-- Label: icon + name -->
-            <template #label="{ row }">
-              <span class="table-label">
-                <i class="layui-icon" :class="row.icon" style="margin-right: 6px; color: #009688;"></i>
-                <b>{{ row.label }}</b>
-                <span class="table-name">({{ row.table }})</span>
-              </span>
-            </template>
-
-            <!-- Row count -->
-            <template #rowCount="{ row }">
-              <b>{{ formatNumber(row.rowCount) }}</b>
-            </template>
-
-            <!-- Agent count badge -->
-            <template #agentCount="{ row }">
-              <span class="agent-badge">
-                <i class="layui-icon layui-icon-group" style="font-size: 12px; margin-right: 3px;"></i>
-                {{ row.agentCount }} agent
-              </span>
-            </template>
-
-            <!-- Last sync time -->
-            <template #syncTime="{ row }">
-              {{ formatDateTime(row.lastSyncedAt) }}
-            </template>
-
-            <!-- Freshness badge -->
-            <template #freshness="{ row }">
-              <lay-tag
-                :color="getFreshnessColor(getMinutesSince(row.lastSyncedAt))"
-                variant="light"
-                size="sm"
-                bordered
-              >
-                {{ getFreshnessText(getMinutesSince(row.lastSyncedAt)) }}
-              </lay-tag>
-            </template>
-
-            <!-- EXPAND: Per-agent progress bars -->
-            <template v-slot:expand="{ data }">
-              <div class="expand-content">
-                <div
-                  v-for="(child, idx) in data.children"
-                  :key="child.id"
-                  class="expand-row"
-                >
-                  <lay-progress
-                    :percent="getAgentPercent(child.rowCount, data.rowCount)"
-                    :theme="getProgressTheme(idx)"
-                    :show-text="true"
-                    :text="`${child.name} — ${formatNumber(child.rowCount)} bản ghi`"
-                  />
-                </div>
-                <div v-if="!data.children || data.children.length === 0" class="expand-empty">
-                  Chưa có dữ liệu đồng bộ từ agent nào
-                </div>
-              </div>
-            </template>
-          </lay-table>
-        </div>
-      </lay-field>
-    </lay-card>
-
     <!-- ===== AGENT TABLE ===== -->
     <lay-card style="margin-top: 12px">
       <lay-field title="Trạng thái đại lý">
@@ -361,6 +209,9 @@ onUnmounted(() => {
             :data-source="agents"
             :loading="loading"
             :default-toolbar="true"
+            childrenColumnName="children"
+            :indentSize="20"
+            v-model:expandKeys="expandKeys"
           >
             <template v-slot:toolbar>
               <lay-button size="sm" type="normal">
@@ -368,49 +219,65 @@ onUnmounted(() => {
               </lay-button>
             </template>
 
-            <!-- Agent name with icon -->
             <template #agentName="{ row }">
-              <span class="agent-name-cell">
+              <!-- Child row: table label with icon -->
+              <span v-if="row.icon" class="agent-name-cell" style="color: #666">
+                <i class="layui-icon" :class="row.icon" style="margin-right: 6px; font-size: 14px; color: #999"></i>
+                {{ row.name }}
+              </span>
+              <!-- Parent row: agent name with status icon -->
+              <span v-else class="agent-name-cell">
                 <i
                   class="layui-icon"
                   :class="row.isActive && row.status === 'active' ? 'layui-icon-ok-circle' : 'layui-icon-close-fill'"
                   :style="{ color: row.isActive && row.status === 'active' ? '#16baaa' : '#ff4d4f', marginRight: '6px', fontSize: '14px' }"
                 ></i>
-                {{ row.name }}
+                <b>{{ row.name }}</b>
               </span>
             </template>
 
-            <!-- Agent status -->
             <template #agentStatus="{ row }">
-              <lay-tag
-                :color="row.isActive && row.status === 'active' ? '#16baaa' : '#ff4d4f'"
-                variant="light"
-                size="sm"
-                bordered
-              >
-                {{ row.isActive && row.status === "active" ? "Hoạt động" : "Tắt" }}
-              </lay-tag>
+              <template v-if="!row.icon">
+                <lay-tag
+                  :color="row.isActive && row.status === 'active' ? '#16baaa' : '#ff4d4f'"
+                  variant="light"
+                  size="sm"
+                  bordered
+                >
+                  {{ row.isActive && row.status === "active" ? "Hoạt động" : "Tắt" }}
+                </lay-tag>
+              </template>
             </template>
 
-            <!-- Cookie expiry -->
             <template #cookieExp="{ row }">
-              <lay-tag
-                :color="getCookieStatusColor(row.cookieExpires)"
-                variant="light"
-                size="sm"
-                bordered
-              >
-                {{ getCookieStatusText(row.cookieExpires) }}
-              </lay-tag>
+              <template v-if="!row.icon">
+                <lay-tag
+                  :color="getCookieStatusColor(row.id)"
+                  variant="light"
+                  size="sm"
+                  bordered
+                >
+                  {{ getCookieStatusText(row.id) }}
+                </lay-tag>
+              </template>
             </template>
 
-            <!-- Number -->
-            <template #num="{ row, column }">
+            <template #num="{ row }">
               <lay-count-up
-                :end-val="Number(row[column.key]) || 0"
+                :end-val="Number(row.rowCount ?? row.totalRows) || 0"
                 :duration="600"
                 :use-grouping="true"
               />
+            </template>
+
+            <template #syncTime="{ row }">
+              <span v-if="row.lastSyncedAt" style="font-size: 12px; color: #666">
+                {{ new Date(row.lastSyncedAt).toLocaleString("vi-VN", {
+                  month: "2-digit", day: "2-digit",
+                  hour: "2-digit", minute: "2-digit", second: "2-digit",
+                }) }}
+              </span>
+              <span v-else style="color: #ccc">—</span>
             </template>
           </lay-table>
         </div>
@@ -430,7 +297,6 @@ onUnmounted(() => {
   padding: 0;
 }
 
-/* ===== STAT CARDS ===== */
 .stat-card {
   display: flex;
   align-items: center;
@@ -508,64 +374,16 @@ onUnmounted(() => {
   to { transform: rotate(360deg); }
 }
 
-/* ===== TABLE ===== */
 .table-container {
   margin-top: 8px;
 }
 
-.table-label {
-  display: inline-flex;
-  align-items: center;
-  font-size: 13px;
-}
-
-.table-name {
-  color: #bbb;
-  font-size: 11px;
-  margin-left: 6px;
-  font-weight: 400;
-}
-
-.agent-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 8px;
-  border-radius: 10px;
-  background: #f0f9f8;
-  color: #16baaa;
-  font-size: 12px;
-  font-weight: 500;
-}
-
-/* ===== EXPAND CONTENT: Progress bars per agent ===== */
-.expand-content {
-  width: 100%;
-  padding: 4px 20px 16px 0;
-}
-
-.expand-content .expand-row {
-  margin-top: 18px;
-}
-
-.expand-content .expand-row:first-child {
-  margin-top: 8px;
-}
-
-.expand-empty {
-  padding: 12px 0;
-  text-align: center;
-  color: #bbb;
-  font-size: 12px;
-}
-
-/* ===== AGENT TABLE ===== */
 .agent-name-cell {
   display: inline-flex;
   align-items: center;
   font-size: 13px;
 }
 
-/* ===== FOOTER ===== */
 .auto-refresh-note {
   text-align: center;
   padding: 12px 0 4px;

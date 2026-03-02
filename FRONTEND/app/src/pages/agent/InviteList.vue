@@ -4,14 +4,15 @@ import { useListPage } from "@/composables/useListPage";
 import { fetchInviteList } from "@/api/services/proxy";
 import { layer } from "@layui/layui-vue";
 import { useAgentFilter } from "@/composables/useAgentFilter";
+import CookieBadge from "@/components/CookieBadge.vue";
 import { useAuthStore } from "@/stores/auth";
 import { PERMISSIONS } from "@/constants/permissions";
 
 const authStore = useAuthStore();
 const canWrite = authStore.hasPermission(PERMISSIONS.INVITE_WRITE);
 
-const { dataSource, loading, page, setLoading, bindLoadData } = useListPage();
-const { selectedAgentId, agentOptions, agentWidth, notifySuccess } = useAgentFilter();
+const { dataSource, loading, page, setLoading, bindLoadData, guardStale } = useListPage();
+const { selectedAgentId, agentOptions, agentWidth } = useAgentFilter();
 
 const searchForm = reactive({
   dateAdded: [] as string[],
@@ -34,6 +35,7 @@ const columns = [
 ];
 
 async function loadData() {
+  const isStale = guardStale();
   setLoading(true);
   try {
     const res = await fetchInviteList({
@@ -43,13 +45,13 @@ async function loadData() {
       create_time: searchForm.dateAdded?.length === 2 ? `${searchForm.dateAdded[0]} - ${searchForm.dateAdded[1]}` : undefined,
       user_register_time: searchForm.dateMemberLogin?.length === 2 ? `${searchForm.dateMemberLogin[0]} - ${searchForm.dateMemberLogin[1]}` : undefined,
     });
+    if (isStale()) return;
     dataSource.value = res.data.data.items;
     page.total = res.data.data.total;
-    notifySuccess(page.total);
   } catch {
-    layer.msg("Lỗi tải dữ liệu", { icon: 2 });
+    if (!isStale()) layer.msg("Lỗi tải dữ liệu", { icon: 2 });
   } finally {
-    setLoading(false);
+    if (!isStale()) setLoading(false);
   }
 }
 
@@ -107,6 +109,7 @@ function handleReset() {
           @change="handlePageChange"
         >
           <template v-slot:toolbar>
+            <CookieBadge />
             <template v-if="canWrite">
               <lay-button type="normal" size="xs">+ Thêm mã giới thiệu</lay-button>
               <lay-button type="normal" size="xs">Copy đường link</lay-button>

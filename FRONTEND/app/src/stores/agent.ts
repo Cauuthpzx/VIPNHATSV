@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 import { ref, computed } from "vue";
-import { fetchAgents } from "@/api/services/proxy";
+import { fetchAgents, fetchCookieHealth } from "@/api/services/proxy";
 
 export interface AgentItem {
   id: string;
@@ -28,11 +28,17 @@ export const useAgentStore = defineStore("agent", () => {
     agents.value.find((a) => a.id === selectedAgentId.value) || null,
   );
 
-  /** Số cookies hoạt động / tổng số agent */
+  // Cookie health check (thực tế gọi upstream)
+  const cookieHealthMap = ref<Record<string, boolean>>({});
+  const healthLoaded = ref(false);
+
+  /** Số cookies còn sống / tổng số agent active */
   const cookieStats = computed(() => {
-    const total = agents.value.length;
-    const active = activeAgents.value.length;
-    return { valid: active, total };
+    const list = activeAgents.value;
+    const total = list.length;
+    if (!healthLoaded.value) return { valid: 0, total };
+    const valid = list.filter((a) => cookieHealthMap.value[a.id] === true).length;
+    return { valid, total };
   });
 
   async function loadAgents() {
@@ -54,6 +60,19 @@ export const useAgentStore = defineStore("agent", () => {
     }
   }
 
+  async function loadCookieHealth() {
+    try {
+      const res = await fetchCookieHealth();
+      const list = res.data.data as Array<{ id: string; alive: boolean }>;
+      const map: Record<string, boolean> = {};
+      for (const item of list) map[item.id] = item.alive;
+      cookieHealthMap.value = map;
+      healthLoaded.value = true;
+    } catch {
+      // ignore
+    }
+  }
+
   function selectAgent(agentId: string) {
     selectedAgentId.value = agentId;
     if (agentId) {
@@ -69,8 +88,11 @@ export const useAgentStore = defineStore("agent", () => {
     activeAgents,
     selectedAgent,
     cookieStats,
+    cookieHealthMap,
+    healthLoaded,
     loaded,
     loadAgents,
+    loadCookieHealth,
     selectAgent,
   };
 });

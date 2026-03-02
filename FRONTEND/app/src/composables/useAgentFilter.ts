@@ -1,13 +1,13 @@
 import { computed, onMounted } from "vue";
 import { useAgentStore } from "@/stores/agent";
 import { useAutoFitSelect } from "@/composables/useAutoFitSelect";
-import { layer } from "@layui/layui-vue";
 
 export function useAgentFilter() {
   const agentStore = useAgentStore();
 
   onMounted(() => {
     if (!agentStore.loaded) agentStore.loadAgents();
+    if (!agentStore.healthLoaded) agentStore.loadCookieHealth();
   });
 
   const selectedAgentId = computed({
@@ -24,19 +24,10 @@ export function useAgentFilter() {
 
   const cookieStats = computed(() => agentStore.cookieStats);
 
-  /** Hiện thông báo thành công với số cookies hoạt động */
-  function notifySuccess(total: number) {
-    const { valid, total: cookieTotal } = cookieStats.value;
-    layer.msg(`Cookies: ${valid}/${cookieTotal} hoạt động`, {
-      time: 2000,
-    });
-  }
-
   return {
     selectedAgentId,
     agentOptions,
     agentWidth,
     cookieStats,
-    notifySuccess,
   };
 }

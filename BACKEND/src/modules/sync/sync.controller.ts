@@ -130,13 +130,29 @@ export async function syncStatusHandler(request: FastifyRequest, reply: FastifyR
     };
   });
 
-  // 5. Agent list with per-table row counts
+  // 5. Agent list with per-table breakdown (tree: agent → tables)
   const agentList = agentsRaw.map((a) => {
-    // Count total rows across all tables for this agent
     let totalUserRows = 0;
-    for (const [, agMap] of breakdownMap) {
-      const stats = agMap.get(a.id);
-      if (stats) totalUserRows += stats.row_count;
+    const children: Array<{
+      id: string;
+      name: string;
+      icon: string;
+      rowCount: number;
+      lastSyncedAt: Date | null;
+    }> = [];
+
+    for (const tableName of tableNames) {
+      const agMap = breakdownMap.get(tableName);
+      const stats = agMap?.get(a.id);
+      const rowCount = stats?.row_count ?? 0;
+      totalUserRows += rowCount;
+      children.push({
+        id: `${a.id}__${tableName}`,
+        name: TABLE_LABELS[tableName] ?? tableName,
+        icon: TABLE_ICONS[tableName] ?? "layui-icon-file",
+        rowCount,
+        lastSyncedAt: stats?.last_synced_at ?? null,
+      });
     }
 
     return {
@@ -147,6 +163,7 @@ export async function syncStatusHandler(request: FastifyRequest, reply: FastifyR
       status: a.status,
       cookieExpires: a.cookie_expires,
       totalRows: totalUserRows,
+      children,
     };
   });
 

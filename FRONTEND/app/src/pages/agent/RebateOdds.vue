@@ -4,6 +4,7 @@ import { fetchLotteryDropdown, fetchRebateOdds } from "@/api/services/proxy";
 import { layer } from "@layui/layui-vue";
 import { useAutoFitSelect } from "@/composables/useAutoFitSelect";
 import { useAgentFilter } from "@/composables/useAgentFilter";
+import CookieBadge from "@/components/CookieBadge.vue";
 
 const selectedSeries = ref("");
 const selectedLottery = ref("");
@@ -13,7 +14,7 @@ const loading = ref(false);
 
 const { selectWidth: seriesWidth } = useAutoFitSelect(seriesOptions);
 const { selectWidth: lotteryWidth } = useAutoFitSelect(lotteryOptions);
-const { selectedAgentId, agentOptions, agentWidth, notifySuccess } = useAgentFilter();
+const { selectedAgentId, agentOptions, agentWidth } = useAgentFilter();
 
 const agentColumn = { title: "Nhân viên", key: "_agentName" };
 const columns = ref<{ title: string; key: string }[]>([]);
@@ -79,7 +80,6 @@ async function fetchRebateData() {
         })),
       ];
       dataSource.value = items.tableBody;
-      notifySuccess(dataSource.value.length);
     } else {
       buildFallbackData();
     }
@@ -210,7 +210,11 @@ onMounted(() => {
           :loading="loading"
           :default-toolbar="true"
           :data-source="dataSource"
-        />
+        >
+          <template v-slot:toolbar>
+            <CookieBadge />
+          </template>
+        </lay-table>
       </div>
     </lay-card>
   </div>

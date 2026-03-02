@@ -16,6 +16,7 @@ import {
   getLotteryHandler,
   listAgentsHandler,
   updateAgentCookieHandler,
+  cookieHealthHandler,
   editPasswordHandler,
   editFundPasswordHandler,
 } from "./proxy.controller.js";
@@ -58,4 +59,5 @@ export async function agentRoutes(app: FastifyInstance) {
 
   app.get("/", listAgentsHandler);
   app.put("/:id/cookie", updateAgentCookieHandler);
+  app.get("/cookie-health", cookieHealthHandler);
 }

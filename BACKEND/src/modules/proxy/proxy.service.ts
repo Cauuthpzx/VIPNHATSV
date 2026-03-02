@@ -1,10 +1,8 @@
 import type { FastifyInstance } from "fastify";
-import { createHash } from "node:crypto";
 import { fetchUpstream } from "./proxy.client.js";
 import * as agentService from "./agent.service.js";
 import { decryptSessionCookie } from "../../utils/crypto.js";
 import { promisePool } from "../../utils/concurrency.js";
-import { wsManager } from "../../websocket/ws.manager.js";
 import { logger } from "../../utils/logger.js";
 
 // ---------------------------------------------------------------------------
@@ -25,13 +23,9 @@ const CACHE_TTL: Record<string, number> = {
   "/agent/getLottery": 600,
 };
 
-// Max concurrent upstream requests to avoid overwhelming the upstream server
-const MAX_CONCURRENCY = 6;
 
 // ---------------------------------------------------------------------------
-// Natural sort keys — the field each endpoint uses for default ordering.
-// After merging multi-agent results we sort by this field so the combined
-// dataset looks exactly like it came from a single source.
+// Natural sort keys
 // ---------------------------------------------------------------------------
 const NATURAL_SORT_KEY: Record<string, string> = {
   "/agent/user.html": "register_time",
@@ -47,14 +41,18 @@ const NATURAL_SORT_KEY: Record<string, string> = {
 // Helpers
 // ---------------------------------------------------------------------------
 
+/**
+ * Simple deterministic cache key — no MD5 hashing overhead.
+ * Params are sorted and joined, then used directly as key suffix.
+ */
 function buildCacheKey(path: string, params: Record<string, string>, agentId: string): string {
-  const sorted = Object.entries(params)
-    .filter(([, v]) => v !== "" && v !== undefined)
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([k, v]) => `${k}=${v}`)
-    .join("&");
-  const hash = createHash("md5").update(sorted).digest("hex").slice(0, 12);
-  return `proxy:agent:${agentId}:${path}:${hash}`;
+  const keys = Object.keys(params).sort();
+  const parts: string[] = [];
+  for (const k of keys) {
+    const v = params[k];
+    if (v !== "" && v !== undefined) parts.push(`${k}=${v}`);
+  }
+  return `proxy:${agentId}:${path}:${parts.join("&")}`;
 }
 
 const SPLIT_DATE_ENDPOINTS = new Set([
@@ -71,7 +69,7 @@ function buildUpstreamParams(input: Record<string, unknown>, path: string): Reco
     if (value === undefined || value === null || value === "") continue;
 
     if ((key === "date" || key === "bet_time") && SPLIT_DATE_ENDPOINTS.has(path)) {
-      const parts = String(value).split(/\s*-\s*/);
+      const parts = String(value).split(" - ");
       if (parts.length === 2) {
         params["start_date"] = parts[0].trim();
         params["end_date"] = parts[1].trim();
@@ -106,7 +104,7 @@ interface SingleResult<T> {
 }
 
 // ---------------------------------------------------------------------------
-// Sort merged items — unified natural ordering across agents
+// Sort merged items
 // ---------------------------------------------------------------------------
 
 function sortMergedItems<T>(items: T[], path: string): T[] {
@@ -119,15 +117,95 @@ function sortMergedItems<T>(items: T[], path: string): T[] {
     if (va == null && vb == null) return 0;
     if (va == null) return 1;
     if (vb == null) return -1;
-    // Descending (newest first) — matches upstream default
     return String(vb).localeCompare(String(va));
   });
 }
 
 // ---------------------------------------------------------------------------
-// Merge totalData — sum numeric fields across agents
+// Compute totalData from merged items — guarantees accuracy for multi-agent
 // ---------------------------------------------------------------------------
 
+/**
+ * Mapping: endpoint → { totalDataKey: itemFieldKey }
+ * Defines how to compute each total field by summing the corresponding
+ * item field across all merged items. "count" fields count occurrences.
+ */
+const TOTAL_DATA_FIELDS: Record<string, Record<string, string | "COUNT_DISTINCT">> = {
+  "/agent/reportThirdGame.html": {
+    total_bet_times: "t_bet_times",
+    total_bet_amount: "t_bet_amount",
+    total_turnover: "t_turnover",
+    total_prize: "t_prize",
+    total_win_lose: "t_win_lose",
+    total_bet_number: "COUNT_DISTINCT",   // count distinct usernames
+  },
+  "/agent/reportLottery.html": {
+    total_bet_count: "bet_count",
+    total_bet_amount: "bet_amount",
+    total_valid_amount: "valid_amount",
+    total_rebate_amount: "rebate_amount",
+    total_result: "result",
+    total_win_lose: "win_lose",
+    total_prize: "prize",
+    total_bet_number: "COUNT_DISTINCT",
+  },
+  "/agent/reportFunds.html": {
+    total_deposit_count: "deposit_count",
+    total_deposit_amount: "deposit_amount",
+    total_withdrawal_count: "withdrawal_count",
+    total_withdrawal_amount: "withdrawal_amount",
+    total_charge_fee: "charge_fee",
+    total_agent_commission: "agent_commission",
+    total_promotion: "promotion",
+    total_third_rebate: "third_rebate",
+    total_third_activity_amount: "third_activity_amount",
+    total_user_count: "COUNT_DISTINCT",
+  },
+};
+
+function computeTotalFromItems<T>(
+  items: T[],
+  path: string,
+  upstreamTotalData?: Record<string, unknown>,
+): Record<string, unknown> | undefined {
+  const fieldMap = TOTAL_DATA_FIELDS[path];
+
+  // If no field mapping defined, fall back to upstream totalData (single-agent)
+  if (!fieldMap) return upstreamTotalData;
+  if (items.length === 0) return undefined;
+
+  const result: Record<string, unknown> = {};
+  const distinctUsers = new Set<string>();
+
+  for (const item of items) {
+    const row = item as Record<string, unknown>;
+    if (row.username) distinctUsers.add(String(row.username));
+  }
+
+  for (const [totalKey, itemKey] of Object.entries(fieldMap)) {
+    if (itemKey === "COUNT_DISTINCT") {
+      result[totalKey] = distinctUsers.size;
+      continue;
+    }
+
+    let sum = 0;
+    for (const item of items) {
+      const val = (item as Record<string, unknown>)[itemKey];
+      if (val != null && val !== "") {
+        const n = parseFloat(String(val));
+        if (!isNaN(n)) sum += n;
+      }
+    }
+    result[totalKey] = sum.toFixed(4);
+  }
+
+  return result;
+}
+
+/**
+ * Fallback: sum totalData from multiple upstream responses.
+ * Used for endpoints without explicit field mapping.
+ */
 function mergeTotalData(
   results: Array<{ totalData?: Record<string, unknown> }>,
 ): Record<string, unknown> | undefined {
@@ -146,7 +224,6 @@ function mergeTotalData(
     }
   }
 
-  // Format to 4 decimals (matches upstream format)
   for (const [key, val] of Object.entries(merged)) {
     if (typeof val === "number") {
       merged[key] = val.toFixed(4);
@@ -174,7 +251,6 @@ async function fetchSingleAgent<T = unknown>(
   try {
     const cached = await app.redis.get(cacheKey);
     if (cached) {
-      logger.debug("Cache hit", { cacheKey });
       return JSON.parse(cached);
     }
   } catch {
@@ -187,7 +263,6 @@ async function fetchSingleAgent<T = unknown>(
   let result: SingleResult<T>;
 
   if (Array.isArray(upstream.data)) {
-    // List endpoints — stamp each item with agent name
     const items = upstream.data.map((item: any) => ({ _agentName: agentName, ...item }));
     result = {
       items: items as T[],
@@ -195,8 +270,6 @@ async function fetchSingleAgent<T = unknown>(
       totalData: upstream.total_data,
     };
   } else {
-    // Reference/dropdown endpoints (getLottery, bet.html with play_type) —
-    // upstream.data is an object, pass through as-is
     result = {
       items: upstream.data as T[],
       total: upstream.count ?? 0,
@@ -204,14 +277,96 @@ async function fetchSingleAgent<T = unknown>(
     };
   }
 
-  // 3. Store in Redis
-  try {
-    await app.redis.set(cacheKey, JSON.stringify(result), "EX", ttl);
-  } catch {
-    // Redis write error — ignore
-  }
+  // 3. Store in Redis (fire-and-forget — don't await)
+  app.redis.set(cacheKey, JSON.stringify(result), "EX", ttl).catch(() => {});
 
   return result;
+}
+
+// ---------------------------------------------------------------------------
+// Multi-agent batch cache check via Redis MGET
+// ---------------------------------------------------------------------------
+
+async function fetchMultiAgentWithPipeline<T = unknown>(
+  app: FastifyInstance,
+  path: string,
+  params: Record<string, string>,
+  agents: Array<{ id: string; name: string; sessionCookie: string }>,
+  ttl: number,
+): Promise<SingleResult<T>[]> {
+  // Pre-compute cache keys and decrypt cookies BEFORE any I/O
+  const agentMeta = agents.map((agent) => ({
+    agent,
+    cacheKey: buildCacheKey(path, params, agent.id),
+    cookie: decryptSessionCookie(agent.sessionCookie),
+  }));
+
+  // 1. Batch cache check with MGET (single Redis round-trip)
+  let cached: (string | null)[] = [];
+  try {
+    cached = await app.redis.mget(...agentMeta.map((m) => m.cacheKey));
+  } catch {
+    cached = new Array(agents.length).fill(null);
+  }
+
+  // 2. Determine which agents need upstream fetch
+  const results: SingleResult<T>[] = new Array(agents.length);
+  const toFetch: Array<{ idx: number; meta: (typeof agentMeta)[0] }> = [];
+
+  for (let i = 0; i < agentMeta.length; i++) {
+    if (cached[i]) {
+      try {
+        results[i] = JSON.parse(cached[i]!);
+        continue;
+      } catch {
+        // Corrupt cache — re-fetch
+      }
+    }
+    toFetch.push({ idx: i, meta: agentMeta[i] });
+  }
+
+  // 3. Fetch only missing agents — ALL in parallel (no concurrency cap)
+  if (toFetch.length > 0) {
+    const fetched = await promisePool(
+      toFetch,
+      toFetch.length,
+      async ({ idx, meta }) => {
+        try {
+          const upstream = await fetchUpstream<T>({ path, cookie: meta.cookie, params });
+          let result: SingleResult<T>;
+          if (Array.isArray(upstream.data)) {
+            const items = upstream.data.map((item: any) => ({
+              _agentName: meta.agent.name,
+              ...item,
+            }));
+            result = { items: items as T[], total: upstream.count ?? 0, totalData: upstream.total_data };
+          } else {
+            result = { items: upstream.data as T[], total: upstream.count ?? 0, totalData: upstream.total_data };
+          }
+          return { idx, result, cacheKey: meta.cacheKey };
+        } catch (err) {
+          logger.warn("Agent fetch failed, skipping", {
+            agentId: meta.agent.id,
+            name: meta.agent.name,
+            error: err instanceof Error ? err.message : String(err),
+          });
+          return { idx, result: { items: [] as T[], total: 0 } as SingleResult<T>, cacheKey: null };
+        }
+      },
+    );
+
+    // 4. Batch cache write via pipeline (single Redis round-trip)
+    const pipeline = app.redis.pipeline();
+    for (const { idx, result, cacheKey } of fetched) {
+      results[idx] = result;
+      if (cacheKey && result.items.length > 0) {
+        pipeline.set(cacheKey, JSON.stringify(result), "EX", ttl);
+      }
+    }
+    pipeline.exec().catch(() => {});
+  }
+
+  return results;
 }
 
 // ---------------------------------------------------------------------------
@@ -231,28 +386,32 @@ async function cachedProxyCall<T = unknown>(
   // Single-agent mode: explicit agentId OR reference/dropdown request
   // -----------------------------------------------------------------------
   if (explicitAgentId || isReferenceRequest(path, input)) {
-    let cookie: string;
-    let agentName: string;
-
-    if (explicitAgentId) {
-      cookie = await agentService.getAgentCookie(app, explicitAgentId);
-      const agents = await agentService.listActiveAgents(app);
-      const found = agents.find((a) => a.id === explicitAgentId);
-      agentName = found?.name ?? "";
-    } else {
-      const agents = await agentService.listActiveAgents(app);
-      if (agents.length === 0) {
-        return { items: [] as unknown as T[], total: 0 };
-      }
-      const agent = agents[0];
-      cookie = decryptSessionCookie(agent.sessionCookie);
-      agentName = agent.name;
+    // Fetch agents list once (Redis-cached) and reuse
+    const agents = await agentService.listActiveAgents(app);
+    if (agents.length === 0) {
+      return { items: [] as unknown as T[], total: 0 };
     }
 
-    const agentId = explicitAgentId || (await agentService.listActiveAgents(app))[0]?.id || "default";
-    const result = await fetchSingleAgent<T>(app, path, params, agentId, agentName, cookie, ttl);
+    let agentId: string;
+    let agentName: string;
+    let cookie: string;
 
-    wsManager.broadcast({ type: "data_update", endpoint: path, timestamp: Date.now() });
+    if (explicitAgentId) {
+      const found = agents.find((a) => a.id === explicitAgentId);
+      agentId = explicitAgentId;
+      agentName = found?.name ?? "";
+      // getAgentCookie falls through to DB if not in list
+      cookie = found
+        ? decryptSessionCookie(found.sessionCookie)
+        : await agentService.getAgentCookie(app, explicitAgentId);
+    } else {
+      const agent = agents[0];
+      agentId = agent.id;
+      agentName = agent.name;
+      cookie = decryptSessionCookie(agent.sessionCookie);
+    }
+
+    const result = await fetchSingleAgent<T>(app, path, params, agentId, agentName, cookie, ttl);
     return result;
   }
 
@@ -264,36 +423,18 @@ async function cachedProxyCall<T = unknown>(
     return { items: [] as unknown as T[], total: 0 };
   }
 
-  // Extract page/limit from the original request — we'll paginate after merge
   const requestedPage = Math.max(1, Number(input.page) || 1);
   const requestedLimit = Math.max(1, Number(input.limit) || 10);
 
-  // Build upstream params WITHOUT page/limit — fetch all items from each agent
-  // so we can merge, sort, and paginate the unified dataset ourselves
+  // Build upstream params — fetch all items from each agent for merge+sort
   const allParams = { ...params };
   delete allParams.page;
   delete allParams.limit;
-  // Request max items from upstream to get the full dataset per agent
   allParams.limit = "200";
   allParams.page = "1";
 
-  const results = await promisePool(
-    agents,
-    MAX_CONCURRENCY,
-    async (agent) => {
-      try {
-        const cookie = decryptSessionCookie(agent.sessionCookie);
-        return await fetchSingleAgent<T>(app, path, allParams, agent.id, agent.name, cookie, ttl);
-      } catch (err) {
-        logger.warn("Agent fetch failed, skipping", {
-          agentId: agent.id,
-          name: agent.name,
-          error: err instanceof Error ? err.message : String(err),
-        });
-        return { items: [] as T[], total: 0 } as SingleResult<T>;
-      }
-    },
-  );
+  // Use pipeline-based multi-agent fetch (MGET + batch SET)
+  const results = await fetchMultiAgentWithPipeline<T>(app, path, allParams, agents, ttl);
 
   // Merge all items, sort naturally, then paginate
   const allItems = sortMergedItems(
@@ -301,13 +442,13 @@ async function cachedProxyCall<T = unknown>(
     path,
   );
   const mergedTotal = allItems.length;
-  const mergedTotalData = mergeTotalData(results);
+  // Compute totals from the actual merged items (accurate across agents)
+  // Falls back to mergeTotalData for endpoints without field mapping
+  const mergedTotalData = computeTotalFromItems(allItems, path, mergeTotalData(results));
 
   // Server-side pagination on the merged dataset
   const start = (requestedPage - 1) * requestedLimit;
   const pageItems = allItems.slice(start, start + requestedLimit);
-
-  wsManager.broadcast({ type: "data_update", endpoint: path, timestamp: Date.now() });
 
   return {
     items: pageItems as T[] | T,
@@ -317,7 +458,7 @@ async function cachedProxyCall<T = unknown>(
 }
 
 // ---------------------------------------------------------------------------
-// Per-endpoint proxy functions (public API — unchanged signatures)
+// Per-endpoint proxy functions (public API)
 // ---------------------------------------------------------------------------
 
 export function fetchUserList(app: FastifyInstance, input: Record<string, unknown>) {
