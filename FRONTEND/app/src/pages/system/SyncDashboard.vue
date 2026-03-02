@@ -594,9 +594,9 @@ onUnmounted(() => {
                   </lay-button>
                   <lay-button
                     size="xs"
-                    type="normal"
+                    :type="agentStore.cookieHealthMap[row.id] === true ? 'primary' : 'normal'"
                     :loading="syncingAgentId === row.id"
-                    :disabled="isSyncing"
+                    :disabled="isSyncing || agentStore.cookieHealthMap[row.id] !== true"
                     @click="handleSyncAgent(row.id)"
                   >
                     <i class="layui-icon layui-icon-refresh-1"></i> Sync

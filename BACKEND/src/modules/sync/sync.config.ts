@@ -40,9 +40,9 @@ export const SYNC_ENDPOINTS: SyncEndpointConfig[] = [
   { table: "proxyWithdrawal",      path: "/agent/withdrawalsRecord.html",    needsDateRange: true,  pageSize: 200, syncOnce: false, extraParams: { es: "1" } },
   { table: "proxyBet",             path: "/agent/bet.html",                  needsDateRange: true,  pageSize: 200, syncOnce: false, extraParams: { es: "1" } },
   { table: "proxyBetOrder",        path: "/agent/betOrder.html",             needsDateRange: true,  pageSize: 200, syncOnce: false, extraParams: { es: "1" } },
-  { table: "proxyReportLottery",   path: "/agent/reportLottery.html",        needsDateRange: true,  pageSize: 200, syncOnce: false },
-  { table: "proxyReportFunds",     path: "/agent/reportFunds.html",          needsDateRange: true,  pageSize: 200, syncOnce: false },
-  { table: "proxyReportThirdGame", path: "/agent/reportThirdGame.html",      needsDateRange: true,  pageSize: 200, syncOnce: false },
+  { table: "proxyReportLottery",   path: "/agent/reportLottery.html",        needsDateRange: true,  pageSize: 2000, syncOnce: false, extraParams: { username: "", lottery_id: "" } },
+  { table: "proxyReportFunds",     path: "/agent/reportFunds.html",          needsDateRange: true,  pageSize: 2000, syncOnce: false, extraParams: { username: "" } },
+  { table: "proxyReportThirdGame", path: "/agent/reportThirdGame.html",      needsDateRange: true,  pageSize: 2000, syncOnce: false, extraParams: { username: "" } },
 ];
 
 /** Interval between sync runs (ms). Override via SYNC_INTERVAL_MS env var. */

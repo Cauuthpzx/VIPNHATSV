@@ -32,7 +32,6 @@ function connectWs() {
   const socket = new WebSocket(`${protocol}//${host}/ws`);
 
   socket.addEventListener("open", () => {
-    // Authenticate with JWT
     if (authStore.accessToken) {
       socket.send(JSON.stringify({ type: "auth", token: authStore.accessToken }));
     }
@@ -50,7 +49,6 @@ function connectWs() {
   });
 
   socket.addEventListener("close", () => {
-    // Reconnect after 5s
     setTimeout(() => {
       if (ws.value === socket) connectWs();
     }, 5000);

@@ -16,6 +16,10 @@ export function deleteReadNotifications() {
   return api.delete("/notifications/read");
 }
 
+export function deleteAllNotifications() {
+  return api.delete("/notifications");
+}
+
 export function fetchMemberDetail(agentId: string, username: string) {
   return api.get(`/notifications/member/${encodeURIComponent(agentId)}/${encodeURIComponent(username)}`);
 }

@@ -1,13 +1,15 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount } from "vue";
-import { useNotificationStore, type Notification } from "@/stores/notification";
+import { ref, computed, onMounted, onUnmounted } from "vue";
+import { useNotificationStore, NOTIF_TYPE_CONFIG, type Notification } from "@/stores/notification";
 import { fetchMemberDetail } from "@/api/services/notification";
 import { layer } from "@layui/layui-vue";
 
 const store = useNotificationStore();
 
-const open = ref(false);
-const rootEl = ref<HTMLElement>();
+const panelVisible = ref(false);
+const filter = ref<"all" | "unread">("all");
+const showSettings = ref(false);
+const wrapperRef = ref<HTMLElement | null>(null);
 
 // --- Member detail dialog ---
 const detailVisible = ref(false);
@@ -15,27 +17,41 @@ const detailNotif = ref<Notification | null>(null);
 const memberLoading = ref(false);
 const memberInfo = ref<Record<string, unknown> | null>(null);
 
-// --- Panel toggle ---
-function toggle() {
-  open.value = !open.value;
-  if (open.value) {
+const filteredList = computed(() => {
+  let list = store.notifications.filter((n) => store.isTypeEnabled(n.type));
+  if (filter.value === "unread") {
+    list = list.filter((n) => !n.isRead);
+  }
+  return list;
+});
+
+const isEmpty = computed(() => filteredList.value.length === 0);
+
+function togglePanel() {
+  if (panelVisible.value) {
+    closePanel();
+  } else {
+    panelVisible.value = true;
+    showSettings.value = false;
     store.loadFromServer();
   }
 }
 
-function close() {
-  open.value = false;
+function closePanel() {
+  panelVisible.value = false;
+  showSettings.value = false;
 }
 
+// Click outside to close
 function onDocClick(e: MouseEvent) {
-  if (!open.value || !rootEl.value) return;
-  if (!rootEl.value.contains(e.target as Node)) {
-    close();
+  if (!panelVisible.value) return;
+  if (wrapperRef.value && !wrapperRef.value.contains(e.target as Node)) {
+    closePanel();
   }
 }
 
 onMounted(() => document.addEventListener("mousedown", onDocClick));
-onBeforeUnmount(() => document.removeEventListener("mousedown", onDocClick));
+onUnmounted(() => document.removeEventListener("mousedown", onDocClick));
 
 function onClickNotification(n: Notification) {
   if (!n.isRead) store.markAsRead(n.id);
@@ -72,18 +88,14 @@ function closeDetail() {
 }
 
 // --- Formatters ---
-function timeAgo(isoStr: string): string {
-  const diff = Date.now() - new Date(isoStr).getTime();
-  const seconds = Math.floor(diff / 1000);
-  if (seconds < 60) return "Vừa xong";
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes} phút trước`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} giờ trước`;
-  const days = Math.floor(hours / 24);
-  if (days < 7) return `${days} ngày trước`;
-  const date = new Date(isoStr);
-  return `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
+function formatDateTime(isoStr: string): string {
+  const d = new Date(isoStr);
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mo = String(d.getMonth() + 1).padStart(2, "0");
+  const yy = d.getFullYear();
+  return `${hh}:${mm} ${dd}/${mo}/${yy}`;
 }
 
 const memberFields: { key: string; label: string }[] = [
@@ -115,34 +127,113 @@ const badgeText = computed(() => {
   if (store.unreadCount > 99) return "99+";
   return String(store.unreadCount);
 });
+
+const panelTitle = computed(() => {
+  if (store.hasUnread) return `Thông báo (${store.unreadCount} mới)`;
+  return "Thông báo";
+});
 </script>
 
 <template>
-  <div ref="rootEl" class="hub-notify">
+  <div ref="wrapperRef" class="hub-notify">
     <!-- Bell trigger -->
-    <a href="javascript:;" class="hub-notify-bell" :class="{ active: open }" @click="toggle">
+    <a href="javascript:;" class="hub-notify-bell" :class="{ active: panelVisible }" @click="togglePanel">
       <i class="layui-icon layui-icon-notice hub-notify-bell-icon" />
       <span v-if="store.hasUnread" class="hub-notify-badge">{{ badgeText }}</span>
     </a>
 
     <!-- Dropdown panel -->
-    <Transition name="notify-slide">
-      <div v-show="open" class="hub-notify-panel">
+    <transition name="hub-notify-fade">
+      <div v-if="panelVisible" class="hub-notify-dropdown">
         <!-- Header -->
         <div class="hub-notify-header">
-          <span class="hub-notify-title">Thông báo</span>
-          <span v-if="store.hasUnread" class="hub-notify-header-count">{{ store.unreadCount }} chưa đọc</span>
-          <i class="layui-icon layui-icon-close hub-notify-close" @click="close" />
+          <span class="hub-notify-title">{{ panelTitle }}</span>
+        </div>
+
+        <!-- Toolbar -->
+        <div class="hub-notify-toolbar">
+          <div class="hub-notify-filters">
+            <button
+              class="hub-notify-filter-btn"
+              :class="{ active: filter === 'all' && !showSettings }"
+              @click="filter = 'all'; showSettings = false"
+            >Tất cả</button>
+            <button
+              class="hub-notify-filter-btn"
+              :class="{ active: filter === 'unread' && !showSettings }"
+              @click="filter = 'unread'; showSettings = false"
+            >
+              Chưa đọc
+              <span v-if="store.unreadCount > 0" class="hub-notify-filter-count">{{ store.unreadCount }}</span>
+            </button>
+          </div>
+          <div class="hub-notify-actions">
+            <a
+              href="javascript:;"
+              class="hub-notify-action-btn"
+              :class="{ active: showSettings }"
+              title="Cài đặt"
+              @click="showSettings = !showSettings"
+            >
+              <i class="layui-icon layui-icon-set" />
+            </a>
+            <a
+              v-show="!showSettings && store.hasUnread"
+              href="javascript:;"
+              class="hub-notify-action-btn hub-notify-action-btn--primary"
+              title="Đánh dấu tất cả đã đọc"
+              @click="store.markAllAsRead()"
+            >
+              <i class="layui-icon layui-icon-ok" />
+            </a>
+            <a
+              v-show="!showSettings && store.hasReadItems"
+              href="javascript:;"
+              class="hub-notify-action-btn hub-notify-action-btn--warn"
+              title="Xóa đã đọc"
+              @click="store.removeRead()"
+            >
+              <i class="layui-icon layui-icon-delete" />
+            </a>
+            <a
+              v-show="!showSettings && store.notifications.length > 0"
+              href="javascript:;"
+              class="hub-notify-action-btn hub-notify-action-btn--danger"
+              title="Xóa tất cả"
+              @click="store.removeAll()"
+            >
+              <i class="layui-icon layui-icon-close" />
+            </a>
+          </div>
+        </div>
+
+        <!-- Settings view -->
+        <div v-if="showSettings" class="hub-notify-settings">
+          <div class="hub-notify-settings-title">Loại thông báo hiển thị</div>
+          <div
+            v-for="t in NOTIF_TYPE_CONFIG"
+            :key="t.type"
+            class="hub-notify-settings-row"
+          >
+            <span class="hub-notify-settings-dot" :style="{ background: t.color }" />
+            <span class="hub-notify-settings-icon">{{ t.icon }}</span>
+            <span class="hub-notify-settings-label">{{ t.label }}</span>
+            <lay-switch
+              :model-value="store.enabledTypes[t.type]"
+              @update:model-value="store.toggleType(t.type)"
+              size="xs"
+            />
+          </div>
         </div>
 
         <!-- Loading -->
-        <div v-if="store.loading && store.notifications.length === 0" class="hub-notify-empty">
+        <div v-else-if="store.loading && store.notifications.length === 0" class="hub-notify-empty">
           <i class="layui-icon layui-icon-loading layui-anim layui-anim-rotate layui-anim-loop" style="font-size: 20px; color: #009688;" />
           <span>Đang tải...</span>
         </div>
 
         <!-- Empty -->
-        <div v-else-if="store.notifications.length === 0" class="hub-notify-empty">
+        <div v-else-if="isEmpty" class="hub-notify-empty">
           <i class="layui-icon layui-icon-face-surprised" style="font-size: 36px; color: #d9d9d9;" />
           <span>Không có thông báo</span>
         </div>
@@ -150,7 +241,7 @@ const badgeText = computed(() => {
         <!-- Notification list -->
         <div v-else class="hub-notify-list">
           <div
-            v-for="n in store.notifications"
+            v-for="n in filteredList"
             :key="n.id"
             class="hub-notify-item"
             :class="{ unread: !n.isRead }"
@@ -160,20 +251,17 @@ const badgeText = computed(() => {
               {{ n.type === "member_new" ? "+" : "−" }}
             </span>
             <div class="hub-notify-item-body">
-              <span v-if="n.agentName" class="hub-notify-item-agent">{{ n.agentName }}</span>
-              <span class="hub-notify-item-text">
-                {{ n.type === "member_new" ? "Hội viên mới: " : "Mất hội viên: " }}
-                <strong>{{ n.username }}</strong>
+              <div class="hub-notify-item-line1">
+                <span class="hub-notify-item-agent-tag">{{ n.agentName || "—" }}</span>
+                <span class="hub-notify-item-dash"> - đại lý : </span>
+                <span class="hub-notify-item-verb">{{ n.type === "member_new" ? "vừa có" : "vừa mất" }} 1 khách hàng</span>
+              </div>
+              <div class="hub-notify-item-line2">
+                <strong class="hub-notify-item-username">{{ n.username }}</strong>
                 <span v-if="n.money" class="hub-notify-item-money">{{ Number(n.money).toLocaleString("vi-VN") }} ₫</span>
-              </span>
-              <span class="hub-notify-item-meta">
-                <span class="hub-notify-item-time">{{ timeAgo(n.createdAt) }}</span>
-                <a
-                  href="javascript:;"
-                  class="hub-notify-item-detail"
-                  @click="openDetail(n, $event)"
-                >Chi tiết</a>
-              </span>
+                <span class="hub-notify-item-time">{{ formatDateTime(n.createdAt) }}</span>
+                <a href="javascript:;" class="hub-notify-item-detail" @click="openDetail(n, $event)">Chi tiết</a>
+              </div>
             </div>
           </div>
 
@@ -184,26 +272,8 @@ const badgeText = computed(() => {
             </button>
           </div>
         </div>
-
-        <!-- Footer actions -->
-        <div class="hub-notify-footer">
-          <button
-            v-if="store.hasUnread"
-            class="hub-notify-footer-btn hub-notify-footer-btn--read"
-            @click="store.markAllAsRead()"
-          >
-            <i class="layui-icon layui-icon-ok" /> Đã đọc tất cả
-          </button>
-          <button
-            v-if="store.hasReadItems"
-            class="hub-notify-footer-btn hub-notify-footer-btn--delete"
-            @click="store.removeRead()"
-          >
-            <i class="layui-icon layui-icon-delete" /> Xóa đã đọc
-          </button>
-        </div>
       </div>
-    </Transition>
+    </transition>
 
     <!-- Member detail dialog -->
     <lay-layer
@@ -215,13 +285,11 @@ const badgeText = computed(() => {
       @close="closeDetail"
     >
       <div v-if="detailNotif" class="hub-member-detail">
-        <!-- Loading -->
         <div v-if="memberLoading" class="hub-member-loading">
           <i class="layui-icon layui-icon-loading layui-anim layui-anim-rotate layui-anim-loop" />
           Đang tải thông tin...
         </div>
 
-        <!-- Member info table -->
         <table v-if="memberInfo" class="hub-member-table">
           <tbody>
             <tr v-for="field in memberFields" :key="field.key">
@@ -241,7 +309,6 @@ const badgeText = computed(() => {
           </tbody>
         </table>
 
-        <!-- Not found -->
         <div v-if="!memberLoading && !memberInfo" class="hub-member-empty">
           Không tìm thấy dữ liệu hội viên
         </div>
@@ -312,71 +379,200 @@ const badgeText = computed(() => {
   pointer-events: none;
 }
 
-/* === Panel dropdown === */
-.hub-notify-panel {
+/* === Dropdown panel === */
+.hub-notify-dropdown {
   position: absolute;
-  top: calc(100% + 6px);
-  right: -20px;
-  width: 370px;
-  max-height: 500px;
+  top: 100%;
+  right: 0;
+  width: 460px;
+  max-height: 520px;
   background: #fff;
-  border-radius: 6px;
-  border: 1px solid #e8e8e8;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+  border: 1px solid #e0e0e0;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  z-index: 999;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-  z-index: 9999;
 }
 
-.notify-slide-enter-active {
-  animation: notify-slide-in 0.2s ease-out;
+/* Fade transition */
+.hub-notify-fade-enter-active,
+.hub-notify-fade-leave-active {
+  transition: opacity 0.15s, transform 0.15s;
 }
-.notify-slide-leave-active {
-  animation: notify-slide-in 0.15s ease reverse;
-}
-@keyframes notify-slide-in {
-  0% { opacity: 0; transform: translateY(-6px); }
-  100% { opacity: 1; transform: translateY(0); }
+.hub-notify-fade-enter-from,
+.hub-notify-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
 }
 
 /* === Header === */
 .hub-notify-header {
-  display: flex;
-  align-items: center;
   padding: 10px 14px;
-  border-bottom: 1px solid #f0f0f0;
-  gap: 8px;
+  border-bottom: 1px solid #e8e8e8;
+  flex-shrink: 0;
 }
 
 .hub-notify-title {
   font-size: 14px;
-  font-weight: 700;
-  color: #1a1a1a;
-}
-
-.hub-notify-header-count {
-  font-size: 11px;
-  color: #fff;
-  background: #ff4d4f;
-  border-radius: 10px;
-  padding: 1px 8px;
-  font-weight: 500;
-}
-
-.hub-notify-close {
-  font-size: 14px;
-  color: #999;
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
-  transition: all 0.2s;
-  margin-left: auto;
-}
-
-.hub-notify-close:hover {
+  font-weight: 600;
   color: #333;
-  background: #f5f5f5;
+}
+
+/* === Toolbar: filters + action buttons === */
+.hub-notify-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  border-bottom: 1px solid #e8e8e8;
+  flex-shrink: 0;
+}
+
+.hub-notify-filters {
+  display: flex;
+  gap: 0;
+}
+
+.hub-notify-filter-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 12px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: #666;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.hub-notify-filter-btn:hover {
+  color: #333;
+  background: #fafafa;
+}
+
+.hub-notify-filter-btn.active {
+  color: #009688;
+  border-bottom-color: #009688;
+  font-weight: 600;
+}
+
+.hub-notify-filter-count {
+  display: inline-block;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: #ff4d4f;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 16px;
+  text-align: center;
+}
+
+/* === Action buttons === */
+.hub-notify-actions {
+  display: flex;
+  gap: 3px;
+}
+
+.hub-notify-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  text-decoration: none;
+  transition: all 0.15s;
+  color: #666;
+  background: #f0f0f0;
+}
+
+.hub-notify-action-btn .layui-icon {
+  font-size: 14px;
+}
+
+.hub-notify-action-btn:hover,
+.hub-notify-action-btn.active {
+  background: #e0e0e0;
+  color: #333;
+}
+
+.hub-notify-action-btn--primary {
+  color: #fff;
+  background: #1e9fff;
+}
+.hub-notify-action-btn--primary:hover {
+  background: #1890e6;
+  color: #fff;
+}
+
+.hub-notify-action-btn--warn {
+  color: #fff;
+  background: #ffb800;
+}
+.hub-notify-action-btn--warn:hover {
+  background: #e6a600;
+  color: #fff;
+}
+
+.hub-notify-action-btn--danger {
+  color: #fff;
+  background: #ff5722;
+}
+.hub-notify-action-btn--danger:hover {
+  background: #e64a19;
+  color: #fff;
+}
+
+/* === Settings === */
+.hub-notify-settings {
+  padding: 14px;
+}
+
+.hub-notify-settings-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #999;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 10px;
+}
+
+.hub-notify-settings-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid #f5f5f5;
+}
+
+.hub-notify-settings-row:last-child {
+  border-bottom: none;
+}
+
+.hub-notify-settings-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.hub-notify-settings-icon {
+  width: 20px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 14px;
+  color: #666;
+}
+
+.hub-notify-settings-label {
+  flex: 1;
+  font-size: 13px;
+  color: #333;
 }
 
 /* === Notification list === */
@@ -384,7 +580,6 @@ const badgeText = computed(() => {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  max-height: 370px;
 }
 
 .hub-notify-list::-webkit-scrollbar {
@@ -405,7 +600,7 @@ const badgeText = computed(() => {
   gap: 10px;
   padding: 10px 14px;
   cursor: pointer;
-  border-bottom: 1px solid #f8f8f8;
+  border-bottom: 1px dashed #ddd;
   transition: background 0.15s;
 }
 
@@ -428,13 +623,13 @@ const badgeText = computed(() => {
 /* +/- icon */
 .hub-notify-item-icon {
   flex-shrink: 0;
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
   margin-top: 2px;
 }
@@ -458,37 +653,54 @@ const badgeText = computed(() => {
   gap: 2px;
 }
 
-.hub-notify-item-agent {
-  font-size: 11px;
-  color: #1e9fff;
-  font-weight: 600;
-  line-height: 1.2;
-}
-
-.hub-notify-item-text {
+.hub-notify-item-line1 {
   font-size: 13px;
   color: #333;
   line-height: 1.4;
 }
 
-.hub-notify-item-money {
+.hub-notify-item-agent-tag {
   display: inline-block;
-  margin-left: 6px;
+  padding: 0 5px;
+  background: #e8f4fd;
+  color: #1e9fff;
+  font-weight: 600;
+  font-size: 12px;
+  border-radius: 2px;
+  margin-right: 2px;
+}
+
+.hub-notify-item-dash {
+  color: #999;
+  font-size: 12px;
+}
+
+.hub-notify-item-verb {
+  color: #555;
+}
+
+.hub-notify-item-line2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hub-notify-item-username {
+  font-size: 13px;
+  color: #1a1a1a;
+}
+
+.hub-notify-item-money {
   font-weight: 700;
   color: #f59e0b;
   font-size: 13px;
 }
 
-.hub-notify-item-meta {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 1px;
-}
-
 .hub-notify-item-time {
+  margin-left: auto;
   font-size: 11px;
   color: #aaa;
+  white-space: nowrap;
 }
 
 .hub-notify-item-detail {
@@ -497,6 +709,7 @@ const badgeText = computed(() => {
   text-decoration: none;
   font-weight: 500;
   transition: color 0.2s;
+  white-space: nowrap;
 }
 
 .hub-notify-item-detail:hover {
@@ -508,13 +721,12 @@ const badgeText = computed(() => {
 .hub-notify-load-more {
   display: flex;
   justify-content: center;
-  padding: 8px 14px;
+  padding: 10px 14px;
 }
 
 .hub-notify-load-more button {
-  padding: 4px 14px;
+  padding: 5px 16px;
   border: 1px solid #e0e0e0;
-  border-radius: 3px;
   background: #fff;
   color: #666;
   font-size: 12px;
@@ -532,53 +744,6 @@ const badgeText = computed(() => {
   cursor: not-allowed;
 }
 
-/* === Footer === */
-.hub-notify-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 14px;
-  border-top: 1px solid #f0f0f0;
-  gap: 8px;
-}
-
-.hub-notify-footer-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  background: none;
-  border: 1px solid #e6e6e6;
-  border-radius: 4px;
-  padding: 4px 10px;
-  font-size: 12px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.hub-notify-footer-btn .layui-icon {
-  font-size: 12px;
-}
-
-.hub-notify-footer-btn--read {
-  color: #1e9fff;
-  border-color: #d0e8ff;
-}
-
-.hub-notify-footer-btn--read:hover {
-  background: #f0f7ff;
-  border-color: #1e9fff;
-}
-
-.hub-notify-footer-btn--delete {
-  color: #999;
-}
-
-.hub-notify-footer-btn--delete:hover {
-  color: #dc2626;
-  border-color: #dc2626;
-  background: #fef2f2;
-}
-
 /* === Empty state === */
 .hub-notify-empty {
   display: flex;
@@ -589,6 +754,7 @@ const badgeText = computed(() => {
   color: #bbb;
   font-size: 13px;
   gap: 8px;
+  flex: 1;
 }
 
 /* === Member detail dialog === */

@@ -61,6 +61,11 @@ export async function deleteRead(prisma: PrismaClient): Promise<number> {
   return result.count;
 }
 
+export async function deleteAll(prisma: PrismaClient): Promise<number> {
+  const result = await prisma.notification.deleteMany({});
+  return result.count;
+}
+
 /**
  * Get member detail from proxy_users table.
  * Used by notification detail view to show member info.

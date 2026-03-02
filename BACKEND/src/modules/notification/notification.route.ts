@@ -68,6 +68,15 @@ export async function notificationRoutes(app: FastifyInstance) {
     },
   );
 
+  // DELETE /notifications — delete all notifications
+  app.delete(
+    "/",
+    async (_request: FastifyRequest, reply: FastifyReply) => {
+      const deleted = await notifService.deleteAll(app.prisma);
+      return sendSuccess(reply, { deleted });
+    },
+  );
+
   // GET /notifications/member/:agentId/:username — member detail for notification
   app.get(
     "/member/:agentId/:username",

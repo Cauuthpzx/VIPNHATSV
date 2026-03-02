@@ -1,10 +1,11 @@
 import { defineStore } from "pinia";
-import { ref, computed } from "vue";
+import { ref, computed, reactive } from "vue";
 import {
   fetchNotifications,
   fetchNotificationCount,
   markNotificationsRead,
   deleteReadNotifications,
+  deleteAllNotifications,
 } from "@/api/services/notification";
 
 export interface Notification {
@@ -18,16 +19,47 @@ export interface Notification {
   createdAt: string; // ISO string
 }
 
+export type NotifType = "member_new" | "member_lost";
+
+export const NOTIF_TYPE_CONFIG: { type: NotifType; label: string; color: string; icon: string }[] = [
+  { type: "member_new", label: "Hội viên mới", color: "#16baaa", icon: "+" },
+  { type: "member_lost", label: "Mất hội viên", color: "#ff5722", icon: "−" },
+];
+
+const SETTINGS_KEY = "hub_notif_settings";
+
+function loadSettings(): Record<NotifType, boolean> {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if (raw) return { member_new: true, member_lost: true, ...JSON.parse(raw) };
+  } catch { /* ignore */ }
+  return { member_new: true, member_lost: true };
+}
+
+function saveSettings(s: Record<NotifType, boolean>) {
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+}
+
 export const useNotificationStore = defineStore("notification", () => {
   const notifications = ref<Notification[]>([]);
   const totalCount = ref(0);
   const unreadCount = ref(0);
   const loading = ref(false);
   const loadingMore = ref(false);
+  const enabledTypes = reactive<Record<NotifType, boolean>>(loadSettings());
 
   const hasUnread = computed(() => unreadCount.value > 0);
   const hasMore = computed(() => notifications.value.length < totalCount.value);
   const hasReadItems = computed(() => notifications.value.some((n) => n.isRead));
+
+  function isTypeEnabled(type: NotifType): boolean {
+    return enabledTypes[type] !== false;
+  }
+
+  function toggleType(type: NotifType) {
+    enabledTypes[type] = !enabledTypes[type];
+    saveSettings({ ...enabledTypes });
+  }
 
   // --- Polling ---
   let pollTimer: ReturnType<typeof setInterval> | null = null;
@@ -117,14 +149,12 @@ export const useNotificationStore = defineStore("notification", () => {
   async function markAllAsRead() {
     const unreadIds = notifications.value.filter((n) => !n.isRead);
     if (unreadIds.length === 0) return;
-    // optimistic
     for (const n of unreadIds) n.isRead = true;
     const prevCount = unreadCount.value;
     unreadCount.value = 0;
     try {
       await markNotificationsRead({ all: true });
     } catch {
-      // rollback
       for (const n of unreadIds) n.isRead = false;
       unreadCount.value = prevCount;
     }
@@ -133,7 +163,6 @@ export const useNotificationStore = defineStore("notification", () => {
   async function removeRead() {
     const readItems = notifications.value.filter((n) => n.isRead);
     if (readItems.length === 0) return;
-    // optimistic
     const prevList = [...notifications.value];
     const prevTotal = totalCount.value;
     notifications.value = notifications.value.filter((n) => !n.isRead);
@@ -146,6 +175,23 @@ export const useNotificationStore = defineStore("notification", () => {
     }
   }
 
+  async function removeAll() {
+    if (notifications.value.length === 0) return;
+    const prevList = [...notifications.value];
+    const prevTotal = totalCount.value;
+    const prevUnread = unreadCount.value;
+    notifications.value = [];
+    totalCount.value = 0;
+    unreadCount.value = 0;
+    try {
+      await deleteAllNotifications();
+    } catch {
+      notifications.value = prevList;
+      totalCount.value = prevTotal;
+      unreadCount.value = prevUnread;
+    }
+  }
+
   return {
     notifications,
     totalCount,
@@ -155,6 +201,9 @@ export const useNotificationStore = defineStore("notification", () => {
     hasUnread,
     hasMore,
     hasReadItems,
+    enabledTypes,
+    isTypeEnabled,
+    toggleType,
     startPolling,
     stopPolling,
     onWsNotification,
@@ -163,5 +212,6 @@ export const useNotificationStore = defineStore("notification", () => {
     markAsRead,
     markAllAsRead,
     removeRead,
+    removeAll,
   };
 });

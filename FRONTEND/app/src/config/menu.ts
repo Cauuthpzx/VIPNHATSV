@@ -71,14 +71,14 @@ export const menuData: MenuItem[] = [
       { id: "editFundPassword", title: "Đổi mật khẩu giao dịch", path: "/agent/edit-fund-password", permission: PERMISSIONS.PASSWORD_WRITE },
     ],
   },
-  {
-    id: "rebate",
-    title: "Quản lí tỉ lệ hoàn trả",
-    icon: "layui-icon-list",
-    children: [
-      { id: "rebateOdds", title: "Danh sách tỉ lệ hoàn trả", path: "/agent/rebate-odds", permission: PERMISSIONS.REBATE_READ },
-    ],
-  },
+  // {
+  //   id: "rebate",
+  //   title: "Quản lí tỉ lệ hoàn trả",
+  //   icon: "layui-icon-list",
+  //   children: [
+  //     { id: "rebateOdds", title: "Danh sách tỉ lệ hoàn trả", path: "/agent/rebate-odds", permission: PERMISSIONS.REBATE_READ },
+  //   ],
+  // },
   {
     id: "system",
     title: "SYSTEM",
