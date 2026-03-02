@@ -1,5 +1,6 @@
 import type { PrismaClient } from "@prisma/client";
 import { logger } from "../../utils/logger.js";
+import { wsManager } from "../../websocket/ws.manager.js";
 
 type Item = Record<string, unknown>;
 
@@ -59,7 +60,41 @@ async function upsertLoop<T>(
 // ---------------------------------------------------------------------------
 
 async function upsertUsers(prisma: PrismaClient, agentId: string, items: Item[]): Promise<number> {
-  return upsertLoop(items, "upsertUsers", (item) => str(item.username), async (username, item) => {
+  // Skip change detection if upstream returned empty (likely error/timeout)
+  if (items.length === 0) return 0;
+
+  // 1. Fetch existing members for this agent
+  const existing = await prisma.proxyUser.findMany({
+    where: { agentId },
+    select: { username: true, money: true },
+  });
+  const existingMap = new Map(existing.map((u) => [u.username, u.money]));
+
+  // 2. Build upstream username→money map
+  const upstreamMap = new Map<string, string | null>();
+  for (const item of items) {
+    const username = str(item.username);
+    if (username) upstreamMap.set(username, str(item.money));
+  }
+
+  // 3. Detect new members (in upstream but not in DB)
+  const newMembers: Array<{ username: string; money: string | null }> = [];
+  for (const [username, money] of upstreamMap) {
+    if (!existingMap.has(username)) {
+      newMembers.push({ username, money });
+    }
+  }
+
+  // 4. Detect lost members (in DB but not in upstream)
+  const lostMembers: Array<{ username: string; money: string | null }> = [];
+  for (const [username, money] of existingMap) {
+    if (!upstreamMap.has(username)) {
+      lostMembers.push({ username, money: money != null ? String(money) : null });
+    }
+  }
+
+  // 5. Upsert all items as before
+  const count = await upsertLoop(items, "upsertUsers", (item) => str(item.username), async (username, item) => {
     const data = {
       agentId,
       typeFormat: str(item.type_format),
@@ -81,6 +116,85 @@ async function upsertUsers(prisma: PrismaClient, agentId: string, items: Item[])
       update: data,
     });
   });
+
+  // 6. Create notifications for member changes (with safeguards)
+  // Safeguard A: Lần đầu sync (DB chưa có member) → skip hết, không tạo notification
+  if (existingMap.size === 0) {
+    if (newMembers.length > 0) {
+      logger.info(`[Sync] First sync for agent ${agentId}: ${newMembers.length} members imported, no notifications created`);
+    }
+    return count;
+  }
+
+  // Safeguard B: Nếu mất >50% member → upstream có thể bị lỗi/trả thiếu, skip "member_lost"
+  const lostRatio = existingMap.size > 0 ? lostMembers.length / existingMap.size : 0;
+  const safeLostMembers = lostRatio > 0.5 ? [] : lostMembers;
+  if (lostRatio > 0.5 && lostMembers.length > 0) {
+    logger.warn(
+      `[Sync] Suspicious member loss: ${lostMembers.length}/${existingMap.size} (${(lostRatio * 100).toFixed(0)}%) for agent ${agentId} — skipping lost notifications`,
+    );
+  }
+
+  if (newMembers.length > 0 || safeLostMembers.length > 0) {
+    // Safeguard C: Chống trùng lặp — check notification đã tồn tại chưa (cùng agent + type + username trong 24h)
+    const cutoff24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const allUsernames = [
+      ...newMembers.map((m) => m.username),
+      ...safeLostMembers.map((m) => m.username),
+    ];
+
+    const existingNotifs = await prisma.notification.findMany({
+      where: {
+        agentId,
+        username: { in: allUsernames },
+        createdAt: { gte: cutoff24h },
+      },
+      select: { type: true, username: true },
+    });
+    const existingNotifSet = new Set(existingNotifs.map((n) => `${n.type}:${n.username}`));
+
+    const notifs = [
+      ...newMembers
+        .filter((m) => !existingNotifSet.has(`member_new:${m.username}`))
+        .map((m) => ({
+          agentId,
+          type: "member_new" as const,
+          username: m.username,
+          money: m.money,
+        })),
+      ...safeLostMembers
+        .filter((m) => !existingNotifSet.has(`member_lost:${m.username}`))
+        .map((m) => ({
+          agentId,
+          type: "member_lost" as const,
+          username: m.username,
+          money: m.money,
+        })),
+    ];
+
+    if (notifs.length > 0) {
+      try {
+        await prisma.notification.createMany({ data: notifs });
+        logger.info(
+          `[Sync] Member changes detected: +${newMembers.length} new, -${safeLostMembers.length} lost (agent: ${agentId}, notifs created: ${notifs.length})`,
+        );
+
+        // Broadcast via WebSocket so frontend can refresh
+        wsManager.broadcast({
+          type: "notifications",
+          newCount: newMembers.length,
+          lostCount: safeLostMembers.length,
+          agentId,
+        });
+      } catch (err) {
+        logger.warn("Failed to create member change notifications", {
+          error: (err as Error).message,
+        });
+      }
+    }
+  }
+
+  return count;
 }
 
 // ---------------------------------------------------------------------------

@@ -12,6 +12,8 @@ export interface SyncEndpointConfig {
    * Khi syncOnce=true, recurring sync sẽ bỏ qua endpoint này.
    */
   syncOnce: boolean;
+  /** Extra params to send with every request (e.g. { es: "1" } for betOrder) */
+  extraParams?: Record<string, string>;
 }
 
 /**
@@ -28,16 +30,16 @@ export const SYNC_DATE_START = process.env.SYNC_DATE_START || "2026-01-01";
  * - syncOnce=true  → chỉ sync lần đầu (invite)
  * - needsDateRange → sync từng ngày từ SYNC_DATE_START đến hôm nay
  *                     ngày cũ đã sync → skip, ngày hôm nay → luôn sync (cộng dồn)
- * - user, bank     → không có date range, sync mỗi lần (dữ liệu thay đổi bất kỳ lúc nào)
+ * - user           → không có date range, sync mỗi lần (dữ liệu thay đổi bất kỳ lúc nào)
+ * - bank           → KHÔNG sync (fetch trực tiếp từ upstream khi cần)
  */
 export const SYNC_ENDPOINTS: SyncEndpointConfig[] = [
   { table: "proxyUser",            path: "/agent/user.html",                 needsDateRange: false, pageSize: 200, syncOnce: false },
   { table: "proxyInvite",          path: "/agent/inviteList.html",           needsDateRange: false, pageSize: 200, syncOnce: true },
-  { table: "proxyBank",            path: "/agent/bankList.html",             needsDateRange: false, pageSize: 200, syncOnce: false },
-  { table: "proxyDeposit",         path: "/agent/depositAndWithdrawal.html", needsDateRange: true,  pageSize: 200, syncOnce: false },
-  { table: "proxyWithdrawal",      path: "/agent/withdrawalsRecord.html",    needsDateRange: true,  pageSize: 200, syncOnce: false },
-  { table: "proxyBet",             path: "/agent/bet.html",                  needsDateRange: true,  pageSize: 200, syncOnce: false },
-  { table: "proxyBetOrder",        path: "/agent/betOrder.html",             needsDateRange: true,  pageSize: 200, syncOnce: false },
+  { table: "proxyDeposit",         path: "/agent/depositAndWithdrawal.html", needsDateRange: true,  pageSize: 200, syncOnce: false, extraParams: { es: "1" } },
+  { table: "proxyWithdrawal",      path: "/agent/withdrawalsRecord.html",    needsDateRange: true,  pageSize: 200, syncOnce: false, extraParams: { es: "1" } },
+  { table: "proxyBet",             path: "/agent/bet.html",                  needsDateRange: true,  pageSize: 200, syncOnce: false, extraParams: { es: "1" } },
+  { table: "proxyBetOrder",        path: "/agent/betOrder.html",             needsDateRange: true,  pageSize: 200, syncOnce: false, extraParams: { es: "1" } },
   { table: "proxyReportLottery",   path: "/agent/reportLottery.html",        needsDateRange: true,  pageSize: 200, syncOnce: false },
   { table: "proxyReportFunds",     path: "/agent/reportFunds.html",          needsDateRange: true,  pageSize: 200, syncOnce: false },
   { table: "proxyReportThirdGame", path: "/agent/reportThirdGame.html",      needsDateRange: true,  pageSize: 200, syncOnce: false },

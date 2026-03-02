@@ -66,15 +66,57 @@ model Agent {
   id            String    @id @default(cuid())
   name          String
   extUsername   String    @unique @map("ext_username")
+  extPassword   String    @default("") @map("ext_password")
+  baseUrl       String?   @map("base_url")
   sessionCookie String    @map("session_cookie")
   cookieExpires DateTime? @map("cookie_expires")
   status        String    @default("active")
   isActive      Boolean   @default(true) @map("is_active")
+  loginError    String?   @map("login_error")
+  loginAttempts Int       @default(0) @map("login_attempts")
   lastLoginAt   DateTime? @map("last_login_at")
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
+  loginHistory  AgentLoginHistory[]
+  notifications Notification[]
+
   @@map("agents")
+}
+
+model AgentLoginHistory {
+  id              String   @id @default(cuid())
+  agentId         String   @map("agent_id")
+  agent           Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  success         Boolean
+  captchaAttempts Int      @default(0) @map("captcha_attempts")
+  errorMessage    String?  @map("error_message")
+  ipAddress       String?  @map("ip_address")
+  triggeredBy     String   @default("manual") @map("triggered_by")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@index([agentId, createdAt(sort: Desc)])
+  @@map("agent_login_history")
+}
+
+// ===================================================================
+// NOTIFICATIONS — member change detection during sync
+// ===================================================================
+
+model Notification {
+  id        String   @id @default(cuid())
+  agentId   String   @map("agent_id")
+  agent     Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  type      String   // "member_new" | "member_lost"
+  username  String
+  money     String?
+  isRead    Boolean  @default(false) @map("is_read")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([isRead, createdAt(sort: Desc)])
+  @@index([agentId])
+  @@index([agentId, username, createdAt])
+  @@map("notifications")
 }
 
 // ===================================================================
@@ -294,4 +336,16 @@ model ProxyBank {
 
   @@index([agentId])
   @@map("proxy_banks")
+}
+
+model SyncDateLock {
+  id        String   @id @default(cuid())
+  tableName String   @map("table_name")
+  syncDate  String   @map("sync_date")
+  itemCount Int      @default(0) @map("item_count")
+  lockedAt  DateTime @default(now()) @map("locked_at")
+
+  @@unique([tableName, syncDate], name: "uq_sync_date_lock")
+  @@index([tableName])
+  @@map("sync_date_locks")
 }

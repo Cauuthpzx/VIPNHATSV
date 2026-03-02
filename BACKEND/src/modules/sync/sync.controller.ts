@@ -84,11 +84,13 @@ export async function syncStatusHandler(request: FastifyRequest, reply: FastifyR
     id: string;
     name: string;
     ext_username: string;
+    base_url: string | null;
     is_active: boolean;
     status: string;
     cookie_expires: Date | null;
+    login_error: string | null;
   }> = await prisma.$queryRawUnsafe(`
-    SELECT a.id, a.name, a."ext_username", a."is_active", a.status, a."cookie_expires"
+    SELECT a.id, a.name, a."ext_username", a."base_url", a."is_active", a.status, a."cookie_expires", a."login_error"
     FROM agents a ORDER BY a.name
   `);
 
@@ -159,9 +161,11 @@ export async function syncStatusHandler(request: FastifyRequest, reply: FastifyR
       id: a.id,
       name: a.name,
       extUsername: a.ext_username,
+      baseUrl: a.base_url,
       isActive: a.is_active,
       status: a.status,
       cookieExpires: a.cookie_expires,
+      loginError: a.login_error,
       totalRows: totalUserRows,
       children,
     };

@@ -20,6 +20,8 @@ import {
   editPasswordSchema,
   editFundPasswordSchema,
   inviteListLocalSchema,
+  createAgentSchema,
+  updateAgentSchema,
 } from "./proxy.schema.js";
 import { sendSuccess } from "../../utils/response.js";
 import { ValidationError } from "../../errors/ValidationError.js";
@@ -35,7 +37,9 @@ function createProxyHandler(
   ) {
     const parsed = schema.safeParse(request.body);
     if (!parsed.success) throw new ValidationError(parsed.error.errors[0].message);
-    const result = await serviceFn(this, parsed.data as Record<string, unknown>);
+    const input = parsed.data as Record<string, unknown>;
+    input._requestId = request.id;
+    const result = await serviceFn(this, input);
     return sendSuccess(reply, result);
   };
 }
@@ -153,4 +157,51 @@ export async function cookieHealthHandler(
 ) {
   const results = await agentService.checkCookieHealth(this);
   return sendSuccess(reply, results);
+}
+
+// --- Agent CRUD ---
+
+export async function getAgentHandler(
+  this: FastifyInstance,
+  request: FastifyRequest<{ Params: { id: string } }>,
+  reply: FastifyReply,
+) {
+  const agent = await agentService.getAgent(this, request.params.id);
+  return sendSuccess(reply, agent);
+}
+
+export async function createAgentHandler(
+  this: FastifyInstance,
+  request: FastifyRequest,
+  reply: FastifyReply,
+) {
+  const parsed = createAgentSchema.safeParse(request.body);
+  if (!parsed.success) throw new ValidationError(parsed.error.errors[0].message);
+  const agent = await agentService.createAgent(this, parsed.data);
+  return sendSuccess(reply, agent, 201);
+}
+
+export async function updateAgentHandler(
+  this: FastifyInstance,
+  request: FastifyRequest<{ Params: { id: string } }>,
+  reply: FastifyReply,
+) {
+  const parsed = updateAgentSchema.safeParse(request.body);
+  if (!parsed.success) throw new ValidationError(parsed.error.errors[0].message);
+  const agent = await agentService.updateAgent(this, request.params.id, parsed.data);
+  return sendSuccess(reply, agent);
+}
+
+export async function deleteAgentHandler(
+  this: FastifyInstance,
+  request: FastifyRequest<{ Params: { id: string }; Querystring: { mode?: string } }>,
+  reply: FastifyReply,
+) {
+  const mode = request.query.mode || "deactivate";
+  if (mode === "destroy") {
+    await agentService.destroyAgent(this, request.params.id);
+  } else {
+    await agentService.deactivateAgent(this, request.params.id);
+  }
+  return sendSuccess(reply, null);
 }

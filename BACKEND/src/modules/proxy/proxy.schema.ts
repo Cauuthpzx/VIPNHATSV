@@ -114,6 +114,25 @@ export const editFundPasswordSchema = z.object({
   agentId: z.string().min(1, "agentId is required"),
 });
 
+// --- Agent CRUD ---
+
+export const createAgentSchema = z.object({
+  name: z.string().min(1, "Tên agent là bắt buộc").max(100),
+  extUsername: z.string().min(1, "Username ee88 là bắt buộc").max(100),
+  extPassword: z.string().min(1, "Password ee88 là bắt buộc").max(255),
+  baseUrl: z.string().url("URL không hợp lệ").optional(),
+});
+
+export const updateAgentSchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  extPassword: z.string().min(1).max(255).optional(),
+  baseUrl: z.string().url("URL không hợp lệ").nullable().optional(),
+  isActive: z.boolean().optional(),
+});
+
+export type CreateAgentInput = z.infer<typeof createAgentSchema>;
+export type UpdateAgentInput = z.infer<typeof updateAgentSchema>;
+
 export type UserListInput = z.infer<typeof userListSchema>;
 export type BetListInput = z.infer<typeof betListSchema>;
 export type RebateOddsInput = z.infer<typeof rebateOddsSchema>;

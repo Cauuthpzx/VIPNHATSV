@@ -58,7 +58,7 @@ export async function loginHandler(
 ) {
   const parsed = loginSchema.safeParse(request.body);
   if (!parsed.success) {
-    request.log.warn({ errors: parsed.error.errors, body: request.body }, "LOGIN_VALIDATION_FAILED");
+    request.log.warn({ errors: parsed.error.errors }, "LOGIN_VALIDATION_FAILED");
     throw new ValidationError(parsed.error.errors[0].message);
   }
 
@@ -70,7 +70,6 @@ export async function loginHandler(
   audit({ action: "LOGIN", userId: result.user.id, ip: extractClientIp(request) });
   return sendSuccess(reply, {
     accessToken: result.accessToken,
-    refreshToken: result.refreshToken, // also in body for backward compat
     user: result.user,
   }, HTTP_STATUS.OK);
 }
@@ -93,7 +92,6 @@ export async function registerHandler(
   audit({ action: "REGISTER", userId: result.user.id, ip: extractClientIp(request) });
   return sendSuccess(reply, {
     accessToken: result.accessToken,
-    refreshToken: result.refreshToken,
     user: result.user,
   }, HTTP_STATUS.CREATED);
 }
@@ -113,7 +111,7 @@ export async function refreshHandler(
 
   const result = await authService.refresh(this, refreshToken);
   setRefreshCookie(reply, result.refreshToken);
-  return sendSuccess(reply, result, HTTP_STATUS.OK);
+  return sendSuccess(reply, { accessToken: result.accessToken }, HTTP_STATUS.OK);
 }
 
 export async function logoutHandler(

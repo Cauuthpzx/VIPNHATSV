@@ -197,3 +197,16 @@ E2E tests (Playwright/Cypress)
 Monitoring (Prometheus + Grafana)
 Database migration strategy + backup
 WebSocket ticket-based auth thay query string
+
+
+
+
+#	Tính năng	Mức ưu tiên	Lý do
+1	DB-first resolver	Rất cao	Giảm tải upstream, response <15ms thay vì 200ms+
+2	Sync Date Lock	Rất cao	Tránh sync lại data đã verified, tiết kiệm bandwidth
+3	Data query từ DB	Cao	Khi data đã sync+lock → serve từ DB, không cần upstream
+4	Sync Schedule	Cao	Tự động sync, không phụ thuộc interval cố định
+5	Notification	Trung bình	Phát hiện member mới/mất tự động
+6	WebSocket sync progress	Trung bình	UX tốt hơn polling 30s
+7	SWR Memory cache	Trung bình	Thêm 1 lớp cache in-process
+8	UA Pool	Thấp	Nhỏ nhưng tăng stealth

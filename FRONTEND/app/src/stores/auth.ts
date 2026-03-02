@@ -13,22 +13,21 @@ export interface AuthUser {
 }
 
 const TOKEN_KEY = "access_token";
-const REFRESH_KEY = "refresh_token";
+
+// Clean up legacy refresh_token from localStorage (now httpOnly cookie)
+localStorage.removeItem("refresh_token");
 
 export const useAuthStore = defineStore("auth", () => {
   const accessToken = ref(localStorage.getItem(TOKEN_KEY) || "");
-  const refreshToken = ref(localStorage.getItem(REFRESH_KEY) || "");
   const user = ref<AuthUser | null>(null);
   const isLoggedIn = computed(() => !!accessToken.value && user.value !== null);
   const initialized = ref(false);
 
-  // Sync tokens to localStorage whenever they change
+  // Sync access token to localStorage
   watch(accessToken, (val) => {
     val ? localStorage.setItem(TOKEN_KEY, val) : localStorage.removeItem(TOKEN_KEY);
   });
-  watch(refreshToken, (val) => {
-    val ? localStorage.setItem(REFRESH_KEY, val) : localStorage.removeItem(REFRESH_KEY);
-  });
+  // Refresh token is managed via httpOnly cookie — no localStorage needed
 
   const permissions = computed(() => user.value?.role?.permissions ?? []);
   const isAdmin = computed(() => permissions.value.includes("*"));
@@ -46,19 +45,17 @@ export const useAuthStore = defineStore("auth", () => {
       throw new Error(data.message || "Đăng nhập thất bại");
     }
     accessToken.value = data.data.accessToken;
-    refreshToken.value = data.data.refreshToken;
-    // Login response returns incomplete user (role as string).
+    // Refresh token is set via httpOnly cookie by the server
     // Fetch full user data including role object with permissions.
     await fetchMe();
   }
 
   async function refreshAccessToken(): Promise<boolean> {
     try {
-      if (!refreshToken.value) return false;
-      const res = await api.post("/auth/refresh", { refreshToken: refreshToken.value });
+      // Refresh token is sent via httpOnly cookie automatically
+      const res = await api.post("/auth/refresh");
       if (res.data.success) {
         accessToken.value = res.data.data.accessToken;
-        refreshToken.value = res.data.data.refreshToken;
         return true;
       }
       return false;
@@ -80,14 +77,12 @@ export const useAuthStore = defineStore("auth", () => {
 
   async function logout() {
     try {
-      if (refreshToken.value) {
-        await api.post("/auth/logout", { refreshToken: refreshToken.value });
-      }
+      // Refresh token is sent via httpOnly cookie automatically
+      await api.post("/auth/logout");
     } catch {
       // ignore
     }
     accessToken.value = "";
-    refreshToken.value = "";
     user.value = null;
   }
 
@@ -98,18 +93,17 @@ export const useAuthStore = defineStore("auth", () => {
       // Try current accessToken first
       await fetchMe();
 
-      // If fetchMe failed (token expired), try refresh
-      if (!user.value && refreshToken.value) {
+      // If fetchMe failed (token expired), try refresh via httpOnly cookie
+      if (!user.value) {
         const ok = await refreshAccessToken();
         if (ok) {
           await fetchMe();
         }
       }
 
-      // If still no user after all attempts, clear stale tokens
+      // If still no user after all attempts, clear stale token
       if (!user.value) {
         accessToken.value = "";
-        refreshToken.value = "";
       }
     }
 
@@ -118,7 +112,6 @@ export const useAuthStore = defineStore("auth", () => {
 
   return {
     accessToken,
-    refreshToken,
     user,
     isLoggedIn,
     initialized,

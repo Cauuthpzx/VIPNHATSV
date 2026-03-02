@@ -5,6 +5,7 @@ import { AppError } from "../../errors/AppError.js";
 import { HTTP_STATUS } from "../../constants/http.js";
 import { ERROR_CODES } from "../../constants/error-codes.js";
 import { CircuitBreaker } from "../../utils/circuitBreaker.js";
+import { withRetry } from "../../utils/retry.js";
 
 // ---------------------------------------------------------------------------
 // Persistent HTTP Agent — keep-alive + connection pooling for upstream
@@ -23,10 +24,17 @@ const upstreamBreaker = new CircuitBreaker({
   successThreshold: 2,
 });
 
+// ---------------------------------------------------------------------------
+// Response code classification
+// ---------------------------------------------------------------------------
+const SUCCESS_CODES = new Set([0, 1]);
+const EMPTY_CODES = new Set([2]); // "no data" — return empty array, not error
+
 export interface UpstreamRequest {
   path: string;
   cookie: string;
   params: Record<string, string>;
+  requestId?: string;
 }
 
 export interface UpstreamResponse<T = unknown> {
@@ -37,10 +45,23 @@ export interface UpstreamResponse<T = unknown> {
   msg?: string;
 }
 
+/** Non-retryable errors — need re-login, not retry */
+function shouldRetryUpstream(err: unknown): boolean {
+  if (err instanceof AppError && err.code === ERROR_CODES.AGENT_SESSION_EXPIRED) {
+    return false;
+  }
+  return true;
+}
+
 export async function fetchUpstream<T = unknown>(
   req: UpstreamRequest,
 ): Promise<UpstreamResponse<T>> {
-  return upstreamBreaker.execute(() => _fetchUpstream<T>(req));
+  return upstreamBreaker.execute(() =>
+    withRetry(() => _fetchUpstream<T>(req), {
+      maxRetries: 2,
+      shouldRetry: shouldRetryUpstream,
+    }),
+  );
 }
 
 async function _fetchUpstream<T = unknown>(
@@ -60,7 +81,7 @@ async function _fetchUpstream<T = unknown>(
     "Origin": appConfig.upstream.baseUrl,
   };
 
-  logger.debug("Upstream request", { url, paramsKeys: Object.keys(req.params) });
+  logger.debug("Upstream request", { url, requestId: req.requestId, paramsKeys: Object.keys(req.params) });
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), appConfig.upstream.timeoutMs);
@@ -99,7 +120,14 @@ async function _fetchUpstream<T = unknown>(
     const text = await response.text();
 
     // Some endpoints return HTML when session expired
-    if (text.trimStart().startsWith("<!") || text.trimStart().startsWith("<html")) {
+    const textTrimmed = text.trimStart();
+    if (
+      textTrimmed.startsWith("<!") ||
+      textTrimmed.startsWith("<html") ||
+      textTrimmed.startsWith("<HTML") ||
+      textTrimmed.startsWith("<?xml") ||
+      textTrimmed.startsWith("<head")
+    ) {
       throw new AppError(
         "Agent session expired (HTML response)",
         HTTP_STATUS.UNAUTHORIZED,
@@ -109,18 +137,34 @@ async function _fetchUpstream<T = unknown>(
 
     const json = JSON.parse(text) as UpstreamResponse<T>;
 
-    // Original site uses code: 0 for success on list endpoints
-    // and code: 1 for success on some special endpoints (getLottery, rebateOdds)
-    if (json.code !== 0 && json.code !== 1) {
-      logger.warn("Upstream non-success code", { url, code: json.code, msg: json.msg });
+    // code 0 = success (list endpoints), code 1 = success (getLottery, rebateOdds)
+    if (SUCCESS_CODES.has(json.code)) {
+      return json;
+    }
+
+    // code 2 = "no data" — not an error, return empty result
+    if (EMPTY_CODES.has(json.code)) {
+      logger.debug("Upstream returned empty code", { url, code: json.code, msg: json.msg });
+      return { data: [] as unknown as T, count: 0, code: json.code, msg: json.msg };
+    }
+
+    // Session expired via response code (302 or msg contains "login")
+    if (json.code === 302 || json.msg?.toLowerCase().includes("login")) {
       throw new AppError(
-        json.msg || "Upstream error",
-        HTTP_STATUS.BAD_GATEWAY,
-        ERROR_CODES.UPSTREAM_ERROR,
+        "Agent session expired (code response)",
+        HTTP_STATUS.UNAUTHORIZED,
+        ERROR_CODES.AGENT_SESSION_EXPIRED,
       );
     }
 
-    return json;
+    // Real upstream error
+    logger.warn("Upstream non-success code", { url, code: json.code, msg: json.msg });
+    throw new AppError(
+      json.msg || `Upstream error (code: ${json.code})`,
+      HTTP_STATUS.BAD_GATEWAY,
+      ERROR_CODES.UPSTREAM_ERROR,
+    );
+
   } catch (err) {
     if (err instanceof AppError) throw err;
 

@@ -153,6 +153,18 @@ export function fetchCookieHealth() {
   return api.get("/agents/cookie-health");
 }
 
+export function createAgent(data: { name: string; extUsername: string; extPassword: string; baseUrl?: string }) {
+  return api.post("/agents", data);
+}
+
+export function updateAgent(agentId: string, data: { name?: string; extPassword?: string; baseUrl?: string | null; isActive?: boolean }) {
+  return api.patch(`/agents/${agentId}`, data);
+}
+
+export function deleteAgent(agentId: string, mode: "deactivate" | "destroy" = "deactivate") {
+  return api.delete(`/agents/${agentId}`, { params: { mode } });
+}
+
 // --- Registration ---
 
 export function registerAccount(data: { username: string; password: string; name: string; email?: string }) {
@@ -211,4 +223,34 @@ export function editUpstreamFundPassword(params: {
   agentId: string;
 }) {
   return api.post("/proxy/edit-fund-password", params);
+}
+
+// --- EE88 Auth (Auto Login) ---
+
+export function loginAgentEE88(agentId: string) {
+  return api.post(`/ee88-auth/${agentId}/login`, {}, { timeout: 120_000 });
+}
+
+export function logoutAgentEE88(agentId: string) {
+  return api.post(`/ee88-auth/${agentId}/logout`);
+}
+
+export function loginAllAgentsEE88() {
+  return api.post("/ee88-auth/login-all", {}, { timeout: 600_000 });
+}
+
+export function checkAgentSession(agentId: string) {
+  return api.post(`/ee88-auth/${agentId}/check`);
+}
+
+export function getAgentSessionInfo(agentId: string) {
+  return api.get(`/ee88-auth/${agentId}/session`);
+}
+
+export function setAgentCookieManual(agentId: string, cookie: string) {
+  return api.patch(`/ee88-auth/${agentId}/cookie`, { cookie });
+}
+
+export function fetchAgentLoginHistory(agentId: string, limit: number = 20) {
+  return api.get(`/ee88-auth/login-history/${agentId}`, { params: { limit } });
 }

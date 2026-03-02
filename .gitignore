@@ -17,6 +17,7 @@ __pycache__/
 # Data files
 *.xlsx
 *.csv
+*.sql
 
 # Scripts with credentials
 ssh_connect.py

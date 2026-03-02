@@ -7,8 +7,7 @@ const envSchema = z.object({
 
   DATABASE_URL: z.string().url(),
 
-  JWT_ACCESS_SECRET: z.string().min(8),
-  JWT_REFRESH_SECRET: z.string().min(8),
+  JWT_ACCESS_SECRET: z.string().min(32),
   JWT_ACCESS_EXPIRES_IN: z.string().default("15m"),
   JWT_REFRESH_EXPIRES_IN: z.string().default("7d"),
 
@@ -25,6 +24,8 @@ const envSchema = z.object({
 
   SYNC_ENABLED: z.coerce.boolean().default(true),
   SYNC_INTERVAL_MS: z.coerce.number().default(300_000),
+
+  SENTRY_DSN: z.string().url().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

@@ -36,7 +36,7 @@ const PROXY_TABLES = [
 ] as const;
 
 // ---------------------------------------------------------------------------
-// Redis keys for tracking synced dates
+// Sync date tracking — dual-write: DB (durable) + Redis (fast cache)
 // ---------------------------------------------------------------------------
 
 /** Redis key: marks that a past date for a given endpoint has been fully synced. */
@@ -47,6 +47,81 @@ function syncedDateKey(table: string, date: string): string {
 /** Redis key: marks that a syncOnce endpoint has been synced at all. */
 function syncOnceKey(table: string): string {
   return `sync:once_done:${table}`;
+}
+
+const REDIS_DATE_TTL = 90 * 86400; // 90 days
+
+/** Check if a date has been synced — Redis first, DB fallback. */
+async function isDateDone(app: FastifyInstance, table: string, date: string): Promise<boolean> {
+  // Redis first (fast)
+  try {
+    const cached = await app.redis.get(syncedDateKey(table, date));
+    if (cached) return true;
+  } catch { /* fall through */ }
+
+  // DB fallback (durable)
+  const lock = await app.prisma.syncDateLock.findUnique({
+    where: { uq_sync_date_lock: { tableName: table, syncDate: date } },
+  });
+
+  if (lock) {
+    // Re-populate Redis cache
+    try { await app.redis.set(syncedDateKey(table, date), "1", "EX", REDIS_DATE_TTL); } catch { /* ignore */ }
+    return true;
+  }
+
+  return false;
+}
+
+/** Mark a date as synced — write to DB (primary) + Redis (cache). */
+async function markDateDone(app: FastifyInstance, table: string, date: string, itemCount: number): Promise<void> {
+  // DB primary (durable)
+  try {
+    await app.prisma.syncDateLock.upsert({
+      where: { uq_sync_date_lock: { tableName: table, syncDate: date } },
+      create: { tableName: table, syncDate: date, itemCount },
+      update: { itemCount, lockedAt: new Date() },
+    });
+  } catch (err) {
+    logger.warn("[Sync] Failed to write SyncDateLock", { table, date, error: (err as Error).message });
+  }
+
+  // Redis cache
+  try { await app.redis.set(syncedDateKey(table, date), "1", "EX", REDIS_DATE_TTL); } catch { /* ignore */ }
+}
+
+/** Check if a syncOnce endpoint has been done — Redis first, DB fallback. */
+async function isSyncOnceDone(app: FastifyInstance, table: string): Promise<boolean> {
+  try {
+    const cached = await app.redis.get(syncOnceKey(table));
+    if (cached) return true;
+  } catch { /* fall through */ }
+
+  const lock = await app.prisma.syncDateLock.findUnique({
+    where: { uq_sync_date_lock: { tableName: table, syncDate: "__once__" } },
+  });
+
+  if (lock) {
+    try { await app.redis.set(syncOnceKey(table), "1"); } catch { /* ignore */ }
+    return true;
+  }
+
+  return false;
+}
+
+/** Mark a syncOnce endpoint as done. */
+async function markSyncOnceDone(app: FastifyInstance, table: string): Promise<void> {
+  try {
+    await app.prisma.syncDateLock.upsert({
+      where: { uq_sync_date_lock: { tableName: table, syncDate: "__once__" } },
+      create: { tableName: table, syncDate: "__once__", itemCount: 0 },
+      update: { lockedAt: new Date() },
+    });
+  } catch (err) {
+    logger.warn("[Sync] Failed to write SyncDateLock (once)", { table, error: (err as Error).message });
+  }
+
+  try { await app.redis.set(syncOnceKey(table), "1"); } catch { /* ignore */ }
 }
 
 // ---------------------------------------------------------------------------
@@ -92,16 +167,11 @@ export async function runFullSync(app: FastifyInstance, mode: SyncMode = "full")
           // Recurring → bỏ qua hoàn toàn
           continue;
         }
-        // Full → kiểm tra đã sync lần nào chưa
-        const doneKey = syncOnceKey(endpoint.table);
-        try {
-          const done = await app.redis.get(doneKey);
-          if (done) {
-            logger.debug(`[Sync] Skip syncOnce (already done): ${endpoint.table}`);
-            continue;
-          }
-        } catch {
-          // Redis fail → sync anyway (fail-open)
+        // Full → kiểm tra đã sync lần nào chưa (DB + Redis)
+        const done = await isSyncOnceDone(app, endpoint.table);
+        if (done) {
+          logger.debug(`[Sync] Skip syncOnce (already done): ${endpoint.table}`);
+          continue;
         }
       }
 
@@ -120,12 +190,9 @@ export async function runFullSync(app: FastifyInstance, mode: SyncMode = "full")
         // === No date range (user, bank, or syncOnce first time) ===
         await syncEndpointAll(app, endpoint, upsertFn, agents);
 
-        // Mark syncOnce as done
+        // Mark syncOnce as done (DB + Redis)
         if (endpoint.syncOnce) {
-          try {
-            // No TTL — permanent marker
-            await app.redis.set(syncOnceKey(endpoint.table), "1");
-          } catch { /* Redis fail-open */ }
+          await markSyncOnceDone(app, endpoint.table);
         }
       }
 
@@ -175,38 +242,30 @@ async function syncEndpointByDay(
     const isToday = date === today;
 
     if (!isToday) {
-      // Ngày cũ: kiểm tra đã sync chưa
-      try {
-        const done = await app.redis.get(syncedDateKey(endpoint.table, date));
-        if (done) {
-          continue; // Skip silently — quá nhiều ngày để log từng cái
-        }
-      } catch {
-        // Redis fail → sync anyway
-      }
+      // Ngày cũ: kiểm tra đã sync chưa (DB + Redis)
+      const done = await isDateDone(app, endpoint.table, date);
+      if (done) continue;
     }
 
-    await syncSingleDay(app, endpoint, upsertFn, agents, date);
+    const dayItemCount = await syncSingleDay(app, endpoint, upsertFn, agents, date);
 
-    // Đánh dấu ngày cũ đã done (ngày hôm nay KHÔNG đánh dấu vì dữ liệu còn cộng dồn)
-    if (!isToday) {
-      try {
-        // TTL 90 ngày — sau 90 ngày key hết hạn, nếu sync lại sẽ re-fetch
-        await app.redis.set(syncedDateKey(endpoint.table, date), "1", "EX", 90 * 86400);
-      } catch { /* Redis fail-open */ }
+    // Đánh dấu ngày cũ đã done — CHỈ khi có dữ liệu (tránh đánh dấu false-done khi upstream lỗi)
+    if (!isToday && dayItemCount > 0) {
+      await markDateDone(app, endpoint.table, date, dayItemCount);
     }
   }
 }
 
-/** Sync a single day across all agents for one endpoint. */
+/** Sync a single day across all agents for one endpoint. Returns total items fetched. */
 async function syncSingleDay(
   app: FastifyInstance,
   endpoint: SyncEndpointConfig,
   upsertFn: UpsertFn,
   agents: Agent[],
   date: string,
-) {
-  const params = buildDateParams(endpoint.path, date, date);
+): Promise<number> {
+  const params = { ...buildDateParams(endpoint.path, date, date), ...endpoint.extraParams };
+  let totalItems = 0;
 
   await promisePool(agents, SYNC_AGENT_CONCURRENCY, async (agent) => {
     try {
@@ -221,6 +280,7 @@ async function syncSingleDay(
       });
 
       if (items.length === 0) return;
+      totalItems += items.length;
 
       // Pass syncDate so upsert can store it as metadata
       const upserted = await upsertFn(app.prisma, agent.id, items, date);
@@ -241,6 +301,8 @@ async function syncSingleDay(
       });
     }
   });
+
+  return totalItems;
 }
 
 // ---------------------------------------------------------------------------
@@ -260,7 +322,7 @@ async function syncEndpointAll(
       const items = await fetchAllPages({
         path: endpoint.path,
         cookie,
-        params: {},
+        params: { ...endpoint.extraParams },
         pageSize: endpoint.pageSize,
         pageConcurrency: SYNC_PAGE_CONCURRENCY,
       });
@@ -289,19 +351,33 @@ async function syncEndpointAll(
 // Helpers
 // ---------------------------------------------------------------------------
 
-const SPLIT_DATE_PATHS = new Set([
-  "/agent/reportLottery.html",
-  "/agent/reportFunds.html",
-  "/agent/reportThirdGame.html",
-  "/agent/betOrder.html",
-]);
+/**
+ * Date param name per endpoint path.
+ * Report endpoints use "date" with " | " (pipe + spaces).
+ * Non-report endpoints use their own param name with "|" (pipe, no spaces).
+ * betOrder uses "bet_time", bets uses "date" (same as deposit/withdrawal).
+ */
+const DATE_PARAM_MAP: Record<string, { param: string; isReport: boolean }> = {
+  "/agent/bet.html":                  { param: "date",        isReport: false },
+  "/agent/depositAndWithdrawal.html": { param: "date",        isReport: false },
+  "/agent/withdrawalsRecord.html":    { param: "date",        isReport: false },
+  "/agent/betOrder.html":             { param: "bet_time",    isReport: false },
+  "/agent/reportLottery.html":        { param: "date",        isReport: true },
+  "/agent/reportFunds.html":          { param: "date",        isReport: true },
+  "/agent/reportThirdGame.html":      { param: "date",        isReport: true },
+};
 
 /** Build date params for a single day (start = end = date). */
 function buildDateParams(path: string, start: string, end: string): Record<string, string> {
-  if (SPLIT_DATE_PATHS.has(path)) {
-    return { start_date: start, end_date: end };
+  const config = DATE_PARAM_MAP[path];
+  if (!config) {
+    // Fallback: pipe with spaces
+    return { date: `${start} | ${end}` };
   }
-  return { date: `${start} - ${end}` };
+  // Report: "YYYY-MM-DD | YYYY-MM-DD" (pipe + spaces)
+  // Non-report: "YYYY-MM-DD|YYYY-MM-DD" (pipe, no spaces)
+  const separator = config.isReport ? " | " : "|";
+  return { [config.param]: `${start}${separator}${end}` };
 }
 
 /**
@@ -363,13 +439,11 @@ export async function runAgentSync(app: FastifyInstance, agentId: string): Promi
             const isToday = date === today;
 
             if (!isToday) {
-              try {
-                const done = await app.redis.get(syncedDateKey(endpoint.table, date));
-                if (done) continue;
-              } catch { /* fail-open */ }
+              const done = await isDateDone(app, endpoint.table, date);
+              if (done) continue;
             }
 
-            const params = buildDateParams(endpoint.path, date, date);
+            const params = { ...buildDateParams(endpoint.path, date, date), ...endpoint.extraParams };
             const items = await fetchAllPages({
               path: endpoint.path,
               cookie,
@@ -382,11 +456,9 @@ export async function runAgentSync(app: FastifyInstance, agentId: string): Promi
               await upsertFn(app.prisma, agent.id, items, date);
             }
 
-            // Ngày cũ đánh dấu done
+            // Ngày cũ đánh dấu done (DB + Redis)
             if (!isToday && items.length > 0) {
-              try {
-                await app.redis.set(syncedDateKey(endpoint.table, date), "1", "EX", 90 * 86400);
-              } catch { /* fail-open */ }
+              await markDateDone(app, endpoint.table, date, items.length);
             }
           }
         } else {
@@ -394,7 +466,7 @@ export async function runAgentSync(app: FastifyInstance, agentId: string): Promi
           const items = await fetchAllPages({
             path: endpoint.path,
             cookie,
-            params: {},
+            params: { ...endpoint.extraParams },
             pageSize: endpoint.pageSize,
             pageConcurrency: SYNC_PAGE_CONCURRENCY,
           });
@@ -449,18 +521,22 @@ export async function purgeAllData(app: FastifyInstance): Promise<Record<string,
     result[table] = countResult[0]?.count ?? 0;
   }
 
-  // TRUNCATE all tables in a single statement
+  // TRUNCATE all proxy tables + sync_date_locks in a single statement
   await prisma.$executeRawUnsafe(
-    `TRUNCATE TABLE ${PROXY_TABLES.map((t) => `"${t}"`).join(", ")} CASCADE`,
+    `TRUNCATE TABLE ${PROXY_TABLES.map((t) => `"${t}"`).join(", ")}, "sync_date_locks" CASCADE`,
   );
 
-  // Clear Redis sync markers
+  // Clear Redis sync markers using SCAN (safe for production, no blocking)
   try {
-    const keys = await app.redis.keys("sync:date_done:*");
-    const onceKeys = await app.redis.keys("sync:once_done:*");
-    const allKeys = [...keys, ...onceKeys];
-    if (allKeys.length > 0) {
-      await app.redis.del(...allKeys);
+    for (const pattern of ["sync:date_done:*", "sync:once_done:*"]) {
+      let cursor = "0";
+      do {
+        const [nextCursor, keys] = await app.redis.scan(cursor, "MATCH", pattern, "COUNT", 100);
+        cursor = nextCursor;
+        if (keys.length > 0) {
+          await app.redis.del(...keys);
+        }
+      } while (cursor !== "0");
     }
   } catch { /* Redis fail-open */ }
 

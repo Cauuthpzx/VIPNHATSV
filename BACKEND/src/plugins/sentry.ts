@@ -5,7 +5,7 @@ import { appConfig } from "../config/app.js";
 import { env } from "../config/env.js";
 
 async function sentryPlugin(app: FastifyInstance) {
-  const dsn = process.env.SENTRY_DSN;
+  const dsn = env.SENTRY_DSN;
   if (!dsn) {
     app.log.info("Sentry DSN not configured, skipping initialization");
     return;

@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { reactive, ref, computed } from "vue";
+import { reactive, ref, toRef } from "vue";
 import { layer } from "@layui/layui-vue";
+import { usePasswordStrength } from "@/composables/usePasswordStrength";
 
 const props = withDefaults(
   defineProps<{
@@ -34,34 +35,14 @@ const formData = reactive({
 
 const submitting = ref(false);
 
-const strengthChecks = computed(() => {
-  const p = formData.newPassword;
-  return [
-    { label: "8+ ký tự", pass: p.length >= 8 },
-    { label: "Chữ hoa (A-Z)", pass: /[A-Z]/.test(p) },
-    { label: "Chữ thường (a-z)", pass: /[a-z]/.test(p) },
-    { label: "Số (0-9)", pass: /[0-9]/.test(p) },
-    { label: "Ký tự đặc biệt (!@#...)", pass: /[^A-Za-z0-9]/.test(p) },
-  ];
-});
-
-const passedCount = computed(() => strengthChecks.value.filter((c) => c.pass).length);
-const allPassed = computed(() => passedCount.value === 5);
-
-const strengthLabel = computed(() => {
-  if (!formData.newPassword) return "";
-  if (passedCount.value <= 2) return "Yếu";
-  if (passedCount.value <= 3) return "Trung bình";
-  if (passedCount.value <= 4) return "Khá";
-  return "Mạnh";
-});
-
-const strengthColor = computed(() => {
-  if (passedCount.value <= 2) return "#ff4d4f";
-  if (passedCount.value <= 3) return "#faad14";
-  if (passedCount.value <= 4) return "#1890ff";
-  return "#52c41a";
-});
+// Password strength (shared composable)
+const {
+  checks: strengthChecks,
+  passedCount,
+  allPassed,
+  label: strengthLabel,
+  color: strengthColor,
+} = usePasswordStrength(toRef(formData, "newPassword"));
 
 async function handleSubmit() {
   if (props.requireOldPassword && !formData.oldPassword) {

@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { randomUUID } from "node:crypto";
+import { randomUUID, createHash } from "node:crypto";
 import bcrypt from "bcrypt";
 import { UnauthorizedError } from "../../errors/UnauthorizedError.js";
 import { NotFoundError } from "../../errors/NotFoundError.js";
@@ -33,6 +33,11 @@ async function verifyPassword(password: string, hash: string): Promise<boolean> 
 }
 
 // ─── Token helpers ───────────────────────────────────────────────────────────
+
+/** SHA-256 hash for refresh token storage (deterministic, fast lookup) */
+function hashRefreshToken(token: string): string {
+  return createHash("sha256").update(token).digest("hex");
+}
 
 function parseExpiresIn(value: string): Date {
   const match = value.match(/^(\d+)([smhd])$/);
@@ -161,7 +166,7 @@ export async function login(
   const refreshTokenValue = randomUUID();
   await app.prisma.refreshToken.create({
     data: {
-      token: refreshTokenValue,
+      token: hashRefreshToken(refreshTokenValue),
       userId: user.id,
       expiresAt: parseExpiresIn(appConfig.jwt.refreshExpiresIn),
       userAgent: meta?.userAgent || null,
@@ -171,7 +176,7 @@ export async function login(
 
   return {
     accessToken,
-    refreshToken: refreshTokenValue,
+    refreshToken: refreshTokenValue, // raw value sent via httpOnly cookie
     user: { id: user.id, username: user.username, email: user.email, name: user.name, role: user.role.type },
   };
 }
@@ -180,8 +185,9 @@ export async function refresh(
   app: FastifyInstance,
   refreshToken: string,
 ) {
+  const tokenHash = hashRefreshToken(refreshToken);
   const stored = await app.prisma.refreshToken.findUnique({
-    where: { token: refreshToken },
+    where: { token: tokenHash },
     include: { user: { include: { role: true } } },
   });
 
@@ -211,7 +217,7 @@ export async function refresh(
   const newRefreshTokenValue = randomUUID();
   await app.prisma.refreshToken.create({
     data: {
-      token: newRefreshTokenValue,
+      token: hashRefreshToken(newRefreshTokenValue),
       userId: stored.user.id,
       expiresAt: parseExpiresIn(appConfig.jwt.refreshExpiresIn),
       userAgent: stored.userAgent,
@@ -223,7 +229,9 @@ export async function refresh(
 }
 
 export async function logout(app: FastifyInstance, refreshToken: string, accessToken: string) {
-  await app.prisma.refreshToken.deleteMany({ where: { token: refreshToken } });
+  if (refreshToken) {
+    await app.prisma.refreshToken.deleteMany({ where: { token: hashRefreshToken(refreshToken) } });
+  }
   await blacklistAccessToken(app, accessToken);
 }
 

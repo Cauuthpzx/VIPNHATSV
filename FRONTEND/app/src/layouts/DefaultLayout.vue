@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, onMounted, onBeforeUnmount, ref } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useAppStore } from "@/stores/app";
+import { useAuthStore } from "@/stores/auth";
 import HubNav from "@/components/HubNav.vue";
 import HubNotification from "@/components/HubNotification.vue";
 import { useNotificationStore } from "@/stores/notification";
@@ -11,6 +12,7 @@ import LayoutTabs from "./LayoutTabs.vue";
 const router = useRouter();
 const route = useRoute();
 const store = useAppStore();
+const authStore = useAuthStore();
 
 const sideWidth = computed(() => (store.collapsed ? 60 : 200));
 
@@ -18,9 +20,57 @@ function handleRefresh() {
   router.go(0);
 }
 
-// Seed demo notifications on first visit
+// Notification polling (API-backed)
 const notificationStore = useNotificationStore();
-notificationStore.seedDemoIfEmpty();
+
+// WebSocket for real-time notifications
+const ws = ref<WebSocket | null>(null);
+
+function connectWs() {
+  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+  const host = window.location.host;
+  const socket = new WebSocket(`${protocol}//${host}/ws`);
+
+  socket.addEventListener("open", () => {
+    // Authenticate with JWT
+    if (authStore.accessToken) {
+      socket.send(JSON.stringify({ type: "auth", token: authStore.accessToken }));
+    }
+  });
+
+  socket.addEventListener("message", (event) => {
+    try {
+      const data = JSON.parse(event.data);
+      if (data.type === "notifications") {
+        notificationStore.onWsNotification();
+      }
+    } catch {
+      // ignore non-JSON messages
+    }
+  });
+
+  socket.addEventListener("close", () => {
+    // Reconnect after 5s
+    setTimeout(() => {
+      if (ws.value === socket) connectWs();
+    }, 5000);
+  });
+
+  ws.value = socket;
+}
+
+onMounted(() => {
+  notificationStore.startPolling();
+  connectWs();
+});
+
+onBeforeUnmount(() => {
+  notificationStore.stopPolling();
+  if (ws.value) {
+    ws.value.close();
+    ws.value = null;
+  }
+});
 </script>
 
 <template>

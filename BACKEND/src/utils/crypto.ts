@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import NodeRSA from "node-rsa";
 import { env } from "../config/env.js";
 
 const AES_ALGORITHM = "aes-256-gcm" as const;
@@ -71,4 +72,22 @@ export function decryptSessionCookie(stored: string): string {
     return decryptAES(stored.slice(4));
   }
   return stored;
+}
+
+/**
+ * Encrypt session cookie before saving to DB.
+ * Format: "enc:" + AES ciphertext — prefix "enc:" to distinguish from legacy plaintext.
+ */
+export function encryptSessionCookie(cookie: string): string {
+  return `enc:${encryptAES(cookie)}`;
+}
+
+/**
+ * RSA encrypt (PKCS1) — used for ee88 login password encryption.
+ */
+export function encryptRSA(plaintext: string, publicKeyPEM: string): string {
+  const key = new NodeRSA();
+  key.importKey(publicKeyPEM, "pkcs8-public-pem");
+  key.setOptions({ encryptionScheme: "pkcs1" });
+  return key.encrypt(plaintext, "base64");
 }

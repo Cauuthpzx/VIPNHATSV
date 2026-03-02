@@ -175,13 +175,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed } from "vue";
+import { ref, reactive, toRef } from "vue";
 import { useRouter } from "vue-router";
 import { layer } from "@layui/layui-vue";
 import { useAuthStore } from "@/stores/auth";
-import { useNotificationStore } from "@/stores/notification";
 import { registerAccount } from "@/api/services/proxy";
 import { api } from "@/api/client";
+import { usePasswordStrength } from "@/composables/usePasswordStrength";
 import loginBgUrl from "@/assets/login/login-bg.svg";
 import iconZalo from "@/assets/login/social/icon-zalo.svg";
 import iconFacebook from "@/assets/login/social/icon-facebook.png";
@@ -234,12 +234,6 @@ async function handleLogin() {
 
   try {
     await authStore.login(loginForm.username, loginForm.password);
-    const notifStore = useNotificationStore();
-    notifStore.add({
-      type: "success",
-      title: "Đăng nhập thành công",
-      message: `Xin chào ${authStore.user?.name || loginForm.username}! Phiên làm việc đã bắt đầu.`,
-    });
     layer.msg("Đăng nhập thành công!", { icon: 1, time: 1500 });
     setTimeout(() => router.push("/agent/welcome"), 500);
   } catch (err: any) {
@@ -268,35 +262,14 @@ const registerForm = reactive({
   confirmPassword: "",
 });
 
-// Password strength checks (matches backend strongPasswordSchema)
-const strengthChecks = computed(() => {
-  const p = registerForm.password;
-  return [
-    { label: "8+ ký tự", pass: p.length >= 8 },
-    { label: "Chữ hoa (A-Z)", pass: /[A-Z]/.test(p) },
-    { label: "Chữ thường (a-z)", pass: /[a-z]/.test(p) },
-    { label: "Số (0-9)", pass: /[0-9]/.test(p) },
-    { label: "Ký tự đặc biệt (!@#...)", pass: /[^A-Za-z0-9]/.test(p) },
-  ];
-});
-
-const passedCount = computed(() => strengthChecks.value.filter((c) => c.pass).length);
-const allPassed = computed(() => passedCount.value === 5);
-
-const strengthLabel = computed(() => {
-  if (!registerForm.password) return "";
-  if (passedCount.value <= 2) return "Yếu";
-  if (passedCount.value <= 3) return "Trung bình";
-  if (passedCount.value <= 4) return "Khá";
-  return "Mạnh";
-});
-
-const strengthColor = computed(() => {
-  if (passedCount.value <= 2) return "#ff4d4f";
-  if (passedCount.value <= 3) return "#faad14";
-  if (passedCount.value <= 4) return "#1890ff";
-  return "#52c41a";
-});
+// Password strength (shared composable)
+const {
+  checks: strengthChecks,
+  passedCount,
+  allPassed,
+  label: strengthLabel,
+  color: strengthColor,
+} = usePasswordStrength(toRef(registerForm, "password"));
 
 async function handleRegister() {
   if (!registerForm.username) {
@@ -339,17 +312,9 @@ async function handleRegister() {
     });
     const data = res.data;
     if (data.success) {
-      // Auto-login: backend returns tokens
+      // Auto-login: backend returns accessToken, refreshToken via httpOnly cookie
       authStore.accessToken = data.data.accessToken;
-      authStore.refreshToken = data.data.refreshToken;
       await authStore.fetchMe();
-
-      const notifStore = useNotificationStore();
-      notifStore.add({
-        type: "success",
-        title: "Đăng ký thành công",
-        message: `Chào mừng ${registerForm.name}! Tài khoản đã được tạo.`,
-      });
       layer.msg("Đăng ký thành công!", { icon: 1, time: 1500 });
       setTimeout(() => router.push("/agent/welcome"), 500);
     }

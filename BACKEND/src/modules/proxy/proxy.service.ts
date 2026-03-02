@@ -4,6 +4,9 @@ import * as agentService from "./agent.service.js";
 import { decryptSessionCookie } from "../../utils/crypto.js";
 import { promisePool } from "../../utils/concurrency.js";
 import { logger } from "../../utils/logger.js";
+import { AppError } from "../../errors/AppError.js";
+import { ERROR_CODES } from "../../constants/error-codes.js";
+import { tryDbFirst } from "./db-first.service.js";
 
 // ---------------------------------------------------------------------------
 // Cache TTL (seconds)
@@ -65,7 +68,7 @@ const SPLIT_DATE_ENDPOINTS = new Set([
 function buildUpstreamParams(input: Record<string, unknown>, path: string): Record<string, string> {
   const params: Record<string, string> = {};
   for (const [key, value] of Object.entries(input)) {
-    if (key === "agentId") continue;
+    if (key === "agentId" || key === "_requestId") continue;
     if (value === undefined || value === null || value === "") continue;
 
     if ((key === "date" || key === "bet_time") && SPLIT_DATE_ENDPOINTS.has(path)) {
@@ -244,6 +247,7 @@ async function fetchSingleAgent<T = unknown>(
   agentName: string,
   cookie: string,
   ttl: number,
+  requestId?: string,
 ): Promise<SingleResult<T>> {
   const cacheKey = buildCacheKey(path, params, agentId);
 
@@ -257,8 +261,24 @@ async function fetchSingleAgent<T = unknown>(
     // Redis error — continue without cache
   }
 
-  // 2. Fetch from upstream
-  const upstream = await fetchUpstream<T>({ path, cookie, params });
+  // 2. Fetch from upstream (with auto re-login on session expired)
+  let activeCookie = cookie;
+  let upstream;
+  try {
+    upstream = await fetchUpstream<T>({ path, cookie: activeCookie, params, requestId });
+  } catch (err) {
+    if (err instanceof AppError && err.code === ERROR_CODES.AGENT_SESSION_EXPIRED) {
+      const newCookie = await agentService.attemptAutoRelogin(app, agentId);
+      if (newCookie) {
+        activeCookie = newCookie;
+        upstream = await fetchUpstream<T>({ path, cookie: activeCookie, params, requestId });
+      } else {
+        throw err;
+      }
+    } else {
+      throw err;
+    }
+  }
 
   let result: SingleResult<T>;
 
@@ -293,6 +313,7 @@ async function fetchMultiAgentWithPipeline<T = unknown>(
   params: Record<string, string>,
   agents: Array<{ id: string; name: string; sessionCookie: string }>,
   ttl: number,
+  requestId?: string,
 ): Promise<SingleResult<T>[]> {
   // Pre-compute cache keys and decrypt cookies BEFORE any I/O
   const agentMeta = agents.map((agent) => ({
@@ -332,7 +353,7 @@ async function fetchMultiAgentWithPipeline<T = unknown>(
       toFetch.length,
       async ({ idx, meta }) => {
         try {
-          const upstream = await fetchUpstream<T>({ path, cookie: meta.cookie, params });
+          const upstream = await fetchUpstream<T>({ path, cookie: meta.cookie, params, requestId });
           let result: SingleResult<T>;
           if (Array.isArray(upstream.data)) {
             const items = upstream.data.map((item: any) => ({
@@ -345,9 +366,36 @@ async function fetchMultiAgentWithPipeline<T = unknown>(
           }
           return { idx, result, cacheKey: meta.cacheKey };
         } catch (err) {
+          // Auto re-login on session expired
+          if (err instanceof AppError && err.code === ERROR_CODES.AGENT_SESSION_EXPIRED) {
+            try {
+              const newCookie = await agentService.attemptAutoRelogin(app, meta.agent.id);
+              if (newCookie) {
+                const retryUpstream = await fetchUpstream<T>({ path, cookie: newCookie, params, requestId });
+                let retryResult: SingleResult<T>;
+                if (Array.isArray(retryUpstream.data)) {
+                  const items = retryUpstream.data.map((item: any) => ({
+                    _agentName: meta.agent.name,
+                    ...item,
+                  }));
+                  retryResult = { items: items as T[], total: retryUpstream.count ?? 0, totalData: retryUpstream.total_data };
+                } else {
+                  retryResult = { items: retryUpstream.data as T[], total: retryUpstream.count ?? 0, totalData: retryUpstream.total_data };
+                }
+                return { idx, result: retryResult, cacheKey: meta.cacheKey };
+              }
+            } catch (reloginErr) {
+              logger.warn("Agent re-login retry also failed", {
+                agentId: meta.agent.id,
+                error: reloginErr instanceof Error ? reloginErr.message : String(reloginErr),
+              });
+            }
+          }
+
           logger.warn("Agent fetch failed, skipping", {
             agentId: meta.agent.id,
             name: meta.agent.name,
+            requestId,
             error: err instanceof Error ? err.message : String(err),
           });
           return { idx, result: { items: [] as T[], total: 0 } as SingleResult<T>, cacheKey: null };
@@ -378,9 +426,27 @@ async function cachedProxyCall<T = unknown>(
   path: string,
   input: Record<string, unknown>,
 ): Promise<{ items: T[] | T; total: number; totalData?: Record<string, unknown> }> {
+  const requestId = input._requestId as string | undefined;
   const params = buildUpstreamParams(input, path);
   const ttl = CACHE_TTL[path] ?? 60;
   const explicitAgentId = input.agentId as string | undefined;
+
+  // -----------------------------------------------------------------------
+  // DB-first: serve locked past dates from DB, skip upstream entirely
+  // -----------------------------------------------------------------------
+  if (!explicitAgentId && !isReferenceRequest(path, input)) {
+    const agents = await agentService.listActiveAgents(app);
+    if (agents.length > 0) {
+      const agentIds = agents.map((a) => a.id);
+      const page = Math.max(1, Number(input.page) || 1);
+      const limit = Math.max(1, Number(input.limit) || 10);
+      const dbResult = await tryDbFirst<T>(app, path, params, agentIds, page, limit, requestId);
+      if (dbResult) {
+        logger.debug("DB-first served response", { path, total: dbResult.total, page, requestId });
+        return dbResult as { items: T[] | T; total: number; totalData?: Record<string, unknown> };
+      }
+    }
+  }
 
   // -----------------------------------------------------------------------
   // Single-agent mode: explicit agentId OR reference/dropdown request
@@ -411,7 +477,7 @@ async function cachedProxyCall<T = unknown>(
       cookie = decryptSessionCookie(agent.sessionCookie);
     }
 
-    const result = await fetchSingleAgent<T>(app, path, params, agentId, agentName, cookie, ttl);
+    const result = await fetchSingleAgent<T>(app, path, params, agentId, agentName, cookie, ttl, requestId);
     return result;
   }
 
@@ -434,7 +500,7 @@ async function cachedProxyCall<T = unknown>(
   allParams.page = "1";
 
   // Use pipeline-based multi-agent fetch (MGET + batch SET)
-  const results = await fetchMultiAgentWithPipeline<T>(app, path, allParams, agents, ttl);
+  const results = await fetchMultiAgentWithPipeline<T>(app, path, allParams, agents, ttl, requestId);
 
   // Merge all items, sort naturally, then paginate
   const allItems = sortMergedItems(
@@ -519,9 +585,10 @@ async function actionProxyCall(
   input: Record<string, unknown>,
 ) {
   const agentId = input.agentId as string;
+  const requestId = input._requestId as string | undefined;
   const cookie = await agentService.getAgentCookie(app, agentId);
   const params = buildUpstreamParams(input, path);
-  return fetchUpstream({ path, cookie, params });
+  return fetchUpstream({ path, cookie, params, requestId });
 }
 
 export function editPasswordUpstream(app: FastifyInstance, input: Record<string, unknown>) {
