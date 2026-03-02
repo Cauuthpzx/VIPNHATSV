@@ -51,6 +51,12 @@ interface BulkUpsertConfig {
   timestampColumns?: Set<string>;
   /** Columns that need ::jsonb cast */
   jsonbColumns?: Set<string>;
+  /**
+   * Column dùng để skip UPDATE khi data không đổi.
+   * Thêm WHERE "table"."col" IS DISTINCT FROM EXCLUDED."col" vào SQL.
+   * Giảm I/O cho PostgreSQL — row không thay đổi = zero write.
+   */
+  skipUnchangedColumn?: string;
 }
 
 async function bulkUpsert(
@@ -92,10 +98,15 @@ async function bulkUpsert(
       .map((c) => `"${c}" = EXCLUDED."${c}"`)
       .join(", ");
 
+    // WHERE clause: skip UPDATE nếu data không đổi (giảm I/O cho PostgreSQL)
+    const whereClause = config.skipUnchangedColumn
+      ? `\nWHERE "${config.table}"."${config.skipUnchangedColumn}" IS DISTINCT FROM EXCLUDED."${config.skipUnchangedColumn}"`
+      : "";
+
     const sql = `INSERT INTO "${config.table}" (${config.columns.map((c) => `"${c}"`).join(",")})
 VALUES ${values.join(",")}
 ON CONFLICT ${config.conflictTarget}
-DO UPDATE SET ${updateSet}`;
+DO UPDATE SET ${updateSet}${whereClause}`;
 
     try {
       await prisma.$executeRawUnsafe(sql, ...params);
@@ -123,6 +134,7 @@ const PROXY_USER_CONFIG: BulkUpsertConfig = {
   updateColumns: ["type_format", "parent_user", "money", "deposit_count", "withdrawal_count", "deposit_amount", "withdrawal_amount", "login_time", "register_time", "status_format", "raw", "synced_at"],
   timestampColumns: new Set(["synced_at"]),
   jsonbColumns: new Set(["raw"]),
+  skipUnchangedColumn: "raw",
 };
 
 async function upsertUsers(prisma: PrismaClient, agentId: string, items: Item[]): Promise<number> {
@@ -261,6 +273,7 @@ const PROXY_INVITE_CONFIG: BulkUpsertConfig = {
   updateColumns: ["user_type", "reg_count", "scope_reg_count", "recharge_count", "first_recharge_count", "register_recharge_count", "remark", "create_time", "raw", "synced_at"],
   timestampColumns: new Set(["synced_at"]),
   jsonbColumns: new Set(["raw"]),
+  skipUnchangedColumn: "raw",
 };
 
 async function upsertInvites(prisma: PrismaClient, agentId: string, items: Item[]): Promise<number> {
@@ -291,6 +304,7 @@ const PROXY_DEPOSIT_CONFIG: BulkUpsertConfig = {
   updateColumns: ["user_parent_format", "status", "sync_date", "raw", "synced_at"],
   timestampColumns: new Set(["synced_at"]),
   jsonbColumns: new Set(["raw"]),
+  skipUnchangedColumn: "raw",
 };
 
 async function upsertDeposits(prisma: PrismaClient, agentId: string, items: Item[], syncDate?: string): Promise<number> {
@@ -321,6 +335,7 @@ const PROXY_WITHDRAWAL_CONFIG: BulkUpsertConfig = {
   updateColumns: ["username", "user_parent_format", "amount", "user_fee", "true_amount", "status_format", "create_time", "sync_date", "raw", "synced_at"],
   timestampColumns: new Set(["synced_at"]),
   jsonbColumns: new Set(["raw"]),
+  skipUnchangedColumn: "raw",
 };
 
 async function upsertWithdrawals(prisma: PrismaClient, agentId: string, items: Item[], syncDate?: string): Promise<number> {
@@ -351,6 +366,7 @@ const PROXY_BET_CONFIG: BulkUpsertConfig = {
   updateColumns: ["username", "lottery_name", "play_type_name", "play_name", "issue", "content", "money", "rebate_amount", "result", "status_text", "create_time", "sync_date", "raw", "synced_at"],
   timestampColumns: new Set(["synced_at"]),
   jsonbColumns: new Set(["raw"]),
+  skipUnchangedColumn: "raw",
 };
 
 async function upsertBets(prisma: PrismaClient, agentId: string, items: Item[], syncDate?: string): Promise<number> {
@@ -382,6 +398,7 @@ const PROXY_BET_ORDER_CONFIG: BulkUpsertConfig = {
   updateColumns: ["platform_id_name", "platform_username", "c_name", "game_name", "bet_amount", "turnover", "prize", "win_lose", "bet_time", "sync_date", "raw", "synced_at"],
   timestampColumns: new Set(["synced_at"]),
   jsonbColumns: new Set(["raw"]),
+  skipUnchangedColumn: "raw",
 };
 
 async function upsertBetOrders(prisma: PrismaClient, agentId: string, items: Item[], syncDate?: string): Promise<number> {
@@ -413,6 +430,7 @@ const PROXY_REPORT_LOTTERY_CONFIG: BulkUpsertConfig = {
   updateColumns: ["user_parent_format", "bet_count", "bet_amount", "valid_amount", "rebate_amount", "result", "win_lose", "prize", "raw", "synced_at"],
   timestampColumns: new Set(["synced_at"]),
   jsonbColumns: new Set(["raw"]),
+  skipUnchangedColumn: "raw",
 };
 
 async function upsertReportLottery(prisma: PrismaClient, agentId: string, items: Item[]): Promise<number> {
@@ -446,6 +464,7 @@ const PROXY_REPORT_FUNDS_CONFIG: BulkUpsertConfig = {
   updateColumns: ["user_parent_format", "deposit_count", "deposit_amount", "withdrawal_count", "withdrawal_amount", "charge_fee", "agent_commission", "promotion", "third_rebate", "third_activity_amount", "raw", "synced_at"],
   timestampColumns: new Set(["synced_at"]),
   jsonbColumns: new Set(["raw"]),
+  skipUnchangedColumn: "raw",
 };
 
 async function upsertReportFunds(prisma: PrismaClient, agentId: string, items: Item[]): Promise<number> {
@@ -480,6 +499,7 @@ const PROXY_REPORT_THIRD_GAME_CONFIG: BulkUpsertConfig = {
   updateColumns: ["t_bet_times", "t_bet_amount", "t_turnover", "t_prize", "t_win_lose", "raw", "synced_at"],
   timestampColumns: new Set(["synced_at"]),
   jsonbColumns: new Set(["raw"]),
+  skipUnchangedColumn: "raw",
 };
 
 async function upsertReportThirdGame(prisma: PrismaClient, agentId: string, items: Item[]): Promise<number> {
@@ -512,6 +532,7 @@ const PROXY_BANK_CONFIG: BulkUpsertConfig = {
   updateColumns: ["agent_id", "is_default_format", "bank_name", "bank_branch", "card_no", "name", "raw", "synced_at"],
   timestampColumns: new Set(["synced_at"]),
   jsonbColumns: new Set(["raw"]),
+  skipUnchangedColumn: "raw",
 };
 
 async function upsertBanks(prisma: PrismaClient, agentId: string, items: Item[]): Promise<number> {
