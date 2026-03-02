@@ -16,12 +16,17 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
 
   # ── Redis ───────────────────────────────────────────────────
   redis:
     image: redis:7-alpine
     restart: unless-stopped
-    command: redis-server --appendonly yes
+    command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru
     volumes:
       - redisdata:/data
     ports:
@@ -31,6 +36,11 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.5"
 
   # ── Backend (Fastify) ──────────────────────────────────────
   backend:
@@ -52,6 +62,11 @@ services:
         condition: service_healthy
     ports:
       - "3000:3000"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
 
   # ── Frontend (Vue 3 SPA) ───────────────────────────────────
   frontend:
@@ -61,6 +76,11 @@ services:
     restart: unless-stopped
     ports:
       - "5173:80"
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: "0.5"
 
   # ── Nginx reverse proxy ────────────────────────────────────
   nginx:
@@ -73,6 +93,11 @@ services:
     depends_on:
       - backend
       - frontend
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: "0.5"
 
 volumes:
   pgdata:

@@ -11,6 +11,8 @@ import jwtPlugin from "./plugins/jwt.js";
 import websocketPlugin from "./plugins/websocket.js";
 import swaggerPlugin from "./plugins/swagger.js";
 import sentryPlugin from "./plugins/sentry.js";
+import compressPlugin from "./plugins/compress.js";
+import cookiePlugin from "./plugins/cookie.js";
 
 // Middlewares
 import { requestIdHook } from "./middlewares/requestId.js";
@@ -41,8 +43,10 @@ export async function buildApp() {
   await app.register(prismaPlugin);
   await app.register(redisPlugin);
   await app.register(corsPlugin);
+  await app.register(cookiePlugin);
   await app.register(swaggerPlugin);
   await app.register(helmetPlugin);
+  await app.register(compressPlugin);
   await app.register(rateLimitPlugin);
   await app.register(jwtPlugin);
   await app.register(websocketPlugin);

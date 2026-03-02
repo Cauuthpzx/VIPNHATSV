@@ -17,6 +17,7 @@ const color = computed(() => {
 <template>
   <lay-tag :color="color" size="sm" bordered class="cookie-badge">
     <i class="layui-icon layui-icon-key"></i>
+    Đại lý khả dụng:
     <template v-if="ready">
       <lay-count-up :end-val="stats.valid" :duration="600" />/<lay-count-up :end-val="stats.total" :duration="600" />
     </template>

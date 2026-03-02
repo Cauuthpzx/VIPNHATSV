@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from "vue";
-import { fetchSyncStatus, triggerSync } from "@/api/services/sync";
+import { fetchSyncStatus, triggerSync, triggerAgentSync, purgeAllData, purgeAgentData } from "@/api/services/sync";
 import { useAuthStore } from "@/stores/auth";
 import { useAgentStore } from "@/stores/agent";
 import { PERMISSIONS } from "@/constants/permissions";
@@ -12,6 +12,9 @@ const canWrite = computed(() => authStore.hasPermission(PERMISSIONS.SYNC_WRITE))
 
 const loading = ref(true);
 const triggering = ref(false);
+const syncingAgentId = ref<string | null>(null);
+const purgingAgentId = ref<string | null>(null);
+const purgingAll = ref(false);
 
 const totalRows = ref(0);
 const activeAgents = ref(0);
@@ -22,14 +25,15 @@ const tables = ref<any[]>([]);
 const agents = ref<any[]>([]);
 const expandKeys = ref<string[]>([]);
 
-const agentColumns = [
+const agentColumns = computed(() => [
   { title: "Đại lý / Dữ liệu", key: "name", customSlot: "agentName", width: "220px" },
   { title: "Tài khoản", key: "extUsername", ellipsisTooltip: true },
   { title: "Trạng thái", key: "_status", customSlot: "agentStatus", width: "130px" },
   { title: "Cookie", key: "cookieExpires", customSlot: "cookieExp", width: "180px" },
   { title: "Bản ghi", key: "totalRows", customSlot: "num", width: "120px" },
   { title: "Đồng bộ lần cuối", key: "lastSyncedAt", customSlot: "syncTime", width: "170px" },
-];
+  ...(canWrite.value ? [{ title: "Thao tác", key: "_actions", customSlot: "actions", width: "160px", align: "center" }] : []),
+]);
 
 function getCookieStatusColor(agentId: string): string {
   const alive = agentStore.cookieHealthMap[agentId];
@@ -97,12 +101,14 @@ async function loadStatus() {
   }
 }
 
-async function handleTrigger() {
+// ---- Actions ----
+
+async function handleSyncAll() {
   triggering.value = true;
   try {
     const res = await triggerSync();
     if (res.data.success) {
-      layer.msg("Đã kích hoạt đồng bộ thủ công", { icon: 1 });
+      layer.msg("Đã kích hoạt đồng bộ tất cả", { icon: 1 });
       isSyncing.value = true;
     } else {
       layer.msg(res.data.message || "Lỗi", { icon: 2 });
@@ -111,6 +117,85 @@ async function handleTrigger() {
     layer.msg("Lỗi khi kích hoạt đồng bộ", { icon: 2 });
   } finally {
     triggering.value = false;
+  }
+}
+
+async function handleSyncAgent(agentId: string) {
+  syncingAgentId.value = agentId;
+  try {
+    const res = await triggerAgentSync(agentId);
+    if (res.data.success) {
+      layer.msg("Đã kích hoạt đồng bộ đại lý", { icon: 1 });
+      isSyncing.value = true;
+    } else {
+      layer.msg(res.data.message || "Lỗi", { icon: 2 });
+    }
+  } catch {
+    layer.msg("Lỗi khi kích hoạt đồng bộ đại lý", { icon: 2 });
+  } finally {
+    syncingAgentId.value = null;
+  }
+}
+
+function confirmPurgeAll() {
+  layer.confirm(
+    "Bạn có chắc muốn <b style='color:#ff4d4f'>xóa TẤT CẢ</b> dữ liệu đồng bộ?<br>Hành động này không thể hoàn tác.",
+    {
+      title: "Xác nhận xóa tất cả",
+      isHtmlContent: true,
+      btn: [
+        { text: "Xóa tất cả", callback: (id: string) => { layer.close(id); doPurgeAll(); } },
+        { text: "Hủy" },
+      ],
+    },
+  );
+}
+
+async function doPurgeAll() {
+  purgingAll.value = true;
+  try {
+    const res = await purgeAllData();
+    if (res.data.success) {
+      layer.msg("Đã xóa tất cả dữ liệu", { icon: 1 });
+      await loadStatus();
+    } else {
+      layer.msg(res.data.message || "Lỗi", { icon: 2 });
+    }
+  } catch {
+    layer.msg("Lỗi khi xóa dữ liệu", { icon: 2 });
+  } finally {
+    purgingAll.value = false;
+  }
+}
+
+function confirmPurgeAgent(agentId: string, agentName: string) {
+  layer.confirm(
+    `Bạn có chắc muốn <b style='color:#ff4d4f'>xóa dữ liệu</b> của đại lý <b>${agentName}</b>?<br>Hành động này không thể hoàn tác.`,
+    {
+      title: "Xác nhận xóa dữ liệu đại lý",
+      isHtmlContent: true,
+      btn: [
+        { text: "Xóa", callback: (id: string) => { layer.close(id); doPurgeAgent(agentId); } },
+        { text: "Hủy" },
+      ],
+    },
+  );
+}
+
+async function doPurgeAgent(agentId: string) {
+  purgingAgentId.value = agentId;
+  try {
+    const res = await purgeAgentData(agentId);
+    if (res.data.success) {
+      layer.msg("Đã xóa dữ liệu đại lý", { icon: 1 });
+      await loadStatus();
+    } else {
+      layer.msg(res.data.message || "Lỗi", { icon: 2 });
+    }
+  } catch {
+    layer.msg("Lỗi khi xóa dữ liệu đại lý", { icon: 2 });
+  } finally {
+    purgingAgentId.value = null;
   }
 }
 
@@ -183,18 +268,7 @@ onUnmounted(() => {
                 {{ isSyncing ? "Đang đồng bộ..." : "Sẵn sàng" }}
               </lay-tag>
             </div>
-            <div v-if="canWrite" class="stat-trigger">
-              <lay-button
-                size="xs"
-                type="normal"
-                :loading="triggering"
-                :disabled="isSyncing"
-                @click="handleTrigger"
-              >
-                <i class="layui-icon layui-icon-refresh-1"></i> Đồng bộ ngay
-              </lay-button>
-            </div>
-            <div v-else class="stat-desc">Trạng thái</div>
+            <div class="stat-desc">Trạng thái</div>
           </div>
         </lay-card>
       </lay-col>
@@ -217,6 +291,26 @@ onUnmounted(() => {
               <lay-button size="sm" type="normal">
                 <b>{{ activeAgents }}/{{ totalAgents }} HOẠT ĐỘNG</b>
               </lay-button>
+              <template v-if="canWrite">
+                <lay-button
+                  size="sm"
+                  type="normal"
+                  :loading="triggering"
+                  :disabled="isSyncing"
+                  @click="handleSyncAll"
+                >
+                  <i class="layui-icon layui-icon-refresh-1"></i> Đồng bộ tất cả
+                </lay-button>
+                <lay-button
+                  size="sm"
+                  type="warm"
+                  :loading="purgingAll"
+                  :disabled="isSyncing"
+                  @click="confirmPurgeAll"
+                >
+                  <i class="layui-icon layui-icon-delete"></i> Xóa tất cả DB
+                </lay-button>
+              </template>
             </template>
 
             <template #agentName="{ row }">
@@ -278,6 +372,32 @@ onUnmounted(() => {
                 }) }}
               </span>
               <span v-else style="color: #ccc">—</span>
+            </template>
+
+            <template #actions="{ row }">
+              <!-- Only show actions for parent (agent) rows, not children -->
+              <template v-if="!row.icon">
+                <div class="action-btns">
+                  <lay-button
+                    size="xs"
+                    type="normal"
+                    :loading="syncingAgentId === row.id"
+                    :disabled="isSyncing"
+                    @click="handleSyncAgent(row.id)"
+                  >
+                    <i class="layui-icon layui-icon-refresh-1"></i> Sync
+                  </lay-button>
+                  <lay-button
+                    size="xs"
+                    type="warm"
+                    :loading="purgingAgentId === row.id"
+                    :disabled="isSyncing"
+                    @click="confirmPurgeAgent(row.id, row.name)"
+                  >
+                    <i class="layui-icon layui-icon-delete"></i> Xóa
+                  </lay-button>
+                </div>
+              </template>
             </template>
           </lay-table>
         </div>
@@ -351,10 +471,6 @@ onUnmounted(() => {
   margin-top: 4px;
 }
 
-.stat-trigger {
-  margin-top: 6px;
-}
-
 .pulse {
   animation: pulse-ring 1.5s ease-in-out infinite;
 }
@@ -382,6 +498,12 @@ onUnmounted(() => {
   display: inline-flex;
   align-items: center;
   font-size: 13px;
+}
+
+.action-btns {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
 }
 
 .auto-refresh-note {

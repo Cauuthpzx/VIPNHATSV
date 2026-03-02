@@ -27,7 +27,6 @@ export function fetchInviteList(params: {
   page: number;
   limit: number;
   create_time?: string;
-  user_register_time?: string;
   invite_code?: string;
 }) {
   return api.post<ProxyResponse>("/proxy/invite-list", params);

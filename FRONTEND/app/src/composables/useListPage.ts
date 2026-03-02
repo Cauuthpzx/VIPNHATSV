@@ -1,4 +1,4 @@
-import { ref, reactive, nextTick, watch, onMounted, type Ref, type WatchSource } from "vue";
+import { ref, reactive, nextTick, watch, onMounted, onBeforeUnmount, type Ref, type WatchSource } from "vue";
 
 export interface PageState {
   current: number;
@@ -11,11 +11,15 @@ export function useListPage<T = Record<string, any>>(initialLimit = 10) {
   const loading = ref(false);
   const page = reactive<PageState>({ current: 1, limit: initialLimit, total: 0 });
 
+  // Stale-request guard: incremented on every loadData call.
+  // If a newer call starts before an older one finishes, the older
+  // result is silently discarded (its `version` won't match `latestVersion`).
+  let latestVersion = 0;
+
   function resetPage() {
     page.current = 1;
   }
 
-  /** Scroll .layui-body lên đầu table sau khi đổi trang — tránh giật */
   function scrollToTable() {
     nextTick(() => {
       const body = document.querySelector(".layui-body");
@@ -33,15 +37,22 @@ export function useListPage<T = Record<string, any>>(initialLimit = 10) {
   }
 
   /**
+   * Check if the current call is still the latest.
+   * Usage inside loadData():
+   *   const isStale = guardStale();
+   *   const res = await fetchXXX(params);
+   *   if (isStale()) return;      // skip if superseded
+   *   dataSource.value = res.data.data.items;
+   */
+  function guardStale(): () => boolean {
+    const v = ++latestVersion;
+    return () => v !== latestVersion;
+  }
+
+  /**
    * Tạo các handler chuẩn cho pagination page.
-   * Truyền loadData callback → composable tự tạo change, handleSearch,
-   * watch(agentId), onMounted. Giúp xóa boilerplate lặp lại ở 9+ pages.
-   *
-   * @param loadData - Hàm tải dữ liệu (async)
-   * @param agentIdSource - Ref selectedAgentId để watch (optional)
    */
   function bindLoadData(loadData: () => void | Promise<void>, agentIdSource?: WatchSource) {
-    /** Pagination change handler → truyền cho lay-table @change */
     function handlePageChange(p: { current: number; limit: number }) {
       page.current = p.current;
       page.limit = p.limit;
@@ -49,13 +60,11 @@ export function useListPage<T = Record<string, any>>(initialLimit = 10) {
       loadData();
     }
 
-    /** Search handler: reset về trang 1 rồi load */
     function handleSearch() {
       page.current = 1;
       loadData();
     }
 
-    // Auto-watch selectedAgentId nếu có
     if (agentIdSource) {
       watch(agentIdSource, () => {
         page.current = 1;
@@ -63,8 +72,10 @@ export function useListPage<T = Record<string, any>>(initialLimit = 10) {
       });
     }
 
-    // Auto-mount
     onMounted(() => loadData());
+
+    // Bump version on unmount so any in-flight request becomes stale
+    onBeforeUnmount(() => { latestVersion++; });
 
     return { handlePageChange, handleSearch };
   }
@@ -77,5 +88,6 @@ export function useListPage<T = Record<string, any>>(initialLimit = 10) {
     scrollToTable,
     setLoading,
     bindLoadData,
+    guardStale,
   };
 }

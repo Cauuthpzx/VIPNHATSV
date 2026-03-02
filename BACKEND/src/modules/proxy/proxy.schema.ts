@@ -18,6 +18,12 @@ export const inviteListSchema = paginationSchema.extend({
   invite_code: z.string().optional(),
 });
 
+/** Schema cho invite list đọc từ DB local (không gọi upstream) */
+export const inviteListLocalSchema = paginationSchema.extend({
+  create_time: z.string().optional(),
+  invite_code: z.string().optional(),
+});
+
 export const reportLotterySchema = paginationSchema.extend({
   date: z.string().optional(),
   lottery_id: z.string().optional(),

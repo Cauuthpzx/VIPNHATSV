@@ -52,9 +52,10 @@ async function main() {
   });
 
   await prisma.user.upsert({
-    where: { email: "admin@example.com" },
+    where: { username: "admin" },
     update: { password: await hashPassword("admin123") },
     create: {
+      username: "admin",
       email: "admin@example.com",
       password: await hashPassword("admin123"),
       name: "Admin",
@@ -63,9 +64,10 @@ async function main() {
   });
 
   await prisma.user.upsert({
-    where: { email: "manager@example.com" },
+    where: { username: "manager" },
     update: { password: await hashPassword("manager123") },
     create: {
+      username: "manager",
       email: "manager@example.com",
       password: await hashPassword("manager123"),
       name: "Manager",

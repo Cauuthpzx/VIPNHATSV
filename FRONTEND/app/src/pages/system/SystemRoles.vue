@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted } from "vue";
+import { ref, reactive, computed, onMounted } from "vue";
 import { layer } from "@layui/layui-vue";
 import { useAuthStore } from "@/stores/auth";
-import { PERMISSIONS, PERMISSION_LABELS, PERMISSION_GROUPS, ALL_PERMISSIONS } from "@/constants/permissions";
+import { PERMISSIONS, PERMISSION_LABELS, ALL_PERMISSIONS } from "@/constants/permissions";
+import { buildPermissionTreeData, extractPermissions } from "@/constants/permissionTree";
 import {
   fetchRoles,
   createRole,
@@ -143,48 +144,50 @@ async function handleSubmit() {
   }
 }
 
-// --- Permission Modal ---
+// --- Permission Modal (LayTree) ---
 const showPermModal = ref(false);
 const permRoleId = ref("");
 const permRoleName = ref("");
-const selectedPerms = ref<string[]>([]);
 const permSubmitting = ref(false);
+
+const permissionTreeData = buildPermissionTreeData();
+const treeCheckedKeys = ref<(string | number)[]>([]);
+
+const isAllChecked = computed(() => {
+  const realPerms = extractPermissions(treeCheckedKeys.value);
+  return realPerms.length === allPermKeys.length;
+});
+
+const isIndeterminate = computed(() => {
+  const realPerms = extractPermissions(treeCheckedKeys.value);
+  return realPerms.length > 0 && realPerms.length < allPermKeys.length;
+});
 
 function openPermissions(row: SystemRole) {
   permRoleId.value = row.id;
   permRoleName.value = row.name;
-  // Clone current permissions (exclude "*" for the checkbox grid)
-  selectedPerms.value = row.permissions.includes(ALL_PERMISSIONS)
+  treeCheckedKeys.value = row.permissions.includes(ALL_PERMISSIONS)
     ? [...allPermKeys]
-    : row.permissions.filter((p) => p !== ALL_PERMISSIONS);
+    : row.permissions.filter((p) => allPermKeys.includes(p as any));
   showPermModal.value = true;
 }
 
-function togglePerm(perm: string) {
-  const idx = selectedPerms.value.indexOf(perm);
-  if (idx >= 0) {
-    selectedPerms.value.splice(idx, 1);
-  } else {
-    selectedPerms.value.push(perm);
-  }
-}
-
 function toggleAllPerms() {
-  if (selectedPerms.value.length === allPermKeys.length) {
-    selectedPerms.value = [];
+  if (isAllChecked.value) {
+    treeCheckedKeys.value = [];
   } else {
-    selectedPerms.value = [...allPermKeys];
+    treeCheckedKeys.value = [...allPermKeys];
   }
 }
 
 async function savePermissions() {
   permSubmitting.value = true;
   try {
-    await updateRole(permRoleId.value, { permissions: selectedPerms.value });
+    const perms = extractPermissions(treeCheckedKeys.value);
+    await updateRole(permRoleId.value, { permissions: perms });
     layer.msg("Cập nhật quyền hạn thành công", { icon: 1 });
     showPermModal.value = false;
     loadData();
-    // Refresh current user's permissions if editing own role
     if (authStore.user?.role?.id === permRoleId.value) {
       authStore.fetchMe();
     }
@@ -346,44 +349,54 @@ onMounted(() => loadData());
     <lay-layer
       v-model="showPermModal"
       :title="`Phân quyền — ${permRoleName}`"
-      :area="['600px', 'auto']"
+      :area="['650px', '580px']"
       :shade-close="false"
       :move="true"
     >
-      <div style="padding: 20px 30px;">
+      <div style="padding: 20px 24px;">
         <div class="perm-header">
           <lay-checkbox
-            :modelValue="selectedPerms.length === allPermKeys.length"
+            :modelValue="isAllChecked"
+            :is-indeterminate="isIndeterminate"
             skin="primary"
-            label="Chọn tất cả"
+            label="Toàn quyền"
             @change="toggleAllPerms"
           />
+          <span class="perm-counter">
+            {{ extractPermissions(treeCheckedKeys).length }}/{{ allPermKeys.length }}
+          </span>
         </div>
 
-        <div
-          v-for="group in PERMISSION_GROUPS"
-          :key="group.label"
-          class="perm-group"
-        >
-          <div class="perm-group-label">{{ group.label }}</div>
-          <div class="perm-grid">
-            <div
-              v-for="perm in group.permissions"
-              :key="perm"
-              class="perm-item"
-            >
-              <lay-checkbox
-                :modelValue="selectedPerms.includes(perm)"
-                skin="primary"
-                :label="PERMISSION_LABELS[perm] || perm"
-                @change="togglePerm(perm)"
-              />
-              <span class="perm-code">{{ perm }}</span>
-            </div>
-          </div>
+        <div class="perm-tree-wrapper">
+          <lay-tree
+            :data="permissionTreeData"
+            :show-checkbox="true"
+            :show-line="false"
+            :collapse-transition="true"
+            v-model:checked-keys="treeCheckedKeys"
+          >
+            <template #title="{ data }">
+              <span class="perm-tree-node" :class="{ 'is-group': String(data.id).startsWith('group:') }">
+                <i
+                  v-if="data.icon"
+                  :class="['layui-icon', data.icon]"
+                  class="perm-tree-icon"
+                ></i>
+                <span>{{ data.title }}</span>
+                <lay-tag
+                  v-if="!String(data.id).startsWith('group:')"
+                  color="#eee"
+                  size="sm"
+                  class="perm-tree-code"
+                >
+                  {{ data.id }}
+                </lay-tag>
+              </span>
+            </template>
+          </lay-tree>
         </div>
 
-        <div class="layui-form-item" style="text-align: right; margin-bottom: 0; margin-top: 20px;">
+        <div style="text-align: right; margin-top: 16px;">
           <lay-button @click="showPermModal = false">Hủy</lay-button>
           <lay-button type="normal" :loading="permSubmitting" @click="savePermissions">
             Lưu quyền hạn
@@ -408,41 +421,45 @@ onMounted(() => loadData());
 }
 
 .perm-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   padding-bottom: 12px;
   border-bottom: 1px solid #eee;
-  margin-bottom: 8px;
 }
 
-.perm-group {
-  margin-bottom: 16px;
-}
-
-.perm-group-label {
+.perm-counter {
   font-size: 13px;
-  font-weight: 600;
-  color: #333;
-  margin-bottom: 8px;
-  padding: 4px 8px;
-  background: #f8f8f8;
-  border-radius: 4px;
-}
-
-.perm-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px 24px;
-  padding-left: 8px;
-}
-
-.perm-item {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.perm-code {
-  font-size: 12px;
   color: #999;
-  margin-left: 24px;
+  font-weight: 600;
+}
+
+.perm-tree-wrapper {
+  max-height: 400px;
+  overflow-y: auto;
+  padding: 8px 0;
+}
+
+.perm-tree-node {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.perm-tree-node.is-group {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.perm-tree-icon {
+  font-size: 15px;
+  color: #16baaa;
+}
+
+.perm-tree-code {
+  font-size: 11px;
+  color: #aaa !important;
+  margin-left: 2px;
 }
 </style>

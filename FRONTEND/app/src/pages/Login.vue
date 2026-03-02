@@ -63,36 +63,90 @@
 
         <!-- Right: Form -->
         <div class="login-form-panel">
-          <span class="form-title">Đăng nhập</span>
+          <!-- Tab Header -->
+          <div class="auth-tabs">
+            <span :class="{ active: activeTab === 'login' }" @click="activeTab = 'login'">ĐĂNG NHẬP</span>
+            <span :class="{ active: activeTab === 'register' }" @click="activeTab = 'register'">ĐĂNG KÝ</span>
+          </div>
 
-          <form @submit.prevent="handleLogin">
-            <div class="input-group">
-              <i class="icon layui-icon">&#xe770;</i>
-              <input v-model="loginForm.email" type="text" class="login-input" placeholder="Email" autocomplete="off" />
-            </div>
-            <div class="input-group">
-              <i class="icon layui-icon">&#xe673;</i>
-              <input v-model="loginForm.password" :type="showPassword ? 'text' : 'password'" class="login-input" placeholder="Mật khẩu" autocomplete="off" @keyup.enter="handleLogin" />
-              <i class="icon-suffix layui-icon" @click="showPassword = !showPassword">{{ showPassword ? '\ue696' : '\ue695' }}</i>
-            </div>
-            <div v-if="captchaRequired" class="captcha-row">
-              <div class="input-group captcha-input-wrap">
-                <i class="icon layui-icon">&#xe672;</i>
-                <input v-model="loginForm.captchaAnswer" type="text" class="login-input" placeholder="Mã xác nhận" autocomplete="off" />
+          <!-- Login Form -->
+          <div v-show="activeTab === 'login'">
+            <form @submit.prevent="handleLogin">
+              <div class="input-group">
+                <i class="icon layui-icon">&#xe770;</i>
+                <input v-model="loginForm.username" type="text" class="login-input" placeholder="Tài khoản" autocomplete="off" />
               </div>
-              <div class="captcha-img" @click="loadCaptcha">
-                <div v-if="captchaSvg" v-html="captchaSvg"></div>
-                <span v-else class="captcha-placeholder">Tải...</span>
+              <div class="input-group">
+                <i class="icon layui-icon">&#xe673;</i>
+                <input v-model="loginForm.password" :type="showPassword ? 'text' : 'password'" class="login-input" placeholder="Mật khẩu" autocomplete="off" @keyup.enter="handleLogin" />
+                <i class="icon-suffix layui-icon" @click="showPassword = !showPassword">{{ showPassword ? '\ue696' : '\ue695' }}</i>
               </div>
-            </div>
-            <label class="remember-row">
-              <input v-model="loginForm.remember" type="checkbox" /> <span>Ghi nhớ mật khẩu</span>
-            </label>
-            <button type="submit" class="login-btn" :disabled="loginLoading">
-              <span v-if="loginLoading" class="btn-spinner"></span>
-              {{ loginLoading ? 'Đang đăng nhập...' : 'Đăng nhập' }}
-            </button>
-          </form>
+              <div v-if="captchaRequired" class="captcha-row">
+                <div class="input-group captcha-input-wrap">
+                  <i class="icon layui-icon">&#xe672;</i>
+                  <input v-model="loginForm.captchaAnswer" type="text" class="login-input" placeholder="Mã xác nhận" autocomplete="off" />
+                </div>
+                <div class="captcha-img" @click="loadCaptcha">
+                  <div v-if="captchaSvg" v-html="captchaSvg"></div>
+                  <span v-else class="captcha-placeholder">Tải...</span>
+                </div>
+              </div>
+              <label class="remember-row">
+                <input v-model="loginForm.remember" type="checkbox" /> <span>Ghi nhớ mật khẩu</span>
+              </label>
+              <button type="submit" class="login-btn" :disabled="loginLoading">
+                <span v-if="loginLoading" class="btn-spinner"></span>
+                {{ loginLoading ? 'Đang đăng nhập...' : 'Đăng nhập' }}
+              </button>
+            </form>
+            <div class="switch-tab-link" @click="activeTab = 'register'">Chưa có tài khoản? <b>Đăng ký</b></div>
+          </div>
+
+          <!-- Register Form -->
+          <div v-show="activeTab === 'register'">
+            <form @submit.prevent="handleRegister">
+              <div class="input-group">
+                <i class="icon layui-icon">&#xe770;</i>
+                <input v-model="registerForm.username" type="text" class="login-input" placeholder="Tài khoản (chữ cái, số, _)" autocomplete="off" />
+              </div>
+              <div class="input-group">
+                <i class="icon layui-icon">&#xe66f;</i>
+                <input v-model="registerForm.name" type="text" class="login-input" placeholder="Họ tên" autocomplete="off" />
+              </div>
+              <div class="input-group">
+                <i class="icon layui-icon">&#xe618;</i>
+                <input v-model="registerForm.email" type="text" class="login-input" placeholder="Email (tùy chọn)" autocomplete="off" />
+              </div>
+              <div class="input-group">
+                <i class="icon layui-icon">&#xe673;</i>
+                <input v-model="registerForm.password" :type="showRegPassword ? 'text' : 'password'" class="login-input" placeholder="Mật khẩu" autocomplete="off" />
+                <i class="icon-suffix layui-icon" @click="showRegPassword = !showRegPassword">{{ showRegPassword ? '\ue696' : '\ue695' }}</i>
+              </div>
+
+              <!-- Password Strength -->
+              <div class="pw-strength" v-if="registerForm.password">
+                <div class="pw-strength-bar">
+                  <div class="pw-strength-fill" :style="{ width: (passedCount / 5) * 100 + '%', background: strengthColor }" />
+                </div>
+                <span class="pw-strength-label" :style="{ color: strengthColor }">{{ strengthLabel }}</span>
+                <div class="pw-checks">
+                  <span v-for="check in strengthChecks" :key="check.label" class="pw-check-item" :class="{ passed: check.pass }">
+                    {{ check.pass ? '\u2713' : '\u2717' }} {{ check.label }}
+                  </span>
+                </div>
+              </div>
+
+              <div class="input-group">
+                <i class="icon layui-icon">&#xe673;</i>
+                <input v-model="registerForm.confirmPassword" type="password" class="login-input" placeholder="Xác nhận mật khẩu" autocomplete="off" @keyup.enter="handleRegister" />
+              </div>
+              <button type="submit" class="login-btn" :disabled="registerLoading">
+                <span v-if="registerLoading" class="btn-spinner"></span>
+                {{ registerLoading ? 'Đang đăng ký...' : 'Đăng ký' }}
+              </button>
+            </form>
+            <div class="switch-tab-link" @click="activeTab = 'login'">Đã có tài khoản? <b>Đăng nhập</b></div>
+          </div>
 
           <div class="login-divider"><span>Đăng nhập bằng</span></div>
           <div class="social-row">
@@ -121,11 +175,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from "vue";
+import { ref, reactive, computed } from "vue";
 import { useRouter } from "vue-router";
 import { layer } from "@layui/layui-vue";
 import { useAuthStore } from "@/stores/auth";
 import { useNotificationStore } from "@/stores/notification";
+import { registerAccount } from "@/api/services/proxy";
 import { api } from "@/api/client";
 import loginBgUrl from "@/assets/login/login-bg.svg";
 import iconZalo from "@/assets/login/social/icon-zalo.svg";
@@ -136,6 +191,10 @@ import iconDiscord from "@/assets/login/social/icon-discord.png";
 const router = useRouter();
 const authStore = useAuthStore();
 
+// ─── Tab state ──────────────────────────────────────────────────────────────
+const activeTab = ref<"login" | "register">("login");
+
+// ─── Login ──────────────────────────────────────────────────────────────────
 const showPassword = ref(false);
 const loginLoading = ref(false);
 const captchaRequired = ref(false);
@@ -143,7 +202,7 @@ const captchaSvg = ref("");
 const captchaId = ref("");
 
 const loginForm = reactive({
-  email: "",
+  username: "",
   password: "",
   captchaAnswer: "",
   remember: false,
@@ -162,7 +221,7 @@ async function loadCaptcha() {
 }
 
 async function handleLogin() {
-  if (!loginForm.email || !loginForm.password) {
+  if (!loginForm.username || !loginForm.password) {
     layer.msg("Vui lòng nhập tài khoản và mật khẩu", { icon: 2, time: 2000 });
     return;
   }
@@ -174,13 +233,12 @@ async function handleLogin() {
   loginLoading.value = true;
 
   try {
-    await authStore.login(loginForm.email, loginForm.password);
-    // Add login notification
+    await authStore.login(loginForm.username, loginForm.password);
     const notifStore = useNotificationStore();
     notifStore.add({
       type: "success",
       title: "Đăng nhập thành công",
-      message: `Xin chào ${authStore.user?.name || loginForm.email}! Phiên làm việc đã bắt đầu.`,
+      message: `Xin chào ${authStore.user?.name || loginForm.username}! Phiên làm việc đã bắt đầu.`,
     });
     layer.msg("Đăng nhập thành công!", { icon: 1, time: 1500 });
     setTimeout(() => router.push("/agent/welcome"), 500);
@@ -191,9 +249,116 @@ async function handleLogin() {
       loginForm.captchaAnswer = "";
       loadCaptcha();
     }
-    layer.msg(data?.msg || err.message || "Đăng nhập thất bại", { icon: 2, time: 2500 });
+    const msg = data?.message || data?.msg || err.message || "Đăng nhập thất bại";
+    layer.msg(msg, { icon: 2, time: 3000 });
   } finally {
     loginLoading.value = false;
+  }
+}
+
+// ─── Register ───────────────────────────────────────────────────────────────
+const showRegPassword = ref(false);
+const registerLoading = ref(false);
+
+const registerForm = reactive({
+  username: "",
+  name: "",
+  email: "",
+  password: "",
+  confirmPassword: "",
+});
+
+// Password strength checks (matches backend strongPasswordSchema)
+const strengthChecks = computed(() => {
+  const p = registerForm.password;
+  return [
+    { label: "8+ ký tự", pass: p.length >= 8 },
+    { label: "Chữ hoa (A-Z)", pass: /[A-Z]/.test(p) },
+    { label: "Chữ thường (a-z)", pass: /[a-z]/.test(p) },
+    { label: "Số (0-9)", pass: /[0-9]/.test(p) },
+    { label: "Ký tự đặc biệt (!@#...)", pass: /[^A-Za-z0-9]/.test(p) },
+  ];
+});
+
+const passedCount = computed(() => strengthChecks.value.filter((c) => c.pass).length);
+const allPassed = computed(() => passedCount.value === 5);
+
+const strengthLabel = computed(() => {
+  if (!registerForm.password) return "";
+  if (passedCount.value <= 2) return "Yếu";
+  if (passedCount.value <= 3) return "Trung bình";
+  if (passedCount.value <= 4) return "Khá";
+  return "Mạnh";
+});
+
+const strengthColor = computed(() => {
+  if (passedCount.value <= 2) return "#ff4d4f";
+  if (passedCount.value <= 3) return "#faad14";
+  if (passedCount.value <= 4) return "#1890ff";
+  return "#52c41a";
+});
+
+async function handleRegister() {
+  if (!registerForm.username) {
+    layer.msg("Vui lòng nhập tài khoản", { icon: 2, time: 2000 });
+    return;
+  }
+  if (!/^[a-zA-Z0-9_]+$/.test(registerForm.username)) {
+    layer.msg("Tài khoản chỉ được chứa chữ cái, số và _", { icon: 2, time: 2000 });
+    return;
+  }
+  if (registerForm.username.length < 4) {
+    layer.msg("Tài khoản phải có ít nhất 4 ký tự", { icon: 2, time: 2000 });
+    return;
+  }
+  if (!registerForm.name) {
+    layer.msg("Vui lòng nhập họ tên", { icon: 2, time: 2000 });
+    return;
+  }
+  if (!registerForm.password) {
+    layer.msg("Vui lòng nhập mật khẩu", { icon: 2, time: 2000 });
+    return;
+  }
+  if (!allPassed.value) {
+    layer.msg("Mật khẩu chưa đủ mạnh", { icon: 2, time: 2000 });
+    return;
+  }
+  if (registerForm.password !== registerForm.confirmPassword) {
+    layer.msg("Xác nhận mật khẩu không khớp", { icon: 2, time: 2000 });
+    return;
+  }
+
+  registerLoading.value = true;
+
+  try {
+    const res = await registerAccount({
+      username: registerForm.username,
+      password: registerForm.password,
+      name: registerForm.name,
+      email: registerForm.email || undefined,
+    });
+    const data = res.data;
+    if (data.success) {
+      // Auto-login: backend returns tokens
+      authStore.accessToken = data.data.accessToken;
+      authStore.refreshToken = data.data.refreshToken;
+      await authStore.fetchMe();
+
+      const notifStore = useNotificationStore();
+      notifStore.add({
+        type: "success",
+        title: "Đăng ký thành công",
+        message: `Chào mừng ${registerForm.name}! Tài khoản đã được tạo.`,
+      });
+      layer.msg("Đăng ký thành công!", { icon: 1, time: 1500 });
+      setTimeout(() => router.push("/agent/welcome"), 500);
+    }
+  } catch (err: any) {
+    const data = err.response?.data;
+    const msg = data?.message || data?.msg || err.message || "Đăng ký thất bại";
+    layer.msg(msg, { icon: 2, time: 3000 });
+  } finally {
+    registerLoading.value = false;
   }
 }
 </script>
@@ -280,7 +445,28 @@ async function handleLogin() {
   flex: 1; padding: 28px 36px;
   display: flex; flex-direction: column; overflow-y: auto;
 }
-.form-title { font-size: 22px; font-weight: 600; color: #333; margin-bottom: 20px; }
+/* ── Auth Tabs ── */
+.auth-tabs {
+  display: flex; gap: 0; margin-bottom: 20px;
+}
+.auth-tabs span {
+  flex: 1; text-align: center; padding: 10px 0;
+  font-size: 16px; font-weight: 600; color: #999;
+  cursor: pointer; border-bottom: 2px solid transparent;
+  transition: all 0.25s; user-select: none;
+}
+.auth-tabs span.active {
+  color: #16baaa; border-bottom-color: #16baaa;
+}
+.auth-tabs span:hover:not(.active) {
+  color: #666;
+}
+
+.switch-tab-link {
+  text-align: center; margin-top: 14px; font-size: 13px; color: #999; cursor: pointer;
+}
+.switch-tab-link:hover { color: #16baaa; }
+.switch-tab-link b { color: #16baaa; font-weight: 600; }
 
 /* ── Inputs ── */
 .input-group {
@@ -362,6 +548,29 @@ async function handleLogin() {
 .social-item:hover { transform: translateY(-2px); }
 .social-item img { width: 32px; height: 32px; }
 .social-item span { font-size: 11px; color: #888; }
+
+/* ── Password Strength ── */
+.pw-strength {
+  padding: 0 0 12px 0;
+}
+.pw-strength-bar {
+  height: 4px; background: #f0f0f0; border-radius: 2px; overflow: hidden; margin-bottom: 6px;
+}
+.pw-strength-fill {
+  height: 100%; border-radius: 2px; transition: width 0.3s, background 0.3s;
+}
+.pw-strength-label {
+  font-size: 12px; font-weight: 600;
+}
+.pw-checks {
+  display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 6px;
+}
+.pw-check-item {
+  font-size: 11px; color: #999; transition: color 0.2s;
+}
+.pw-check-item.passed {
+  color: #52c41a;
+}
 
 /* ── Responsive ── */
 @media (max-width: 960px) {

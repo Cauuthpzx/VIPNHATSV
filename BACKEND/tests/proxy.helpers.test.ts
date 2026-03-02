@@ -30,7 +30,8 @@ function buildUpstreamParams(
       (key === "date" || key === "bet_time") &&
       SPLIT_DATE_ENDPOINTS.has(path)
     ) {
-      const parts = String(value).split(/\s*-\s*/);
+      // Split on " - " (space-dash-space) to avoid splitting dates like "2024-01-01"
+      const parts = String(value).split(" - ");
       if (parts.length === 2) {
         params["start_date"] = parts[0].trim();
         params["end_date"] = parts[1].trim();

@@ -1,5 +1,5 @@
 import type { FastifyRequest, FastifyReply } from "fastify";
-import { getIsSyncing, runFullSync } from "./sync.service.js";
+import { getIsSyncing, runFullSync, runAgentSync, purgeAllData, purgeAgentData } from "./sync.service.js";
 import {
   SYNC_ENDPOINTS,
   SYNC_INTERVAL_MS,
@@ -204,7 +204,7 @@ export async function syncConfigHandler(_request: FastifyRequest, reply: Fastify
 }
 
 /**
- * POST /sync/trigger — Trigger a manual sync (non-blocking)
+ * POST /sync/trigger — Trigger a full manual sync (non-blocking)
  */
 export async function syncTriggerHandler(request: FastifyRequest, reply: FastifyReply) {
   if (getIsSyncing()) {
@@ -223,6 +223,77 @@ export async function syncTriggerHandler(request: FastifyRequest, reply: Fastify
 
   return reply.send({
     success: true,
-    message: "Đã bắt đầu đồng bộ",
+    message: "Đã bắt đầu đồng bộ tất cả",
+  });
+}
+
+/**
+ * POST /sync/trigger/:agentId — Trigger sync for a single agent (non-blocking)
+ */
+export async function syncTriggerAgentHandler(
+  request: FastifyRequest,
+  reply: FastifyReply,
+) {
+  if (getIsSyncing()) {
+    return reply.status(409).send({
+      success: false,
+      message: "Đang đồng bộ, vui lòng đợi",
+    });
+  }
+
+  const { agentId } = request.params as { agentId: string };
+
+  runAgentSync(request.server, agentId).catch((err) => {
+    logger.error("[Sync] Single-agent trigger failed", {
+      agentId,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  });
+
+  return reply.send({
+    success: true,
+    message: "Đã bắt đầu đồng bộ đại lý",
+  });
+}
+
+/**
+ * DELETE /sync/purge — Purge ALL proxy data from all tables
+ */
+export async function syncPurgeAllHandler(request: FastifyRequest, reply: FastifyReply) {
+  if (getIsSyncing()) {
+    return reply.status(409).send({
+      success: false,
+      message: "Đang đồng bộ, không thể xóa dữ liệu",
+    });
+  }
+
+  const result = await purgeAllData(request.server);
+  return reply.send({
+    success: true,
+    message: "Đã xóa tất cả dữ liệu đồng bộ",
+    data: result,
+  });
+}
+
+/**
+ * DELETE /sync/purge/:agentId — Purge proxy data for a single agent
+ */
+export async function syncPurgeAgentHandler(
+  request: FastifyRequest,
+  reply: FastifyReply,
+) {
+  if (getIsSyncing()) {
+    return reply.status(409).send({
+      success: false,
+      message: "Đang đồng bộ, không thể xóa dữ liệu",
+    });
+  }
+
+  const { agentId } = request.params as { agentId: string };
+  const result = await purgeAgentData(request.server.prisma, agentId);
+  return reply.send({
+    success: true,
+    message: "Đã xóa dữ liệu đại lý",
+    data: result,
   });
 }

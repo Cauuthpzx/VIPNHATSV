@@ -11,7 +11,7 @@ export interface TabItem {
 export const useAppStore = defineStore("app", () => {
   const collapsed = ref(false);
   const authStore = useAuthStore();
-  const username = computed(() => authStore.user?.name || authStore.user?.email || "");
+  const username = computed(() => authStore.user?.name || authStore.user?.username || "");
 
   const tabs = ref<TabItem[]>([
     { title: "Trang chủ", path: "/agent/welcome", closable: false },

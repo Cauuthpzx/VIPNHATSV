@@ -4,9 +4,12 @@ import { api } from "@/api/client";
 
 export interface AuthUser {
   id: string;
-  email: string;
+  username: string;
+  email: string | null;
   name: string | null;
   role: { id: string; name: string; type: string; permissions: string[] };
+  lastLoginAt: string | null;
+  lastLoginIp: string | null;
 }
 
 const TOKEN_KEY = "access_token";
@@ -36,8 +39,8 @@ export const useAuthStore = defineStore("auth", () => {
     return required.every((p) => perms.includes(p));
   }
 
-  async function login(email: string, password: string) {
-    const res = await api.post("/auth/login", { email, password });
+  async function login(username: string, password: string) {
+    const res = await api.post("/auth/login", { username, password });
     const data = res.data;
     if (!data.success) {
       throw new Error(data.message || "Đăng nhập thất bại");
@@ -90,15 +93,26 @@ export const useAuthStore = defineStore("auth", () => {
 
   async function init() {
     if (initialized.value) return;
-    const ok = await refreshAccessToken();
-    if (ok) {
+
+    if (accessToken.value) {
+      // Try current accessToken first
       await fetchMe();
-      // If fetchMe failed to set user, clear tokens to avoid stale state
+
+      // If fetchMe failed (token expired), try refresh
+      if (!user.value && refreshToken.value) {
+        const ok = await refreshAccessToken();
+        if (ok) {
+          await fetchMe();
+        }
+      }
+
+      // If still no user after all attempts, clear stale tokens
       if (!user.value) {
         accessToken.value = "";
         refreshToken.value = "";
       }
     }
+
     initialized.value = true;
   }
 

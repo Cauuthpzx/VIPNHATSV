@@ -134,7 +134,8 @@ const routes = [
   {
     path: "/:pathMatch(.*)*",
     name: "NotFound",
-    redirect: "/agent/welcome",
+    component: () => import("@/pages/NotFound.vue"),
+    meta: { title: "Không tìm thấy trang", public: true },
   },
 ];
 
@@ -146,7 +147,14 @@ export const router = createRouter({
 router.beforeEach(async (to) => {
   const authStore = useAuthStore();
 
-  // Auth is initialized in main.ts before app.mount(), so it's always ready here.
+  // Đảm bảo auth init xong trước khi kiểm tra
+  if (!authStore.initialized) {
+    try {
+      await authStore.init();
+    } catch {
+      authStore.initialized = true;
+    }
+  }
 
   if (to.meta.public) {
     // If already logged in and going to login page, redirect to welcome

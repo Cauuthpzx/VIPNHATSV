@@ -4,6 +4,7 @@ import { PERMISSIONS } from "../../constants/permissions.js";
 import {
   userListHandler,
   inviteListHandler,
+  inviteListLocalHandler,
   reportLotteryHandler,
   reportFundsHandler,
   reportThirdGameHandler,
@@ -28,8 +29,8 @@ export async function proxyRoutes(app: FastifyInstance) {
   // Hội viên
   app.post("/user", { preHandler: [authorize(PERMISSIONS.MEMBER_READ)] }, userListHandler);
 
-  // Mã giới thiệu
-  app.post("/invite-list", { preHandler: [authorize(PERMISSIONS.INVITE_READ)] }, inviteListHandler);
+  // Mã giới thiệu (local DB — đồng bộ 1 lần, đọc từ DB)
+  app.post("/invite-list", { preHandler: [authorize(PERMISSIONS.INVITE_READ)] }, inviteListLocalHandler);
 
   // Báo cáo
   app.post("/report-lottery", { preHandler: [authorize(PERMISSIONS.REPORT_READ)] }, reportLotteryHandler);

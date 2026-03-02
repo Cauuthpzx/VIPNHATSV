@@ -38,16 +38,17 @@ api.interceptors.request.use(async (config) => {
     config.headers.Authorization = `Bearer ${authStore.accessToken}`;
   }
 
-  // Inject agentId into proxy POST requests
+  // Inject agentId into proxy POST requests (skip if already set)
   if (
     config.method === "post" &&
     config.url?.startsWith("/proxy/") &&
     config.data &&
-    typeof config.data === "object"
+    typeof config.data === "object" &&
+    !config.data.agentId
   ) {
     const agentStore = await getAgentStore();
     if (agentStore.selectedAgentId) {
-      config.data = { ...config.data, agentId: agentStore.selectedAgentId };
+      config.data.agentId = agentStore.selectedAgentId;
     }
   }
 

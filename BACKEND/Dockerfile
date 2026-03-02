@@ -2,8 +2,8 @@
 FROM node:20-alpine AS deps
 WORKDIR /app
 
-COPY package.json ./
-RUN npm install --production=false
+COPY package.json package-lock.json* ./
+RUN npm ci --production=false
 
 # ── Stage 2: build ────────────────────────────────────────────
 FROM node:20-alpine AS build
@@ -22,6 +22,9 @@ RUN npm prune --omit=dev
 FROM node:20-alpine AS production
 WORKDIR /app
 
+# Install dumb-init for proper signal handling (PID 1)
+RUN apk add --no-cache dumb-init curl
+
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
 COPY --from=build /app/dist ./dist
@@ -35,4 +38,8 @@ USER appuser
 
 EXPOSE 3000
 
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/server.js"]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD curl -f http://localhost:3000/health || exit 1
+
+# Use dumb-init as PID 1 for proper signal forwarding
+CMD ["dumb-init", "sh", "-c", "npx prisma migrate deploy && node dist/server.js"]

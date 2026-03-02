@@ -13,6 +13,7 @@ layui-vue-features.md
 - **DRY (Don't Repeat Yourself)**: Những gì dùng chung (CSS, logic, config) thì gom 1 chỗ duy nhất (global.css, composables, utils). KHÔNG BAO GIỜ copy cùng 1 đoạn code/style vào nhiều file.
 - Tổ chức gom file tập trung, không hard code styles inline, dùng composables/utils chung.
 - Bố trí thư mục sạch sẽ, không trùng lặp, tránh deadcode.
+- **Commit message PHẢI viết bằng tiếng Việt.** Không dùng tiếng Anh cho commit message.
 
 ## Kiến trúc dự án
 

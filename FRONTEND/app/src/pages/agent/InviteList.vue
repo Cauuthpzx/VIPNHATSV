@@ -4,7 +4,6 @@ import { useListPage } from "@/composables/useListPage";
 import { fetchInviteList } from "@/api/services/proxy";
 import { layer } from "@layui/layui-vue";
 import { useAgentFilter } from "@/composables/useAgentFilter";
-import CookieBadge from "@/components/CookieBadge.vue";
 import { useAuthStore } from "@/stores/auth";
 import { PERMISSIONS } from "@/constants/permissions";
 
@@ -16,7 +15,6 @@ const { selectedAgentId, agentOptions, agentWidth } = useAgentFilter();
 
 const searchForm = reactive({
   dateAdded: [] as string[],
-  dateMemberLogin: [] as string[],
   inviteCode: "",
 });
 
@@ -43,7 +41,6 @@ async function loadData() {
       limit: page.limit,
       invite_code: searchForm.inviteCode || undefined,
       create_time: searchForm.dateAdded?.length === 2 ? `${searchForm.dateAdded[0]} - ${searchForm.dateAdded[1]}` : undefined,
-      user_register_time: searchForm.dateMemberLogin?.length === 2 ? `${searchForm.dateMemberLogin[0]} - ${searchForm.dateMemberLogin[1]}` : undefined,
     });
     if (isStale()) return;
     dataSource.value = res.data.data.items;
@@ -59,7 +56,6 @@ const { handlePageChange, handleSearch } = bindLoadData(loadData, selectedAgentI
 
 function handleReset() {
   searchForm.dateAdded = [];
-  searchForm.dateMemberLogin = [];
   searchForm.inviteCode = "";
 }
 </script>
@@ -78,10 +74,6 @@ function handleReset() {
         <div class="layui-inline">
           <span class="form-label">Thời gian thêm vào:</span>
           <lay-date-picker v-model="searchForm.dateAdded" range single-panel range-separator="-" :placeholder="['Ngày bắt đầu', 'Ngày kết thúc']" :allow-clear="true" />
-        </div>
-        <div class="layui-inline">
-          <span class="form-label">Thời gian hội viên đăng nhập:</span>
-          <lay-date-picker v-model="searchForm.dateMemberLogin" range single-panel range-separator="-" :placeholder="['Ngày bắt đầu', 'Ngày kết thúc']" :allow-clear="true" />
         </div>
         <div class="layui-inline">
           <span class="form-label">Mã giới thiệu:</span>
@@ -109,7 +101,10 @@ function handleReset() {
           @change="handlePageChange"
         >
           <template v-slot:toolbar>
-            <CookieBadge />
+            <lay-button size="xs" type="normal">
+              <i class="layui-icon layui-icon-chart-screen" style="margin-right: 4px"></i>
+              <b>Dữ liệu local</b>
+            </lay-button>
             <template v-if="canWrite">
               <lay-button type="normal" size="xs">+ Thêm mã giới thiệu</lay-button>
               <lay-button type="normal" size="xs">Copy đường link</lay-button>

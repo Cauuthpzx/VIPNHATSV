@@ -14,11 +14,26 @@ export interface AgentItem {
 }
 
 const AGENT_KEY = "selected_agent_id";
+const COOKIE_HEALTH_CACHE = "cookie_health_cache";
+const AGENTS_CACHE = "agents_cache";
+
+function loadCache<T>(key: string): T | null {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
 
 export const useAgentStore = defineStore("agent", () => {
-  const agents = ref<AgentItem[]>([]);
+  // Khôi phục cache từ localStorage để tránh nhấp nháy khi reload
+  const cachedAgents = loadCache<AgentItem[]>(AGENTS_CACHE);
+  const cachedHealth = loadCache<Record<string, boolean>>(COOKIE_HEALTH_CACHE);
+
+  const agents = ref<AgentItem[]>(cachedAgents || []);
   const selectedAgentId = ref(localStorage.getItem(AGENT_KEY) || "");
-  const loaded = ref(false);
+  const loaded = ref(!!cachedAgents);
 
   const activeAgents = computed(() =>
     agents.value.filter((a) => a.isActive && a.status === "active"),
@@ -29,8 +44,8 @@ export const useAgentStore = defineStore("agent", () => {
   );
 
   // Cookie health check (thực tế gọi upstream)
-  const cookieHealthMap = ref<Record<string, boolean>>({});
-  const healthLoaded = ref(false);
+  const cookieHealthMap = ref<Record<string, boolean>>(cachedHealth || {});
+  const healthLoaded = ref(!!cachedHealth);
 
   /** Số cookies còn sống / tổng số agent active */
   const cookieStats = computed(() => {
@@ -46,6 +61,7 @@ export const useAgentStore = defineStore("agent", () => {
       const res = await fetchAgents();
       agents.value = res.data.data as AgentItem[];
       loaded.value = true;
+      localStorage.setItem(AGENTS_CACHE, JSON.stringify(agents.value));
 
       // If saved agent no longer valid, clear selection (backend will use default)
       if (selectedAgentId.value) {
@@ -68,6 +84,7 @@ export const useAgentStore = defineStore("agent", () => {
       for (const item of list) map[item.id] = item.alive;
       cookieHealthMap.value = map;
       healthLoaded.value = true;
+      localStorage.setItem(COOKIE_HEALTH_CACHE, JSON.stringify(map));
     } catch {
       // ignore
     }

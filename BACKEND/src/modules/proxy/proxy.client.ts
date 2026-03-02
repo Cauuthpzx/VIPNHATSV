@@ -1,8 +1,27 @@
+import { Agent } from "undici";
 import { appConfig } from "../../config/app.js";
 import { logger } from "../../utils/logger.js";
 import { AppError } from "../../errors/AppError.js";
 import { HTTP_STATUS } from "../../constants/http.js";
 import { ERROR_CODES } from "../../constants/error-codes.js";
+import { CircuitBreaker } from "../../utils/circuitBreaker.js";
+
+// ---------------------------------------------------------------------------
+// Persistent HTTP Agent — keep-alive + connection pooling for upstream
+// ---------------------------------------------------------------------------
+const upstreamAgent = new Agent({
+  keepAliveTimeout: 30_000,
+  keepAliveMaxTimeout: 60_000,
+  connections: 20,       // max concurrent sockets
+  pipelining: 1,
+});
+
+const upstreamBreaker = new CircuitBreaker({
+  name: "upstream",
+  failureThreshold: 5,
+  resetTimeout: 30_000,
+  successThreshold: 2,
+});
 
 export interface UpstreamRequest {
   path: string;
@@ -19,6 +38,12 @@ export interface UpstreamResponse<T = unknown> {
 }
 
 export async function fetchUpstream<T = unknown>(
+  req: UpstreamRequest,
+): Promise<UpstreamResponse<T>> {
+  return upstreamBreaker.execute(() => _fetchUpstream<T>(req));
+}
+
+async function _fetchUpstream<T = unknown>(
   req: UpstreamRequest,
 ): Promise<UpstreamResponse<T>> {
   const url = `${appConfig.upstream.baseUrl}${req.path}`;
@@ -47,6 +72,8 @@ export async function fetchUpstream<T = unknown>(
       body,
       signal: controller.signal,
       redirect: "manual",
+      // @ts-expect-error Node-specific undici dispatcher
+      dispatcher: upstreamAgent,
     });
 
     // Detect session expiry (redirect to login page)

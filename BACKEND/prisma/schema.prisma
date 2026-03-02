@@ -28,17 +28,22 @@ model Role {
 
 model User {
   id             String         @id @default(cuid())
-  email          String         @unique
+  username       String         @unique
+  email          String?
   password       String
   name           String
   fundPassword   String?        @map("fund_password")
   isActive       Boolean        @default(true) @map("is_active")
+  tokenVersion   Int            @default(0) @map("token_version")
+  lastLoginAt    DateTime?      @map("last_login_at")
+  lastLoginIp    String?        @map("last_login_ip")
   roleId         String         @map("role_id")
   role           Role           @relation(fields: [roleId], references: [id])
   refreshTokens  RefreshToken[]
   createdAt      DateTime       @default(now()) @map("created_at")
   updatedAt      DateTime       @updatedAt @map("updated_at")
 
+  @@index([createdAt(sort: Desc)])
   @@map("users")
 }
 
@@ -48,9 +53,12 @@ model RefreshToken {
   userId    String   @map("user_id")
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   expiresAt DateTime @map("expires_at")
+  userAgent String?  @map("user_agent")
+  ipAddress String?  @map("ip_address")
   createdAt DateTime @default(now()) @map("created_at")
 
   @@index([userId])
+  @@index([expiresAt])
   @@map("refresh_tokens")
 }
 
@@ -76,7 +84,7 @@ model Agent {
 model ProxyUser {
   id               String   @id @default(cuid())
   agentId          String   @map("agent_id")
-  username         String   @unique
+  username         String
   typeFormat       String?  @map("type_format")
   parentUser       String?  @map("parent_user")
   money            Decimal? @db.Decimal(18, 4)
@@ -90,7 +98,7 @@ model ProxyUser {
   raw              Json     @default("{}")
   syncedAt         DateTime @default(now()) @map("synced_at")
 
-  @@index([agentId])
+  @@unique([agentId, username], name: "uq_proxy_user")
   @@index([registerTime(sort: Desc)])
   @@index([agentId, registerTime(sort: Desc)])
   @@map("proxy_users")
@@ -125,12 +133,14 @@ model ProxyDeposit {
   type             String?
   status           String?
   createTime       String?  @map("create_time")
+  syncDate         String?  @map("sync_date") /// Ngày dữ liệu thuộc về (YYYY-MM-DD), dùng để query/filter theo ngày
   raw              Json     @default("{}")
   syncedAt         DateTime @default(now()) @map("synced_at")
 
   @@unique([agentId, username, amount, type, createTime], name: "uq_deposit")
   @@index([createTime(sort: Desc)])
   @@index([username, createTime(sort: Desc)])
+  @@index([syncDate])
   @@map("proxy_deposits")
 }
 
@@ -145,11 +155,13 @@ model ProxyWithdrawal {
   trueAmount       Decimal? @db.Decimal(18, 4) @map("true_amount")
   statusFormat     String?  @map("status_format")
   createTime       String?  @map("create_time")
+  syncDate         String?  @map("sync_date") /// Ngày dữ liệu thuộc về (YYYY-MM-DD)
   raw              Json     @default("{}")
   syncedAt         DateTime @default(now()) @map("synced_at")
 
   @@index([createTime(sort: Desc)])
   @@index([username, createTime(sort: Desc)])
+  @@index([syncDate])
   @@map("proxy_withdrawals")
 }
 
@@ -168,11 +180,13 @@ model ProxyBet {
   result         Decimal? @db.Decimal(18, 4)
   statusText     String?  @map("status_text")
   createTime     String?  @map("create_time")
+  syncDate       String?  @map("sync_date") /// Ngày dữ liệu thuộc về (YYYY-MM-DD)
   raw            Json     @default("{}")
   syncedAt       DateTime @default(now()) @map("synced_at")
 
   @@index([createTime(sort: Desc)])
   @@index([username, createTime(sort: Desc)])
+  @@index([syncDate])
   @@map("proxy_bets")
 }
 
@@ -189,11 +203,13 @@ model ProxyBetOrder {
   prize            Decimal? @db.Decimal(18, 4)
   winLose          Decimal? @db.Decimal(18, 4) @map("win_lose")
   betTime          String?  @map("bet_time")
+  syncDate         String?  @map("sync_date") /// Ngày dữ liệu thuộc về (YYYY-MM-DD)
   raw              Json     @default("{}")
   syncedAt         DateTime @default(now()) @map("synced_at")
 
   @@index([betTime(sort: Desc)])
   @@index([platformUsername, betTime(sort: Desc)])
+  @@index([syncDate])
   @@map("proxy_bet_orders")
 }
 

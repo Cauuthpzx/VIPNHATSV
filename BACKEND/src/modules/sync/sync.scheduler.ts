@@ -13,18 +13,18 @@ let initialTimer: ReturnType<typeof setTimeout> | null = null;
 export function startSyncScheduler(app: FastifyInstance): void {
   logger.info(`[Sync] Scheduler started (interval: ${SYNC_INTERVAL_MS / 1000}s)`);
 
-  // First sync after 10s — let server fully boot
+  // First sync after 10s — let server fully boot (full mode: backfill past days + syncOnce)
   initialTimer = setTimeout(() => {
-    runFullSync(app).catch((err) => {
+    runFullSync(app, "full").catch((err) => {
       logger.error("[Sync] Initial run failed", {
         error: err instanceof Error ? err.message : String(err),
       });
     });
   }, 10_000);
 
-  // Recurring sync
+  // Recurring sync — only today's data, skip syncOnce endpoints
   syncTimer = setInterval(() => {
-    runFullSync(app).catch((err) => {
+    runFullSync(app, "recurring").catch((err) => {
       logger.error("[Sync] Scheduled run failed", {
         error: err instanceof Error ? err.message : String(err),
       });

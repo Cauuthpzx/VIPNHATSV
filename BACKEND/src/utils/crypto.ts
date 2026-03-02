@@ -10,9 +10,11 @@ function getEncryptionKey(): Buffer {
 /**
  * Decrypt AES-256-GCM ciphertext.
  * Format: iv:authTag:encrypted (all hex)
+ *
+ * Supports key rotation: if primary key fails and ENCRYPTION_KEY_OLD is set,
+ * retries with the old key.
  */
 export function decryptAES(ciphertext: string): string {
-  const key = getEncryptionKey();
   const parts = ciphertext.split(":");
 
   if (parts.length !== 3) {
@@ -23,13 +25,41 @@ export function decryptAES(ciphertext: string): string {
   const iv = Buffer.from(ivHex!, "hex");
   const authTag = Buffer.from(authTagHex!, "hex");
 
-  const decipher = crypto.createDecipheriv(AES_ALGORITHM, key, iv);
-  decipher.setAuthTag(authTag);
+  // Try primary key first
+  try {
+    const key = getEncryptionKey();
+    const decipher = crypto.createDecipheriv(AES_ALGORITHM, key, iv);
+    decipher.setAuthTag(authTag);
+    let decrypted = decipher.update(encryptedHex!, "hex", "utf8");
+    decrypted += decipher.final("utf8");
+    return decrypted;
+  } catch (primaryErr) {
+    // Fallback to old key if available
+    const oldKeyHex = process.env.ENCRYPTION_KEY_OLD;
+    if (oldKeyHex && oldKeyHex.length === 64) {
+      const oldKey = Buffer.from(oldKeyHex, "hex");
+      const decipher = crypto.createDecipheriv(AES_ALGORITHM, oldKey, iv);
+      decipher.setAuthTag(authTag);
+      let decrypted = decipher.update(encryptedHex!, "hex", "utf8");
+      decrypted += decipher.final("utf8");
+      return decrypted;
+    }
+    throw primaryErr;
+  }
+}
 
-  let decrypted = decipher.update(encryptedHex!, "hex", "utf8");
-  decrypted += decipher.final("utf8");
-
-  return decrypted;
+/**
+ * Encrypt plaintext with AES-256-GCM using the current primary key.
+ * Returns format: iv:authTag:encrypted (all hex)
+ */
+export function encryptAES(plaintext: string): string {
+  const key = getEncryptionKey();
+  const iv = crypto.randomBytes(16);
+  const cipher = crypto.createCipheriv(AES_ALGORITHM, key, iv);
+  let encrypted = cipher.update(plaintext, "utf8", "hex");
+  encrypted += cipher.final("hex");
+  const authTag = cipher.getAuthTag();
+  return `${iv.toString("hex")}:${authTag.toString("hex")}:${encrypted}`;
 }
 
 /**

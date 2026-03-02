@@ -338,7 +338,7 @@ onMounted(() => loadDropdownData());
         </lay-table>
         <lay-table :columns="summaryColumns" :data-source="summaryData" :default-toolbar="true">
           <template v-slot:toolbar>
-            <lay-button size="sm" type="normal"><b>DỮ LIỆU TỔNG HỢP</b></lay-button>
+            <lay-button size="xs" type="normal"><b>DỮ LIỆU TỔNG HỢP</b></lay-button>
           </template>
           <template #sumNum="{ row, column }">
             <lay-count-up :end-val="Number(row[column.key]) || 0" :duration="600" :decimal-places="String(row[column.key]).includes('.') ? 4 : 0" :use-grouping="false" />

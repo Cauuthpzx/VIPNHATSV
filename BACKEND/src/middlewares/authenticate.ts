@@ -23,17 +23,48 @@ async function authenticatePlugin(app: FastifyInstance) {
     const token = header.slice(7);
     try {
       const payload = app.jwt.verify<{
+        jti?: string;
         userId: string;
         roleId: string;
         permissions: string[];
+        tokenVersion?: number;
       }>(token);
+
+      // Check blacklist (jti present in new tokens, skip for legacy tokens)
+      if (payload.jti) {
+        try {
+          const blacklisted = await app.redis.get(`auth:blacklist:${payload.jti}`);
+          if (blacklisted) {
+            throw new UnauthorizedError("Token has been revoked", ERROR_CODES.TOKEN_INVALID);
+          }
+        } catch (err) {
+          if (err instanceof UnauthorizedError) throw err;
+          // Redis error — fail open, log warning
+          request.log.warn("Redis unavailable for blacklist check");
+        }
+      }
+
+      // Check token version (mass invalidation on password change / logout-all)
+      if (payload.tokenVersion !== undefined) {
+        try {
+          const currentVersion = await app.redis.get(`auth:token_version:${payload.userId}`);
+          if (currentVersion !== null && payload.tokenVersion < parseInt(currentVersion, 10)) {
+            throw new UnauthorizedError("Token has been revoked", ERROR_CODES.TOKEN_INVALID);
+          }
+        } catch (err) {
+          if (err instanceof UnauthorizedError) throw err;
+          // Redis error — fail open
+          request.log.warn("Redis unavailable for token version check");
+        }
+      }
 
       request.user = {
         userId: payload.userId,
         roleId: payload.roleId,
         permissions: payload.permissions,
       };
-    } catch {
+    } catch (err) {
+      if (err instanceof UnauthorizedError) throw err;
       throw new UnauthorizedError("Token expired or invalid", ERROR_CODES.TOKEN_EXPIRED);
     }
   });
