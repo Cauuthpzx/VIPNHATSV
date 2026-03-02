@@ -129,6 +129,12 @@ const routes = [
         component: () => import("@/pages/system/SyncDashboard.vue"),
         meta: { title: "Theo dõi đồng bộ", permission: PERMISSIONS.SYNC_READ },
       },
+      {
+        path: "system/sync-v2",
+        name: "SyncV2",
+        component: () => import("@/pages/system/SyncV2.vue"),
+        meta: { title: "Sync V2", permission: PERMISSIONS.SYNC_READ },
+      },
     ],
   },
   {

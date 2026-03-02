@@ -1,0 +1,221 @@
+================================================================================
+                        SYNC FLOW — LOGIC CHI TIẾT (v2)
+================================================================================
+
+KIẾN TRÚC MỚI: Agent-centric (mỗi agent 1 luồng độc lập)
+Cũ: endpoint-centric (tất cả agent sync 1 endpoint → xong → tiếp endpoint khác)
+Mới: agent-centric (12 agents song song, mỗi agent tự xử lý tuần tự các endpoint)
+
+================================================================================
+TỔNG QUAN
+================================================================================
+
+3 nhóm sync:
+  - Nhóm 1: Invite (syncOnce) — sync 1 lần duy nhất PER AGENT
+  - Nhóm 2: Member (user) — sync mỗi lần
+  - Nhóm 3: Date-range — sync từng ngày (deposit, withdrawal, bet, betOrder, 3 reports)
+
+FLOW TỔNG:
+  1. Lấy danh sách N agents active
+  2. Spawn N luồng song song (Promise.all)
+  3. Mỗi luồng = 1 agent xử lý TẤT CẢ endpoints tuần tự:
+     invite → user → deposit → withdrawal → bet → betOrder → 3 reports
+  4. Lỗi 1 agent KHÔNG ảnh hưởng agent khác
+  5. Khi tất cả agents done → sync hoàn tất
+
+================================================================================
+HASH MECHANISM — Verify & Skip
+================================================================================
+
+Mỗi record trong sync_date_locks có:
+  - tableName: tên endpoint (e.g. "proxyDeposit")
+  - syncDate:  ngày sync (e.g. "2026-01-15") hoặc "__once__"
+  - agentId:   ID agent
+  - itemCount: số items đã fetch
+  - hash:      MD5 hash của fetched data (sorted JSON)
+
+LOGIC:
+  - Sau upsert → verify (so sánh count fetched vs DB count)
+  - Match → tính MD5 hash → lưu DB + Redis → skip lần sau
+  - Mismatch → log warning → KHÔNG lưu hash → retry lần sau
+  - Check trước khi sync: có hash trong Redis/DB → BỎ QUA hoàn toàn
+  - Muốn re-sync ngày nào: xoá hash → lần sync tiếp sẽ chạy lại
+
+Redis keys:
+  - sync:date_done:{table}:{agentId}:{date} = "1" (TTL 90 ngày)
+  - sync:once_done:{table}:{agentId} = "1" (no TTL)
+
+================================================================================
+NHÓM 1: INVITE — Sync 1 lần duy nhất PER AGENT
+================================================================================
+
+Trigger khi:
+  - mode "full" (lần đầu hoặc manual trigger)
+  - KHÔNG chạy trong "recurring" mode
+
+Flow (trong agent stream):
+  1. Check Redis key sync:once_done:proxyInvite:{agentId}
+     → Có: BỎ QUA hoàn toàn
+     → Không có: check DB sync_date_locks WHERE tableName+syncDate+'__once__'+agentId
+       → Có: re-populate Redis → BỎ QUA
+       → Không có: tiếp bước 2
+
+  2. Fetch upstream: POST /agent/inviteList.html (page=1, limit=5000)
+     → Phân trang nếu cần (fetchAllPages)
+
+  3. Bulk upsert vào DB (INSERT ON CONFLICT)
+     - Table: proxy_invites
+     - Conflict: (agent_id, invite_code)
+     - Batch 2000 rows/query
+
+  4. Verify: count DB vs count fetched
+
+  5. Đánh dấu done:
+     - DB: upsert sync_date_locks (tableName='proxyInvite', syncDate='__once__', agentId)
+     - Redis: SET sync:once_done:proxyInvite:{agentId} = "1"
+
+  6. Emit WebSocket: { type: "sync_progress", table, agent, fetched, upserted, verified }
+
+================================================================================
+NHÓM 2: MEMBER (USER) — Sync mỗi lần
+================================================================================
+
+Trigger khi:
+  - Mỗi lần sync (cả full và recurring)
+
+Flow (trong agent stream):
+  1. Fetch upstream: POST /agent/user.html (page=1, limit=20000)
+     → Phân trang nếu cần (agent 112233 có ~50k member → 3 pages)
+
+  2. Change detection (TRƯỚC khi upsert):
+     a. Query DB lấy existing members cho agent: { username, money }
+     b. So sánh upstream vs DB:
+        - Có trong upstream, KHÔNG có trong DB → member MỚI
+        - Có trong DB, KHÔNG có trong upstream → member MẤT
+
+  3. Bulk upsert vào DB (INSERT ON CONFLICT)
+     - Table: proxy_users
+     - Conflict: (agent_id, username)
+     - Batch 2000 rows/query
+     - ~20k rows trong ~1s (raw SQL)
+
+  4. Verify: count DB vs count fetched
+
+  5. Tạo notification (nếu có thay đổi):
+     Safeguard A: Lần đầu sync (DB trống) → KHÔNG tạo notification
+     Safeguard B: Mất >50% member → nghi upstream lỗi → skip "member_lost"
+     Safeguard C: Check trùng notification trong 24h → skip nếu đã có
+
+  6. Emit WebSocket: { type: "sync_progress", ... }
+
+KHÔNG có lock/skip — luôn sync mới nhất mỗi lần.
+
+================================================================================
+NHÓM 3: DATE-RANGE — Sync từng ngày (mỗi agent tự tiến)
+================================================================================
+
+Áp dụng cho:
+  - proxyDeposit, proxyWithdrawal, proxyBet, proxyBetOrder
+  - proxyReportLottery, proxyReportFunds, proxyReportThirdGame
+
+Flow (trong agent stream, cho MỖI endpoint):
+
+  MODE "full":
+    Lặp từng ngày từ SYNC_DATE_START (2026-01-01) → today:
+
+    1. Ngày cũ (< today):
+       a. Check hash: isDateDone(table, agentId, date)
+          → Có hash → BỎ QUA (đã verified done)
+          → Không có → tiếp bước 2
+
+    2. Ngày hôm nay:
+       → Luôn sync (không check hash vì data thay đổi trong ngày)
+
+    3. Fetch upstream: fetchAllPages() cho endpoint + agent + date
+
+    4. Items rỗng:
+       → Ngày cũ: đánh dấu hash = "empty" → skip lần sau
+       → Ngày hôm nay: bỏ qua
+
+    5. Bulk upsert vào DB
+
+    6. VERIFY: query DB count WHERE agent_id + sync_date
+       → count DB >= count fetched → PASS
+       → count DB < count fetched → FAIL
+
+    7. Nếu PASS + ngày cũ:
+       → Tính MD5 hash = md5(sorted JSON of items)
+       → Lưu DB: sync_date_locks (tableName, syncDate, agentId, itemCount, hash)
+       → Lưu Redis: sync:date_done:{table}:{agentId}:{date} = "1" (TTL 90d)
+
+    8. Nếu FAIL:
+       → Log warning: "Verification FAILED — count mismatch"
+       → KHÔNG lưu hash → retry lần sau
+       → TIẾP TỤC ngày tiếp theo (không dừng)
+
+    9. Emit WebSocket: { type: "sync_progress", ..., verified: true/false }
+
+    10. Tất cả ngày xong → agent hoàn tất endpoint này → tiếp endpoint khác
+
+  MODE "recurring":
+    → Chỉ sync ngày hôm nay (không hash, không check)
+    → Data cộng dồn trong ngày
+
+================================================================================
+AUTO SYNC SCHEDULER
+================================================================================
+
+Cơ chế:
+  - SYNC_ENABLED=true trong .env → bật scheduler
+  - Lần đầu khởi động: chờ 10s → chạy full mode (backfill tất cả ngày)
+  - Sau full mode xong → bắt đầu recurring timer
+  - Recurring timer dùng setTimeout (không setInterval) → đọc interval mới nhất mỗi lần
+
+Configurable timer:
+  - Lưu trong Redis: key "sync:interval_ms"
+  - API: PUT /api/v1/sync/interval { intervalMs: 300000 }
+  - Min: 30 giây (30000ms)
+  - Default: 5 phút (300000ms)
+  - Thay đổi realtime: timer tự cập nhật interval mới sau mỗi lần chạy
+
+================================================================================
+LƯU DB — CHI TIẾT KỸ THUẬT
+================================================================================
+
+Cả 3 loại đều dùng chung engine: bulkUpsert()
+
+  SQL pattern:
+    INSERT INTO "table" (id, col1, col2, ...)
+    VALUES ($1, $2, $3, ...), ($14, $15, $16, ...), ...
+    ON CONFLICT (conflict_keys)
+    DO UPDATE SET col1 = EXCLUDED.col1, col2 = EXCLUDED.col2, ...
+
+  Batch size: 2000 rows/query (auto-tính dựa trên PostgreSQL limit 32767 params)
+  ID: randomUUID() generate phía application
+  Timestamp: synced_at = now() cast ::timestamp
+  JSON: raw = JSON.stringify(item) cast ::jsonb
+
+  Performance (benchmark):
+    - 20,000 rows → ~1s (raw SQL bulk)
+    - So với Prisma upsert từng row: ~30-60s → nhanh 30-60x
+
+================================================================================
+API ENDPOINTS
+================================================================================
+
+GET  /api/v1/sync/status       — Dashboard data (tables, agents, counts)
+GET  /api/v1/sync/config       — Sync config (endpoints, interval)
+POST /api/v1/sync/trigger      — Trigger full sync (tất cả agents)
+POST /api/v1/sync/trigger/:agentId           — Sync 1 agent
+POST /api/v1/sync/trigger/:agentId/:table    — Sync 1 agent + 1 endpoint
+POST /api/v1/sync/stop         — Request abort sync
+PUT  /api/v1/sync/interval     — Set auto sync interval { intervalMs }
+DELETE /api/v1/sync/purge      — Xoá tất cả dữ liệu sync
+DELETE /api/v1/sync/purge/:agentId — Xoá dữ liệu 1 agent
+
+WEBSOCKET EVENTS:
+  { type: "sync_status", status: "started"|"completed"|"aborted", mode, durationMs }
+  { type: "sync_progress", table, agent, agentId, date?, fetched, upserted, dbCount, verified }
+  { type: "sync_agent_done", agent, agentId, durationMs }
+
+================================================================================

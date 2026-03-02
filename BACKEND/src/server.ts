@@ -44,7 +44,7 @@ async function main() {
 
     // Start background sync scheduler
     if (env.SYNC_ENABLED) {
-      startSyncScheduler(app);
+      await startSyncScheduler(app);
     }
   } catch (err) {
     logger.fatal("Failed to start server", { error: String(err) });

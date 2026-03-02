@@ -13,7 +13,7 @@ import { withRetry } from "../../utils/retry.js";
 const upstreamAgent = new Agent({
   keepAliveTimeout: 30_000,
   keepAliveMaxTimeout: 60_000,
-  connections: 20,       // max concurrent sockets
+  connections: 50,       // max concurrent sockets (increased for parallel sync)
   pipelining: 1,
 });
 
@@ -138,7 +138,16 @@ async function _fetchUpstream<T = unknown>(
     const json = JSON.parse(text) as UpstreamResponse<T>;
 
     // code 0 = success (list endpoints), code 1 = success (getLottery, rebateOdds)
+    // Nhưng code 0 + msg chứa "đăng nhập" = session expired (upstream trả code 0 kèm redirect)
     if (SUCCESS_CODES.has(json.code)) {
+      const msg = (json.msg || "").toLowerCase();
+      if (msg.includes("đăng nhập") || msg.includes("login")) {
+        throw new AppError(
+          "Agent session expired (code 0 but login required)",
+          HTTP_STATUS.UNAUTHORIZED,
+          ERROR_CODES.AGENT_SESSION_EXPIRED,
+        );
+      }
       return json;
     }
 

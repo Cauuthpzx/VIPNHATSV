@@ -342,10 +342,13 @@ model SyncDateLock {
   id        String   @id @default(cuid())
   tableName String   @map("table_name")
   syncDate  String   @map("sync_date")
+  agentId   String   @map("agent_id")
   itemCount Int      @default(0) @map("item_count")
+  hash      String?  @map("hash")
   lockedAt  DateTime @default(now()) @map("locked_at")
 
-  @@unique([tableName, syncDate], name: "uq_sync_date_lock")
+  @@unique([tableName, syncDate, agentId], name: "uq_sync_date_lock")
   @@index([tableName])
+  @@index([agentId])
   @@map("sync_date_locks")
 }

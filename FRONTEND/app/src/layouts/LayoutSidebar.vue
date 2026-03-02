@@ -21,13 +21,22 @@ const filteredMenuData = computed<MenuItem[]>(() => {
       });
       return { ...group, children: visibleChildren };
     })
-    .filter((group) => group.children.length > 0);
+    .filter((group) => {
+      // Menu đơn (có path, không children): check permission trực tiếp
+      if (group.path && group.children.length === 0) {
+        if (!group.permission) return true;
+        return authStore.hasPermission(group.permission);
+      }
+      return group.children.length > 0;
+    });
 });
 
 const openKeys = ref<string[]>([]);
 const selectedKey = computed({
   get() {
     for (const group of filteredMenuData.value) {
+      // Menu đơn
+      if (group.path && group.path === route.path) return group.id;
       for (const child of group.children) {
         if (child.path === route.path) return child.id;
       }
@@ -41,6 +50,12 @@ const selectedKey = computed({
 
 function onMenuClick(childId: string) {
   for (const group of filteredMenuData.value) {
+    // Menu đơn
+    if (group.path && group.id === childId) {
+      store.addTab({ title: group.title, path: group.path, closable: true });
+      router.push(group.path);
+      return;
+    }
     const child = group.children.find((c) => c.id === childId);
     if (child) {
       store.addTab({ title: child.title, path: child.path, closable: true });
@@ -118,23 +133,32 @@ defineExpose({ sideWidth: computed(() => (store.collapsed ? 60 : 200)) });
         :collapse="store.collapsed"
         theme="dark"
       >
-        <lay-sub-menu
-          v-for="group in filteredMenuData"
-          :key="group.id"
-          :id="group.id"
-        >
-          <template #icon>
-            <i :class="['layui-icon', group.icon]"></i>
-          </template>
-          <template #title>{{ group.title }}</template>
+        <template v-for="group in filteredMenuData" :key="group.id">
+          <!-- Menu đơn (không sub) -->
           <lay-menu-item
-            v-for="child in group.children"
-            :key="child.id"
-            :id="child.id"
+            v-if="group.path && group.children.length === 0"
+            :id="group.id"
           >
-            <template #title>{{ child.title }}</template>
+            <template #icon>
+              <i :class="['layui-icon', group.icon]"></i>
+            </template>
+            <template #title>{{ group.title }}</template>
           </lay-menu-item>
-        </lay-sub-menu>
+          <!-- Menu có sub -->
+          <lay-sub-menu v-else :id="group.id">
+            <template #icon>
+              <i :class="['layui-icon', group.icon]"></i>
+            </template>
+            <template #title>{{ group.title }}</template>
+            <lay-menu-item
+              v-for="child in group.children"
+              :key="child.id"
+              :id="child.id"
+            >
+              <template #title>{{ child.title }}</template>
+            </lay-menu-item>
+          </lay-sub-menu>
+        </template>
       </lay-menu>
     </div>
   </div>

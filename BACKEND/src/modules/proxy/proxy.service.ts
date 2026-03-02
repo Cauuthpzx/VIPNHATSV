@@ -58,24 +58,45 @@ function buildCacheKey(path: string, params: Record<string, string>, agentId: st
   return `proxy:${agentId}:${path}:${parts.join("&")}`;
 }
 
-const SPLIT_DATE_ENDPOINTS = new Set([
-  "/agent/reportLottery.html",
-  "/agent/reportFunds.html",
-  "/agent/reportThirdGame.html",
-  "/agent/betOrder.html",
-]);
+/**
+ * Date param config per endpoint:
+ * - param: tên param upstream nhận (date hoặc bet_time)
+ * - separator: format upstream cần ("|" hoặc " | ")
+ * - split: true = tách thành start_date/end_date (cho DB-first), false = gộp thành 1 param
+ *
+ * Report endpoints: upstream nhận date = "YYYY-MM-DD | YYYY-MM-DD" (pipe + spaces)
+ * Non-report endpoints: upstream nhận date = "YYYY-MM-DD|YYYY-MM-DD" (pipe, no spaces)
+ * betOrder: upstream nhận bet_time = "YYYY-MM-DD|YYYY-MM-DD"
+ */
+const DATE_UPSTREAM_FORMAT: Record<string, { param: string; separator: string }> = {
+  "/agent/depositAndWithdrawal.html": { param: "date", separator: "|" },
+  "/agent/withdrawalsRecord.html":    { param: "date", separator: "|" },
+  "/agent/bet.html":                  { param: "date", separator: "|" },
+  "/agent/betOrder.html":             { param: "bet_time", separator: "|" },
+  "/agent/reportLottery.html":        { param: "date", separator: " | " },
+  "/agent/reportFunds.html":          { param: "date", separator: " | " },
+  "/agent/reportThirdGame.html":      { param: "date", separator: " | " },
+};
 
 function buildUpstreamParams(input: Record<string, unknown>, path: string): Record<string, string> {
   const params: Record<string, string> = {};
+  const dateFmt = DATE_UPSTREAM_FORMAT[path];
+
   for (const [key, value] of Object.entries(input)) {
     if (key === "agentId" || key === "_requestId") continue;
     if (value === undefined || value === null || value === "") continue;
 
-    if ((key === "date" || key === "bet_time") && SPLIT_DATE_ENDPOINTS.has(path)) {
+    // Convert frontend date format ("YYYY-MM-DD - YYYY-MM-DD") to upstream format
+    if ((key === "date" || key === "bet_time") && dateFmt) {
       const parts = String(value).split(" - ");
       if (parts.length === 2) {
-        params["start_date"] = parts[0].trim();
-        params["end_date"] = parts[1].trim();
+        const start = parts[0].trim();
+        const end = parts[1].trim();
+        // Store as start_date/end_date for DB-first resolution
+        params["start_date"] = start;
+        params["end_date"] = end;
+        // Also store in upstream format for proxy call
+        params[dateFmt.param] = `${start}${dateFmt.separator}${end}`;
       }
       continue;
     }
@@ -477,7 +498,11 @@ async function cachedProxyCall<T = unknown>(
       cookie = decryptSessionCookie(agent.sessionCookie);
     }
 
-    const result = await fetchSingleAgent<T>(app, path, params, agentId, agentName, cookie, ttl, requestId);
+    // start_date/end_date are for DB-first only, remove before sending to upstream
+    const upstreamParams = { ...params };
+    delete upstreamParams.start_date;
+    delete upstreamParams.end_date;
+    const result = await fetchSingleAgent<T>(app, path, upstreamParams, agentId, agentName, cookie, ttl, requestId);
     return result;
   }
 
@@ -496,7 +521,10 @@ async function cachedProxyCall<T = unknown>(
   const allParams = { ...params };
   delete allParams.page;
   delete allParams.limit;
-  allParams.limit = "200";
+  // start_date/end_date are for DB-first only, upstream doesn't use them
+  delete allParams.start_date;
+  delete allParams.end_date;
+  allParams.limit = "5000";
   allParams.page = "1";
 
   // Use pipeline-based multi-agent fetch (MGET + batch SET)

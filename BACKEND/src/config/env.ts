@@ -22,7 +22,7 @@ const envSchema = z.object({
   UPSTREAM_TIMEOUT_MS: z.coerce.number().default(15_000),
   ENCRYPTION_KEY: z.string().length(64),
 
-  SYNC_ENABLED: z.coerce.boolean().default(true),
+  SYNC_ENABLED: z.string().default("true").transform((v) => v === "true"),
   SYNC_INTERVAL_MS: z.coerce.number().default(300_000),
 
   SENTRY_DSN: z.string().url().optional(),

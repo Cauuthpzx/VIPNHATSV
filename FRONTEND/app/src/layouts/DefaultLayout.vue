@@ -6,6 +6,7 @@ import { useAuthStore } from "@/stores/auth";
 import HubNav from "@/components/HubNav.vue";
 import HubNotification from "@/components/HubNotification.vue";
 import { useNotificationStore } from "@/stores/notification";
+import { useWsBus } from "@/composables/useWsBus";
 import LayoutSidebar from "./LayoutSidebar.vue";
 import LayoutTabs from "./LayoutTabs.vue";
 
@@ -22,6 +23,7 @@ function handleRefresh() {
 
 // Notification polling (API-backed)
 const notificationStore = useNotificationStore();
+const wsBus = useWsBus();
 
 // WebSocket for real-time notifications
 const ws = ref<WebSocket | null>(null);
@@ -40,6 +42,9 @@ function connectWs() {
   socket.addEventListener("message", (event) => {
     try {
       const data = JSON.parse(event.data);
+      // Dispatch tất cả WS messages vào bus cho mọi component lắng nghe
+      if (data.type) wsBus.emit(data);
+      // Notification riêng
       if (data.type === "notifications") {
         notificationStore.onWsNotification();
       }

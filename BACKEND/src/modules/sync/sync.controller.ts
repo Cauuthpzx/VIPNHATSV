@@ -1,11 +1,10 @@
 import type { FastifyRequest, FastifyReply } from "fastify";
-import { getIsSyncing, runFullSync, runAgentSync, purgeAllData, purgeAgentData } from "./sync.service.js";
+import { getIsSyncing, requestSyncAbort, runFullSync, runAgentSync, runAgentEndpointSync, purgeAllData, purgeAgentData } from "./sync.service.js";
 import {
   SYNC_ENDPOINTS,
-  SYNC_INTERVAL_MS,
-  SYNC_AGENT_CONCURRENCY,
   SYNC_PAGE_CONCURRENCY,
 } from "./sync.config.js";
+import { getSyncIntervalMs, setSyncInterval } from "./sync.scheduler.js";
 import { logger } from "../../utils/logger.js";
 
 const TABLE_LABELS: Record<string, string> = {
@@ -137,6 +136,8 @@ export async function syncStatusHandler(request: FastifyRequest, reply: FastifyR
     let totalUserRows = 0;
     const children: Array<{
       id: string;
+      table: string;
+      agentId: string;
       name: string;
       icon: string;
       rowCount: number;
@@ -148,8 +149,12 @@ export async function syncStatusHandler(request: FastifyRequest, reply: FastifyR
       const stats = agMap?.get(a.id);
       const rowCount = stats?.row_count ?? 0;
       totalUserRows += rowCount;
+      // Find Prisma model key for this DB table name
+      const modelKey = Object.entries(MODEL_TO_TABLE).find(([, v]) => v === tableName)?.[0] ?? tableName;
       children.push({
         id: `${a.id}__${tableName}`,
+        table: modelKey,
+        agentId: a.id,
         name: TABLE_LABELS[tableName] ?? tableName,
         icon: TABLE_ICONS[tableName] ?? "layui-icon-file",
         rowCount,
@@ -181,7 +186,7 @@ export async function syncStatusHandler(request: FastifyRequest, reply: FastifyR
       activeAgents,
       totalAgents: agentList.length,
       isSyncing: getIsSyncing(),
-      intervalMs: SYNC_INTERVAL_MS,
+      intervalMs: getSyncIntervalMs(),
       tables,
       agents: agentList,
     },
@@ -200,8 +205,7 @@ export async function syncConfigHandler(_request: FastifyRequest, reply: Fastify
         tableName: MODEL_TO_TABLE[ep.table] ?? ep.table,
         label: TABLE_LABELS[MODEL_TO_TABLE[ep.table] ?? ""] ?? ep.table,
       })),
-      intervalMs: SYNC_INTERVAL_MS,
-      agentConcurrency: SYNC_AGENT_CONCURRENCY,
+      intervalMs: getSyncIntervalMs(),
       pageConcurrency: SYNC_PAGE_CONCURRENCY,
     },
   });
@@ -257,6 +261,86 @@ export async function syncTriggerAgentHandler(
   return reply.send({
     success: true,
     message: "Đã bắt đầu đồng bộ đại lý",
+  });
+}
+
+/**
+ * POST /sync/trigger/:agentId/:table — Trigger sync for a single agent + single endpoint (non-blocking)
+ * :table is the Prisma model key, e.g. "proxyUser", "proxyBetOrder"
+ */
+export async function syncTriggerAgentEndpointHandler(
+  request: FastifyRequest,
+  reply: FastifyReply,
+) {
+  if (getIsSyncing()) {
+    return reply.status(409).send({
+      success: false,
+      message: "Đang đồng bộ, vui lòng đợi",
+    });
+  }
+
+  const { agentId, table } = request.params as { agentId: string; table: string };
+
+  // Validate table name exists in config
+  const validTables = SYNC_ENDPOINTS.map((ep) => ep.table);
+  if (!validTables.includes(table)) {
+    return reply.status(400).send({
+      success: false,
+      message: `Loại dữ liệu không hợp lệ: ${table}`,
+    });
+  }
+
+  runAgentEndpointSync(request.server, agentId, table).catch((err) => {
+    logger.error("[Sync] Single-agent-endpoint trigger failed", {
+      agentId,
+      table,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  });
+
+  const label = TABLE_LABELS[MODEL_TO_TABLE[table] ?? ""] ?? table;
+  return reply.send({
+    success: true,
+    message: `Đã bắt đầu đồng bộ ${label}`,
+  });
+}
+
+/**
+ * POST /sync/stop — Request abort of current sync
+ */
+export async function syncStopHandler(_request: FastifyRequest, reply: FastifyReply) {
+  const wasRunning = requestSyncAbort();
+  if (!wasRunning) {
+    return reply.send({
+      success: false,
+      message: "Không có đồng bộ nào đang chạy",
+    });
+  }
+  return reply.send({
+    success: true,
+    message: "Đã yêu cầu dừng đồng bộ",
+  });
+}
+
+/**
+ * PUT /sync/interval — Set auto sync interval (ms)
+ */
+export async function syncSetIntervalHandler(request: FastifyRequest, reply: FastifyReply) {
+  const { intervalMs } = request.body as { intervalMs: number };
+
+  if (!intervalMs || typeof intervalMs !== "number" || intervalMs < 30000) {
+    return reply.status(400).send({
+      success: false,
+      message: "intervalMs phải >= 30000 (30 giây)",
+    });
+  }
+
+  await setSyncInterval(request.server, intervalMs);
+
+  return reply.send({
+    success: true,
+    message: `Đã cập nhật chu kỳ đồng bộ: ${intervalMs / 1000}s`,
+    data: { intervalMs },
   });
 }
 

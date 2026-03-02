@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { ref, reactive, computed, watch, onMounted, onUnmounted } from "vue";
-import { fetchSyncStatus, triggerSync, triggerAgentSync, purgeAllData, purgeAgentData } from "@/api/services/sync";
+import { fetchSyncStatus, triggerSync, triggerAgentSync, triggerAgentEndpointSync, stopSync, setSyncInterval, purgeAllData, purgeAgentData } from "@/api/services/sync";
 import {
   loginAgentEE88, logoutAgentEE88, loginAllAgentsEE88,
   createAgent, updateAgent, deleteAgent,
+  editUpstreamPassword,
 } from "@/api/services/proxy";
 import { useAuthStore } from "@/stores/auth";
 import { useAgentStore } from "@/stores/agent";
+import { useWsBus } from "@/composables/useWsBus";
 import { PERMISSIONS } from "@/constants/permissions";
 import { layer } from "@layui/layui-vue";
 
@@ -16,7 +18,9 @@ const canWrite = computed(() => authStore.hasPermission(PERMISSIONS.SYNC_WRITE))
 
 const loading = ref(true);
 const triggering = ref(false);
+const stopping = ref(false);
 const syncingAgentId = ref<string | null>(null);
+const syncingEndpointKey = ref<string | null>(null); // "agentId__table" format
 const purgingAgentId = ref<string | null>(null);
 const purgingAll = ref(false);
 const loggingInAgentId = ref<string | null>(null);
@@ -105,6 +109,57 @@ async function saveAgent() {
   }
 }
 
+// --- Đổi mật khẩu đại lý modal ---
+const pwModalVisible = ref(false);
+const pwModalAgentName = ref("");
+const pwSaving = ref(false);
+const pwForm = reactive({
+  agentId: "",
+  old_password: "",
+  new_password: "",
+  confirm_password: "",
+});
+
+function openChangePassword(row: any) {
+  pwForm.agentId = row.id;
+  pwForm.old_password = "";
+  pwForm.new_password = "";
+  pwForm.confirm_password = "";
+  pwModalAgentName.value = row.name;
+  pwModalVisible.value = true;
+}
+
+async function submitChangePassword() {
+  if (!pwForm.old_password) {
+    layer.msg("Vui lòng nhập mật khẩu cũ", { icon: 0 });
+    return;
+  }
+  if (!pwForm.new_password || pwForm.new_password.length < 6) {
+    layer.msg("Mật khẩu mới tối thiểu 6 ký tự", { icon: 0 });
+    return;
+  }
+  if (pwForm.new_password !== pwForm.confirm_password) {
+    layer.msg("Xác nhận mật khẩu không khớp", { icon: 0 });
+    return;
+  }
+  pwSaving.value = true;
+  try {
+    await editUpstreamPassword({
+      agentId: pwForm.agentId,
+      old_password: pwForm.old_password,
+      new_password: pwForm.new_password,
+      confirm_password: pwForm.confirm_password,
+    });
+    layer.msg("Đổi mật khẩu thành công", { icon: 1 });
+    pwModalVisible.value = false;
+  } catch (err: any) {
+    const msg = err?.response?.data?.message || "Lỗi đổi mật khẩu";
+    layer.msg(msg, { icon: 2 });
+  } finally {
+    pwSaving.value = false;
+  }
+}
+
 function confirmDeleteAgent(agentId: string, agentName: string) {
   layer.confirm(
     `Bạn có chắc muốn <b style='color:#ff4d4f'>vô hiệu hoá</b> đại lý <b>${agentName}</b>?`,
@@ -137,7 +192,7 @@ const agentColumns = computed(() => [
   { title: "Trạng thái", key: "_status", customSlot: "agentStatus", width: "120px" },
   { title: "Bản ghi", key: "totalRows", customSlot: "num", width: "80px" },
   { title: "Sync cuối", key: "lastSyncedAt", customSlot: "syncTime", width: "130px" },
-  ...(canWrite.value ? [{ title: "Thao tác", key: "_actions", customSlot: "actions", width: "380px", align: "center" }] : []),
+  ...(canWrite.value ? [{ title: "Thao tác", key: "_actions", customSlot: "actions", width: "440px", align: "center" }] : []),
 ]);
 
 const statusMap: Record<string, { color: string; label: string }> = {
@@ -211,8 +266,8 @@ async function loadStatus() {
       isSyncing.value = d.isSyncing;
       intervalMs.value = d.intervalMs;
 
-      // Chỉ cập nhật bảng khi data thực sự thay đổi
-      if (fp !== lastFingerprint) {
+      // Khi đang sync → luôn cập nhật (hiển thị realtime). Khi idle → chỉ khi data thay đổi
+      if (fp !== lastFingerprint || d.isSyncing) {
         lastFingerprint = fp;
         totalRows.value = d.totalRows;
         activeAgents.value = d.activeAgents;
@@ -251,6 +306,52 @@ async function handleSyncAll() {
   }
 }
 
+async function handleStopSync() {
+  stopping.value = true;
+  try {
+    const res = await stopSync();
+    if (res.data.success) {
+      layer.msg("Đã yêu cầu dừng đồng bộ", { icon: 1 });
+    } else {
+      layer.msg(res.data.message || "Lỗi", { icon: 2 });
+    }
+  } catch {
+    layer.msg("Lỗi khi dừng đồng bộ", { icon: 2 });
+  } finally {
+    stopping.value = false;
+  }
+}
+
+// --- Cài đặt chu kỳ đồng bộ ---
+const intervalEditing = ref(false);
+const intervalInput = ref(5);
+
+function openIntervalEdit() {
+  intervalInput.value = Math.round(intervalMs.value / 60000);
+  intervalEditing.value = true;
+}
+
+async function saveInterval() {
+  const ms = intervalInput.value * 60000;
+  if (ms < 30000) {
+    layer.msg("Chu kỳ tối thiểu 30 giây", { icon: 0 });
+    return;
+  }
+  try {
+    const res = await setSyncInterval(ms);
+    if (res.data.success) {
+      intervalMs.value = ms;
+      layer.msg(`Đã cập nhật chu kỳ: ${intervalInput.value} phút`, { icon: 1 });
+    } else {
+      layer.msg(res.data.message || "Lỗi", { icon: 2 });
+    }
+  } catch {
+    layer.msg("Lỗi cập nhật chu kỳ đồng bộ", { icon: 2 });
+  } finally {
+    intervalEditing.value = false;
+  }
+}
+
 async function handleSyncAgent(agentId: string) {
   syncingAgentId.value = agentId;
   try {
@@ -265,6 +366,24 @@ async function handleSyncAgent(agentId: string) {
     layer.msg("Lỗi khi kích hoạt đồng bộ đại lý", { icon: 2 });
   } finally {
     syncingAgentId.value = null;
+  }
+}
+
+async function handleSyncAgentEndpoint(agentId: string, table: string, label: string) {
+  const key = `${agentId}__${table}`;
+  syncingEndpointKey.value = key;
+  try {
+    const res = await triggerAgentEndpointSync(agentId, table);
+    if (res.data.success) {
+      layer.msg(`Đã kích hoạt đồng bộ ${label}`, { icon: 1 });
+      isSyncing.value = true;
+    } else {
+      layer.msg(res.data.message || "Lỗi", { icon: 2 });
+    }
+  } catch {
+    layer.msg("Lỗi khi kích hoạt đồng bộ", { icon: 2 });
+  } finally {
+    syncingEndpointKey.value = null;
   }
 }
 
@@ -387,15 +506,45 @@ async function handleLoginAll() {
   }
 }
 
+// ---- WebSocket push: nhận sync events → debounce loadStatus ----
+const wsBus = useWsBus();
+let wsUnsubs: (() => void)[] = [];
+let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+/** Debounce loadStatus — gom nhiều WS events trong 1.5s thành 1 lần fetch */
+function debouncedLoadStatus() {
+  if (debounceTimer) clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => loadStatus(), 1500);
+}
+
+function onSyncStatus(data: any) {
+  // Cập nhật trạng thái sync ngay lập tức (không cần debounce)
+  if (data.status === "started") {
+    isSyncing.value = true;
+  } else if (data.status === "completed" || data.status === "aborted") {
+    isSyncing.value = false;
+    loadStatus(); // Load full status khi sync kết thúc
+  }
+}
+
+// ---- Polling 30s fallback (phòng WS mất kết nối) ----
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 
 onMounted(() => {
   loadStatus();
   pollTimer = setInterval(loadStatus, 30000);
+
+  // Subscribe WS events
+  wsUnsubs.push(wsBus.on("sync_progress", debouncedLoadStatus));
+  wsUnsubs.push(wsBus.on("sync_agent_done", debouncedLoadStatus));
+  wsUnsubs.push(wsBus.on("sync_status", onSyncStatus));
 });
 
 onUnmounted(() => {
   if (pollTimer) clearInterval(pollTimer);
+  if (debounceTimer) clearTimeout(debounceTimer);
+  wsUnsubs.forEach((unsub) => unsub());
+  wsUnsubs = [];
 });
 </script>
 
@@ -430,13 +579,13 @@ onUnmounted(() => {
         </lay-card>
       </lay-col>
       <lay-col :md="6">
-        <lay-card class="stat-card">
+        <lay-card class="stat-card" :class="{ clickable: canWrite }" @click="canWrite && openIntervalEdit()">
           <div class="stat-icon-wrap bg-orange">
             <i class="layui-icon layui-icon-timer"></i>
           </div>
           <div class="stat-info">
             <div class="stat-num">{{ Math.round(intervalMs / 60000) }}<span class="stat-sub">phút</span></div>
-            <div class="stat-desc">Chu kỳ đồng bộ</div>
+            <div class="stat-desc">Chu kỳ đồng bộ<template v-if="canWrite"> <i class="layui-icon layui-icon-edit" style="font-size: 12px; cursor: pointer"></i></template></div>
           </div>
         </lay-card>
       </lay-col>
@@ -495,14 +644,24 @@ onUnmounted(() => {
                 >
                   <i class="layui-icon layui-icon-key"></i> Login tất cả
                 </lay-button>
+                <!-- Sync controls: Bắt đầu / Dừng -->
                 <lay-button
+                  v-if="!isSyncing"
                   size="sm"
                   type="normal"
                   :loading="triggering"
-                  :disabled="isSyncing"
                   @click="handleSyncAll"
                 >
-                  <i class="layui-icon layui-icon-refresh-1"></i> Đồng bộ tất cả
+                  <i class="layui-icon layui-icon-play"></i> Bắt đầu đồng bộ
+                </lay-button>
+                <lay-button
+                  v-else
+                  size="sm"
+                  type="danger"
+                  :loading="stopping"
+                  @click="handleStopSync"
+                >
+                  <i class="layui-icon layui-icon-pause"></i> Dừng đồng bộ
                 </lay-button>
                 <lay-button
                   size="sm"
@@ -568,8 +727,22 @@ onUnmounted(() => {
             </template>
 
             <template #actions="{ row }">
-              <!-- Only show actions for parent (agent) rows, not children -->
-              <template v-if="!row.icon">
+              <!-- Child row: per-table sync button -->
+              <template v-if="row.icon && row.table">
+                <div class="action-btns">
+                  <lay-button
+                    size="xs"
+                    type="primary"
+                    :loading="syncingEndpointKey === `${row.agentId}__${row.table}`"
+                    :disabled="isSyncing"
+                    @click="handleSyncAgentEndpoint(row.agentId, row.table, row.name)"
+                  >
+                    <i class="layui-icon layui-icon-refresh-1"></i> Sync
+                  </lay-button>
+                </div>
+              </template>
+              <!-- Parent row: agent-level actions -->
+              <template v-else-if="!row.icon">
                 <div class="action-btns">
                   <lay-button
                     size="xs"
@@ -584,6 +757,13 @@ onUnmounted(() => {
                     @click="handleLoginAgent(row.id)"
                   >
                     <i class="layui-icon layui-icon-key"></i> Login
+                  </lay-button>
+                  <lay-button
+                    size="xs"
+                    type="warm"
+                    @click="openChangePassword(row)"
+                  >
+                    <i class="layui-icon layui-icon-password" style="font-size: 14px; font-weight: bold"></i> Đổi MK
                   </lay-button>
                   <lay-button
                     size="xs"
@@ -665,6 +845,51 @@ onUnmounted(() => {
             <lay-input v-model="agentForm.baseUrl" placeholder="Mặc định nếu để trống" />
           </lay-form-item>
         </lay-form>
+      </div>
+    </lay-layer>
+    <!-- ===== MODAL ĐỔI MẬT KHẨU ===== -->
+    <lay-layer
+      v-model="pwModalVisible"
+      :title="`Đổi mật khẩu: ${pwModalAgentName}`"
+      :area="['420px', 'auto']"
+      :shade-close="false"
+      :btn="[
+        { text: pwSaving ? 'Đang lưu...' : 'Đổi mật khẩu', callback: () => submitChangePassword() },
+        { text: 'Hủy', callback: () => { pwModalVisible = false; } },
+      ]"
+    >
+      <div style="padding: 16px 20px; display: flex; flex-direction: column; gap: 10px">
+        <lay-input v-model="pwForm.old_password" type="password" placeholder="Nhập mật khẩu cũ đại lý EE88" prefix-icon="layui-icon-password" />
+        <lay-input v-model="pwForm.new_password" type="password" placeholder="Mật khẩu mới (tối thiểu 6 ký tự)" prefix-icon="layui-icon-key" />
+        <lay-input v-model="pwForm.confirm_password" type="password" placeholder="Xác nhận mật khẩu mới" prefix-icon="layui-icon-key" />
+      </div>
+    </lay-layer>
+
+    <!-- ===== MODAL CÀI ĐẶT CHU KỲ ĐỒNG BỘ ===== -->
+    <lay-layer
+      v-model="intervalEditing"
+      title="Cài đặt chu kỳ đồng bộ tự động"
+      :area="['380px', 'auto']"
+      :shade-close="true"
+      :btn="[
+        { text: 'Lưu', callback: () => saveInterval() },
+        { text: 'Hủy', callback: () => { intervalEditing = false; } },
+      ]"
+    >
+      <div style="padding: 20px">
+        <div style="margin-bottom: 12px; color: #666; font-size: 13px">
+          Chu kỳ tự động đồng bộ dữ liệu (phút). Tối thiểu 1 phút.
+        </div>
+        <lay-input-number
+          v-model="intervalInput"
+          :min="1"
+          :max="1440"
+          :step="1"
+          position="right"
+        />
+        <div style="margin-top: 8px; color: #999; font-size: 12px">
+          Giá trị hiện tại: {{ intervalInput }} phút ({{ intervalInput * 60 }} giây)
+        </div>
       </div>
     </lay-layer>
   </div>
@@ -785,5 +1010,13 @@ onUnmounted(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.clickable {
+  cursor: pointer;
+  transition: box-shadow 0.2s;
+}
+.clickable:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 </style>

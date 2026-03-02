@@ -6,6 +6,9 @@ import {
   syncConfigHandler,
   syncTriggerHandler,
   syncTriggerAgentHandler,
+  syncTriggerAgentEndpointHandler,
+  syncStopHandler,
+  syncSetIntervalHandler,
   syncPurgeAllHandler,
   syncPurgeAgentHandler,
 } from "./sync.controller.js";
@@ -17,9 +20,12 @@ export async function syncRoutes(app: FastifyInstance) {
   app.get("/status", { preHandler: [authorize(PERMISSIONS.SYNC_READ)] }, syncStatusHandler);
   app.get("/config", { preHandler: [authorize(PERMISSIONS.SYNC_READ)] }, syncConfigHandler);
 
-  // Write: sync triggers
+  // Write: sync triggers + settings
+  app.post("/stop", { preHandler: [authorize(PERMISSIONS.SYNC_WRITE)] }, syncStopHandler);
+  app.put("/interval", { preHandler: [authorize(PERMISSIONS.SYNC_WRITE)] }, syncSetIntervalHandler);
   app.post("/trigger", { preHandler: [authorize(PERMISSIONS.SYNC_WRITE)] }, syncTriggerHandler);
   app.post("/trigger/:agentId", { preHandler: [authorize(PERMISSIONS.SYNC_WRITE)] }, syncTriggerAgentHandler);
+  app.post("/trigger/:agentId/:table", { preHandler: [authorize(PERMISSIONS.SYNC_WRITE)] }, syncTriggerAgentEndpointHandler);
 
   // Write: purge data
   app.delete("/purge", { preHandler: [authorize(PERMISSIONS.SYNC_WRITE)] }, syncPurgeAllHandler);

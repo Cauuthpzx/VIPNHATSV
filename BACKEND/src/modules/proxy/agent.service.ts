@@ -77,6 +77,7 @@ export async function listActiveAgents(app: FastifyInstance) {
       return JSON.parse(cached) as Array<{
         id: string;
         name: string;
+        extUsername: string;
         sessionCookie: string;
         cookieExpires: Date | null;
       }>;
@@ -87,7 +88,7 @@ export async function listActiveAgents(app: FastifyInstance) {
 
   const agents = await app.prisma.agent.findMany({
     where: { isActive: true, status: "active" },
-    select: { id: true, name: true, sessionCookie: true, cookieExpires: true },
+    select: { id: true, name: true, extUsername: true, sessionCookie: true, cookieExpires: true },
     orderBy: { name: "asc" },
   });
 

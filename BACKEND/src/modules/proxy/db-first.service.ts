@@ -227,8 +227,8 @@ async function queryDb<T>(
       prismaModel.count({ where }),
     ]);
 
-    if (total === 0 && config.mode === "always") {
-      // "always" mode with 0 results — might be unsynced, fallback to upstream
+    if (total === 0) {
+      // 0 results — data might not be synced yet, fallback to upstream
       return null;
     }
 

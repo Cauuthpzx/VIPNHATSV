@@ -27,12 +27,7 @@ export function useListPage<T = Record<string, any>>(initialLimit = 10) {
     });
   }
 
-  /**
-   * Chỉ show loading spinner khi chưa có data (lần đầu).
-   * Khi đã có data → không show loading, tránh flicker.
-   */
   function setLoading(val: boolean) {
-    if (val && dataSource.value.length > 0) return;
     loading.value = val;
   }
 

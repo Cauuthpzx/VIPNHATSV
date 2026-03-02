@@ -12,10 +12,18 @@ export interface MenuItem {
   title: string;
   icon: string;
   permission?: string;
+  path?: string; // menu đơn (không có sub)
   children: MenuChild[];
 }
 
 export const menuData: MenuItem[] = [
+  {
+    id: "home",
+    title: "Trang chủ",
+    icon: "layui-icon-home",
+    path: "/agent/welcome",
+    children: [],
+  },
   {
     id: "member",
     title: "Quản lí hội viên thuộc cấp",
@@ -62,15 +70,15 @@ export const menuData: MenuItem[] = [
       { id: "betOrder", title: "Đơn cược bên thứ 3", path: "/agent/bet-order", permission: PERMISSIONS.BET_READ },
     ],
   },
-  {
-    id: "customer",
-    title: "Thông tin khách hàng",
-    icon: "layui-icon-survey",
-    children: [
-      { id: "editPassword", title: "Đổi mật khẩu đăng nhập", path: "/agent/edit-password", permission: PERMISSIONS.PASSWORD_WRITE },
-      { id: "editFundPassword", title: "Đổi mật khẩu giao dịch", path: "/agent/edit-fund-password", permission: PERMISSIONS.PASSWORD_WRITE },
-    ],
-  },
+  // {
+  //   id: "customer",
+  //   title: "Thông tin khách hàng",
+  //   icon: "layui-icon-survey",
+  //   children: [
+  //     { id: "editPassword", title: "Đổi mật khẩu đăng nhập", path: "/agent/edit-password", permission: PERMISSIONS.PASSWORD_WRITE },
+  //     { id: "editFundPassword", title: "Đổi mật khẩu giao dịch", path: "/agent/edit-fund-password", permission: PERMISSIONS.PASSWORD_WRITE },
+  //   ],
+  // },
   // {
   //   id: "rebate",
   //   title: "Quản lí tỉ lệ hoàn trả",
@@ -87,6 +95,7 @@ export const menuData: MenuItem[] = [
       { id: "systemUsers", title: "Quản lý người dùng", path: "/system/users", permission: PERMISSIONS.USERS_READ },
       { id: "systemRoles", title: "Quản lý vai trò", path: "/system/roles", permission: PERMISSIONS.ROLES_READ },
       { id: "syncDashboard", title: "Theo dõi đồng bộ", path: "/system/sync", permission: PERMISSIONS.SYNC_READ },
+      { id: "syncV2", title: "Sync V2", path: "/system/sync-v2", permission: PERMISSIONS.SYNC_READ },
     ],
   },
 ];

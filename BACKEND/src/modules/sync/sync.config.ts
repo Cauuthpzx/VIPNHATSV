@@ -34,22 +34,16 @@ export const SYNC_DATE_START = process.env.SYNC_DATE_START || "2026-01-01";
  * - bank           → KHÔNG sync (fetch trực tiếp từ upstream khi cần)
  */
 export const SYNC_ENDPOINTS: SyncEndpointConfig[] = [
-  { table: "proxyUser",            path: "/agent/user.html",                 needsDateRange: false, pageSize: 200, syncOnce: false },
-  { table: "proxyInvite",          path: "/agent/inviteList.html",           needsDateRange: false, pageSize: 200, syncOnce: true },
-  { table: "proxyDeposit",         path: "/agent/depositAndWithdrawal.html", needsDateRange: true,  pageSize: 200, syncOnce: false, extraParams: { es: "1" } },
-  { table: "proxyWithdrawal",      path: "/agent/withdrawalsRecord.html",    needsDateRange: true,  pageSize: 200, syncOnce: false, extraParams: { es: "1" } },
-  { table: "proxyBet",             path: "/agent/bet.html",                  needsDateRange: true,  pageSize: 200, syncOnce: false, extraParams: { es: "1" } },
-  { table: "proxyBetOrder",        path: "/agent/betOrder.html",             needsDateRange: true,  pageSize: 200, syncOnce: false, extraParams: { es: "1" } },
-  { table: "proxyReportLottery",   path: "/agent/reportLottery.html",        needsDateRange: true,  pageSize: 2000, syncOnce: false, extraParams: { username: "", lottery_id: "" } },
-  { table: "proxyReportFunds",     path: "/agent/reportFunds.html",          needsDateRange: true,  pageSize: 2000, syncOnce: false, extraParams: { username: "" } },
-  { table: "proxyReportThirdGame", path: "/agent/reportThirdGame.html",      needsDateRange: true,  pageSize: 2000, syncOnce: false, extraParams: { username: "" } },
+  { table: "proxyUser",            path: "/agent/user.html",                 needsDateRange: false, pageSize: 20000, syncOnce: false },
+  { table: "proxyInvite",          path: "/agent/inviteList.html",           needsDateRange: false, pageSize: 5000, syncOnce: true },
+  { table: "proxyDeposit",         path: "/agent/depositAndWithdrawal.html", needsDateRange: true,  pageSize: 5000, syncOnce: false, extraParams: { es: "1" } },
+  { table: "proxyWithdrawal",      path: "/agent/withdrawalsRecord.html",    needsDateRange: true,  pageSize: 5000, syncOnce: false, extraParams: { es: "1" } },
+  { table: "proxyBet",             path: "/agent/bet.html",                  needsDateRange: true,  pageSize: 5000, syncOnce: false, extraParams: { es: "1" } },
+  { table: "proxyBetOrder",        path: "/agent/betOrder.html",             needsDateRange: true,  pageSize: 5000, syncOnce: false, extraParams: { es: "1" } },
+  { table: "proxyReportLottery",   path: "/agent/reportLottery.html",        needsDateRange: true,  pageSize: 5000, syncOnce: false, extraParams: { username: "", lottery_id: "" } },
+  { table: "proxyReportFunds",     path: "/agent/reportFunds.html",          needsDateRange: true,  pageSize: 5000, syncOnce: false, extraParams: { username: "" } },
+  { table: "proxyReportThirdGame", path: "/agent/reportThirdGame.html",      needsDateRange: true,  pageSize: 5000, syncOnce: false, extraParams: { username: "" } },
 ];
 
-/** Interval between sync runs (ms). Override via SYNC_INTERVAL_MS env var. */
-export const SYNC_INTERVAL_MS = Number(process.env.SYNC_INTERVAL_MS) || 5 * 60 * 1000;
-
-/** Max agents fetched concurrently per endpoint */
-export const SYNC_AGENT_CONCURRENCY = 4;
-
 /** Max pages fetched concurrently per agent */
-export const SYNC_PAGE_CONCURRENCY = 3;
+export const SYNC_PAGE_CONCURRENCY = 5;
