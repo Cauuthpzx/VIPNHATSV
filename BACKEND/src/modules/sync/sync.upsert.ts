@@ -124,6 +124,98 @@ DO UPDATE SET ${updateSet}${whereClause}`;
 }
 
 // ---------------------------------------------------------------------------
+// Bulk Upsert with Change Detection — RETURNING (xmax = 0) AS is_new
+// Dùng cho tables cần biết row nào mới/thay đổi (vd: proxy_users).
+// PostgreSQL xmax = 0 → row vừa INSERT (mới hoàn toàn).
+// xmax != 0 → row được UPDATE (data thay đổi).
+// Rows unchanged (WHERE clause ngăn UPDATE) → KHÔNG trả về.
+// ---------------------------------------------------------------------------
+
+interface DetectResult {
+  count: number;
+  /** Usernames (or key field) of newly inserted rows */
+  newKeys: string[];
+  /** Usernames (or key field) of updated (changed) rows */
+  changedKeys: string[];
+}
+
+async function bulkUpsertDetect(
+  prisma: PrismaClient,
+  config: BulkUpsertConfig,
+  rows: unknown[][],
+  /** Column name to return as the detection key (e.g. "username") */
+  keyColumn: string,
+): Promise<DetectResult> {
+  if (rows.length === 0) return { count: 0, newKeys: [], changedKeys: [] };
+
+  const colCount = config.columns.length;
+  const maxBatch = Math.floor(32767 / colCount);
+  const batchSize = Math.min(maxBatch, 2000);
+  let total = 0;
+  const newKeys: string[] = [];
+  const changedKeys: string[] = [];
+
+  const tsSet = config.timestampColumns ?? new Set<string>();
+  const jsonSet = config.jsonbColumns ?? new Set<string>();
+
+  for (let i = 0; i < rows.length; i += batchSize) {
+    const batch = rows.slice(i, i + batchSize);
+    const values: string[] = [];
+    const params: unknown[] = [];
+    let idx = 1;
+
+    for (const row of batch) {
+      const placeholders: string[] = [];
+      for (let c = 0; c < colCount; c++) {
+        const col = config.columns[c];
+        let ph = `$${idx}`;
+        if (tsSet.has(col)) ph += "::timestamp";
+        if (jsonSet.has(col)) ph += "::jsonb";
+        placeholders.push(ph);
+        params.push(row[c]);
+        idx++;
+      }
+      values.push(`(${placeholders.join(",")})`);
+    }
+
+    const updateSet = config.updateColumns
+      .map((c) => `"${c}" = EXCLUDED."${c}"`)
+      .join(", ");
+
+    const whereClause = config.skipUnchangedColumn
+      ? `\nWHERE "${config.table}"."${config.skipUnchangedColumn}" IS DISTINCT FROM EXCLUDED."${config.skipUnchangedColumn}"`
+      : "";
+
+    const sql = `INSERT INTO "${config.table}" (${config.columns.map((c) => `"${c}"`).join(",")})
+VALUES ${values.join(",")}
+ON CONFLICT ${config.conflictTarget}
+DO UPDATE SET ${updateSet}${whereClause}
+RETURNING "${keyColumn}", (xmax = 0) AS is_new`;
+
+    try {
+      const result = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(sql, ...params);
+      total += batch.length;
+      for (const row of result) {
+        const key = String(row[keyColumn] ?? "");
+        if (row.is_new) {
+          newKeys.push(key);
+        } else {
+          changedKeys.push(key);
+        }
+      }
+    } catch (err) {
+      logger.error(`[BulkUpsertDetect] ${config.table} batch failed`, {
+        batchStart: i,
+        batchSize: batch.length,
+        error: (err as Error).message,
+      });
+    }
+  }
+
+  return { count: total, newKeys, changedKeys };
+}
+
+// ---------------------------------------------------------------------------
 // 1. ProxyUser — (agentId, username) composite unique
 // ---------------------------------------------------------------------------
 
@@ -140,37 +232,17 @@ const PROXY_USER_CONFIG: BulkUpsertConfig = {
 async function upsertUsers(prisma: PrismaClient, agentId: string, items: Item[]): Promise<number> {
   if (items.length === 0) return 0;
 
-  // 1. Fetch existing members for change detection
-  const existing = await prisma.proxyUser.findMany({
-    where: { agentId },
-    select: { username: true, money: true },
-  });
-  const existingMap = new Map(existing.map((u) => [u.username, u.money]));
+  // 1. Lấy tổng số member hiện tại (để check first sync + safety threshold)
+  const existingCount = await prisma.proxyUser.count({ where: { agentId } });
 
   // 2. Build upstream username→money map
-  const upstreamMap = new Map<string, string | null>();
+  const upstreamMoneyMap = new Map<string, string | null>();
   for (const item of items) {
     const username = str(item.username);
-    if (username) upstreamMap.set(username, str(item.money));
+    if (username) upstreamMoneyMap.set(username, str(item.money));
   }
 
-  // 3. Detect new members
-  const newMembers: Array<{ username: string; money: string | null }> = [];
-  for (const [username, money] of upstreamMap) {
-    if (!existingMap.has(username)) {
-      newMembers.push({ username, money });
-    }
-  }
-
-  // 4. Detect lost members
-  const lostMembers: Array<{ username: string; money: string | null }> = [];
-  for (const [username, money] of existingMap) {
-    if (!upstreamMap.has(username)) {
-      lostMembers.push({ username, money: money != null ? String(money) : null });
-    }
-  }
-
-  // 5. Bulk upsert
+  // 3. Bulk upsert với RETURNING — PostgreSQL cho biết row nào INSERT (mới) vs UPDATE (đổi)
   const now = new Date().toISOString();
   const rows: unknown[][] = [];
   for (const item of items) {
@@ -185,21 +257,40 @@ async function upsertUsers(prisma: PrismaClient, agentId: string, items: Item[])
       JSON.stringify(item), now,
     ]);
   }
-  const count = await bulkUpsert(prisma, PROXY_USER_CONFIG, rows);
+  const { count, newKeys } = await bulkUpsertDetect(prisma, PROXY_USER_CONFIG, rows, "username");
 
-  // 6. Notifications
-  if (existingMap.size === 0) {
+  // New members: PostgreSQL xmax=0 → row vừa INSERT (100% chính xác, không cần pre-fetch)
+  const newMembers = newKeys.map((username) => ({
+    username,
+    money: upstreamMoneyMap.get(username) ?? null,
+  }));
+
+  // 4. Detect lost members: query DB tìm member có trong DB nhưng KHÔNG có trong upstream
+  const upstreamUsernames = [...upstreamMoneyMap.keys()];
+  let lostMembers: Array<{ username: string; money: string | null }> = [];
+  if (existingCount > 0 && upstreamUsernames.length > 0) {
+    const lostRows = await prisma.$queryRawUnsafe<Array<{ username: string; money: string | null }>>(
+      `SELECT username, money::text as money FROM "proxy_users"
+       WHERE "agent_id" = $1 AND NOT (username = ANY($2::text[]))`,
+      agentId,
+      upstreamUsernames,
+    );
+    lostMembers = lostRows;
+  }
+
+  // 5. Notifications
+  if (existingCount === 0) {
     if (newMembers.length > 0) {
       logger.info(`[Sync] First sync for agent ${agentId}: ${newMembers.length} members imported, no notifications created`);
     }
     return count;
   }
 
-  const lostRatio = existingMap.size > 0 ? lostMembers.length / existingMap.size : 0;
+  const lostRatio = existingCount > 0 ? lostMembers.length / existingCount : 0;
   const safeLostMembers = lostRatio > 0.5 ? [] : lostMembers;
   if (lostRatio > 0.5 && lostMembers.length > 0) {
     logger.warn(
-      `[Sync] Suspicious member loss: ${lostMembers.length}/${existingMap.size} (${(lostRatio * 100).toFixed(0)}%) for agent ${agentId} — skipping lost notifications`,
+      `[Sync] Suspicious member loss: ${lostMembers.length}/${existingCount} (${(lostRatio * 100).toFixed(0)}%) for agent ${agentId} — skipping lost notifications`,
     );
   }
 
@@ -243,7 +334,7 @@ async function upsertUsers(prisma: PrismaClient, agentId: string, items: Item[])
       try {
         await prisma.notification.createMany({ data: notifs });
         logger.info(
-          `[Sync] Member changes detected: +${newMembers.length} new, -${safeLostMembers.length} lost (agent: ${agentId}, notifs created: ${notifs.length})`,
+          `[Sync] Member changes: +${newMembers.length} new, -${safeLostMembers.length} lost (agent: ${agentId}, notifs: ${notifs.length})`,
         );
         wsManager.broadcast({
           type: "notifications",
