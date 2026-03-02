@@ -13,6 +13,10 @@ import {
 } from "./sync.config.js";
 import { logger } from "../../utils/logger.js";
 import { wsManager } from "../../websocket/ws.manager.js";
+import { AppError } from "../../errors/AppError.js";
+import { ERROR_CODES } from "../../constants/error-codes.js";
+
+const MAX_TIMEOUT_STRIKES = 3; // Timeout quá 3 lần → tự dừng tiến trình đó
 
 let isSyncing = false;
 let abortRequested = false;
@@ -343,6 +347,7 @@ async function runAgentStream(app: FastifyInstance, agent: Agent, mode: SyncMode
   }
 
   // ── Nhóm 3: Date-range — mỗi endpoint = 1 luồng con, TẤT CẢ song song ──
+  // Mỗi luồng con tự đếm timeout strikes, quá 3 lần → tự dừng luồng đó
   if (!abortRequested && dateRangeEndpoints.length > 0) {
     const dateRangeTasks = dateRangeEndpoints.map(async (endpoint) => {
       if (abortRequested) return;
@@ -432,6 +437,8 @@ async function syncAgentDateRange(
   mode: SyncMode,
   today: string,
 ): Promise<void> {
+  let timeoutStrikes = 0;
+
   if (mode === "recurring") {
     // Recurring → chỉ sync ngày hôm nay (không hash)
     await syncAgentSingleDay(app, agent, cookie, endpoint, upsertFn, today, false);
@@ -453,7 +460,36 @@ async function syncAgentDateRange(
       if (done) continue;
     }
 
-    await syncAgentSingleDay(app, agent, cookie, endpoint, upsertFn, date, !isToday);
+    try {
+      await syncAgentSingleDay(app, agent, cookie, endpoint, upsertFn, date, !isToday);
+      // Reset strikes khi thành công
+      timeoutStrikes = 0;
+    } catch (err) {
+      if (err instanceof AppError && err.code === ERROR_CODES.UPSTREAM_TIMEOUT) {
+        timeoutStrikes++;
+        logger.warn(`[Sync] Timeout strike ${timeoutStrikes}/${MAX_TIMEOUT_STRIKES}`, {
+          agent: agent.name, table: endpoint.table, date,
+        });
+        if (timeoutStrikes >= MAX_TIMEOUT_STRIKES) {
+          logger.error(`[Sync] ${agent.name} → ${endpoint.table}: ${MAX_TIMEOUT_STRIKES} timeouts liên tiếp, DỪNG tiến trình này`, {
+            agent: agent.name, table: endpoint.table,
+          });
+          wsManager.broadcast({
+            type: "sync_progress",
+            table: endpoint.table,
+            agent: agent.name,
+            agentId: agent.id,
+            error: `Dừng do timeout ${MAX_TIMEOUT_STRIKES} lần liên tiếp`,
+          });
+          return; // Dừng luồng endpoint này, các luồng khác vẫn chạy
+        }
+      } else {
+        // Non-timeout error → log but continue to next date
+        logger.error(`[Sync] ${agent.name} → ${endpoint.table} error on ${date}`, {
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
   }
 }
 

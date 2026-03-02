@@ -1,6 +1,8 @@
 import { fetchUpstream } from "../proxy/proxy.client.js";
 import { promisePool } from "../../utils/concurrency.js";
 import { logger } from "../../utils/logger.js";
+import { AppError } from "../../errors/AppError.js";
+import { ERROR_CODES } from "../../constants/error-codes.js";
 
 interface FetchAllOptions {
   path: string;
@@ -45,6 +47,10 @@ export async function fetchAllPages(
           ? (res.data as Record<string, unknown>[])
           : [];
       } catch (err) {
+        // Timeout error → bubble up cho sync service đếm strikes
+        if (err instanceof AppError && err.code === ERROR_CODES.UPSTREAM_TIMEOUT) {
+          throw err;
+        }
         logger.warn("Sync page fetch failed", {
           path,
           page: pageNum,

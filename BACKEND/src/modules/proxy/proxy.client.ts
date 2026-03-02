@@ -83,11 +83,16 @@ async function _fetchUpstream<T = unknown>(
 
   logger.debug("Upstream request", { url, requestId: req.requestId, paramsKeys: Object.keys(req.params) });
 
+  // Timeout 2 phút — đủ lâu cho upstream chậm, nhưng không treo vĩnh viễn khi upstream chết
+  const controller = new AbortController();
+  const safetyTimeout = setTimeout(() => controller.abort(), 2 * 60 * 1000);
+
   try {
     const response = await fetch(url, {
       method: "POST",
       headers,
       body,
+      signal: controller.signal,
       redirect: "manual",
       // @ts-expect-error Node-specific undici dispatcher
       dispatcher: upstreamAgent,
@@ -173,6 +178,16 @@ async function _fetchUpstream<T = unknown>(
   } catch (err) {
     if (err instanceof AppError) throw err;
 
+    // AbortController timeout → throw UPSTREAM_TIMEOUT (distinct from generic error)
+    if (err instanceof Error && err.name === "AbortError") {
+      logger.warn("Upstream request timed out (2 min)", { url });
+      throw new AppError(
+        "Upstream request timed out",
+        HTTP_STATUS.GATEWAY_TIMEOUT,
+        ERROR_CODES.UPSTREAM_TIMEOUT,
+      );
+    }
+
     const message = err instanceof Error ? err.message : String(err);
     logger.error("Upstream fetch failed", { url, error: message });
     throw new AppError(
@@ -180,5 +195,7 @@ async function _fetchUpstream<T = unknown>(
       HTTP_STATUS.BAD_GATEWAY,
       ERROR_CODES.UPSTREAM_ERROR,
     );
+  } finally {
+    clearTimeout(safetyTimeout);
   }
 }
