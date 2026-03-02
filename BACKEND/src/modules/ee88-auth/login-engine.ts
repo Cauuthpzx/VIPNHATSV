@@ -64,41 +64,33 @@ async function fetchRaw(
     binary?: boolean;
   } = {},
 ): Promise<{ status: number; headers: Record<string, string | string[]>; text: string; buffer: Buffer }> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 15_000);
+  const response = await fetch(url, {
+    method: options.method ?? "GET",
+    headers: options.headers ?? {},
+    body: options.body ?? null,
+  });
 
-  try {
-    const response = await fetch(url, {
-      method: options.method ?? "GET",
-      headers: options.headers ?? {},
-      body: options.body ?? null,
-      signal: controller.signal,
-    });
+  const buffer = Buffer.from(await response.arrayBuffer());
+  const text = options.binary ? "" : buffer.toString("utf-8");
 
-    const buffer = Buffer.from(await response.arrayBuffer());
-    const text = options.binary ? "" : buffer.toString("utf-8");
-
-    // Convert headers to plain object
-    const headersObj: Record<string, string | string[]> = {};
-    response.headers.forEach((value, key) => {
-      if (key === "set-cookie") {
-        const existing = headersObj[key];
-        if (Array.isArray(existing)) {
-          existing.push(value);
-        } else if (existing) {
-          headersObj[key] = [existing as string, value];
-        } else {
-          headersObj[key] = [value];
-        }
+  // Convert headers to plain object
+  const headersObj: Record<string, string | string[]> = {};
+  response.headers.forEach((value, key) => {
+    if (key === "set-cookie") {
+      const existing = headersObj[key];
+      if (Array.isArray(existing)) {
+        existing.push(value);
+      } else if (existing) {
+        headersObj[key] = [existing as string, value];
       } else {
-        headersObj[key] = value;
+        headersObj[key] = [value];
       }
-    });
+    } else {
+      headersObj[key] = value;
+    }
+  });
 
-    return { status: response.status, headers: headersObj, text, buffer };
-  } finally {
-    clearTimeout(timeout);
-  }
+  return { status: response.status, headers: headersObj, text, buffer };
 }
 
 export async function loginAgent(

@@ -83,15 +83,11 @@ async function _fetchUpstream<T = unknown>(
 
   logger.debug("Upstream request", { url, requestId: req.requestId, paramsKeys: Object.keys(req.params) });
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), appConfig.upstream.timeoutMs);
-
   try {
     const response = await fetch(url, {
       method: "POST",
       headers,
       body,
-      signal: controller.signal,
       redirect: "manual",
       // @ts-expect-error Node-specific undici dispatcher
       dispatcher: upstreamAgent,
@@ -178,21 +174,11 @@ async function _fetchUpstream<T = unknown>(
     if (err instanceof AppError) throw err;
 
     const message = err instanceof Error ? err.message : String(err);
-    if (message.includes("abort")) {
-      throw new AppError(
-        "Upstream timeout",
-        HTTP_STATUS.BAD_GATEWAY,
-        ERROR_CODES.UPSTREAM_TIMEOUT,
-      );
-    }
-
     logger.error("Upstream fetch failed", { url, error: message });
     throw new AppError(
       "Failed to fetch from upstream",
       HTTP_STATUS.BAD_GATEWAY,
       ERROR_CODES.UPSTREAM_ERROR,
     );
-  } finally {
-    clearTimeout(timeout);
   }
 }
