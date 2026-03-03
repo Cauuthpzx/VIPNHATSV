@@ -178,7 +178,7 @@ function confirmDeleteAgent(agentId: string, agentName: string) {
     `Bạn có chắc muốn <b style='color:#ff4d4f'>vô hiệu hoá</b> đại lý <b>${agentName}</b>?`,
     {
       title: "Xác nhận vô hiệu hoá",
-      isHtmlContent: true,
+
       btn: [
         { text: "Vô hiệu hoá", callback: (id: string) => { layer.close(id); doDeleteAgent(agentId); } },
         { text: "Hủy", callback: (id: string) => { layer.close(id); } },
@@ -422,7 +422,7 @@ function confirmPurgeAll() {
     "Bạn có chắc muốn <b style='color:#ff4d4f'>xóa TẤT CẢ</b> dữ liệu đồng bộ?<br>Hành động này không thể hoàn tác.",
     {
       title: "Xác nhận xóa tất cả",
-      isHtmlContent: true,
+
       btn: [
         { text: "Xóa tất cả", callback: (id: string) => { layer.close(id); doPurgeAll(); } },
         { text: "Hủy", callback: (id: string) => { layer.close(id); } },
@@ -453,7 +453,7 @@ function confirmPurgeAgent(agentId: string, agentName: string) {
     `Bạn có chắc muốn <b style='color:#ff4d4f'>xóa dữ liệu</b> của đại lý <b>${agentName}</b>?<br>Hành động này không thể hoàn tác.`,
     {
       title: "Xác nhận xóa dữ liệu đại lý",
-      isHtmlContent: true,
+
       btn: [
         { text: "Xóa", callback: (id: string) => { layer.close(id); doPurgeAgent(agentId); } },
         { text: "Hủy", callback: (id: string) => { layer.close(id); } },
