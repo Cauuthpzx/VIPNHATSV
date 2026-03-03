@@ -44,8 +44,8 @@ function log(level: LogLevel, a: string | Record<string, unknown>, b?: string | 
 export const logger = {
   fatal: (a: string | Record<string, unknown>, b?: string | Record<string, unknown>) => log("fatal", a, b),
   error: (a: string | Record<string, unknown>, b?: string | Record<string, unknown>) => log("error", a, b),
-  warn:  (a: string | Record<string, unknown>, b?: string | Record<string, unknown>) => log("warn", a, b),
-  info:  (a: string | Record<string, unknown>, b?: string | Record<string, unknown>) => log("info", a, b),
+  warn: (a: string | Record<string, unknown>, b?: string | Record<string, unknown>) => log("warn", a, b),
+  info: (a: string | Record<string, unknown>, b?: string | Record<string, unknown>) => log("info", a, b),
   debug: (a: string | Record<string, unknown>, b?: string | Record<string, unknown>) => log("debug", a, b),
   trace: (a: string | Record<string, unknown>, b?: string | Record<string, unknown>) => log("trace", a, b),
 };

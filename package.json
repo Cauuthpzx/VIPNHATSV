@@ -1,0 +1,23 @@
+{
+  "name": "maxhub",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "lint:backend": "cd BACKEND && npx eslint src/",
+    "lint:frontend": "cd FRONTEND/app && npx eslint src/",
+    "lint": "npm run lint:backend && npm run lint:frontend",
+    "format:check": "cd BACKEND && npx prettier --check \"src/**/*.ts\" && cd ../FRONTEND/app && npx prettier --check \"src/**/*.{ts,vue}\"",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@typescript-eslint/parser": "^8.56.1",
+    "eslint": "^10.0.2",
+    "eslint-plugin-vue": "^10.8.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.3.1",
+    "prettier": "^3.8.1",
+    "typescript-eslint": "^8.56.1",
+    "vue-eslint-parser": "^10.4.0"
+  }
+}
