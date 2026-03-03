@@ -1,10 +1,10 @@
 export default {
   "BACKEND/src/**/*.ts": [
-    "eslint --fix",
-    "prettier --write",
+    "node ./node_modules/eslint/bin/eslint.js --fix",
+    "node ./node_modules/prettier/bin/prettier.cjs --write",
   ],
   "FRONTEND/app/src/**/*.{ts,vue}": [
-    "eslint --fix",
-    "prettier --write",
+    "node ./node_modules/eslint/bin/eslint.js --fix",
+    "node ./node_modules/prettier/bin/prettier.cjs --write",
   ],
 };

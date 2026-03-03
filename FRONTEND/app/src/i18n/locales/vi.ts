@@ -109,7 +109,8 @@ export default {
   // ═══════════════════════════════════════════════════════════════════════════
   auth: {
     pageTitle: "Max HUB Admin – Trung tâm Điều hành Thông minh",
-    pageDesc: "Công cụ quản trị hiện đại dành riêng cho Admin, tích hợp các tính năng thông minh giúp theo dõi, phân tích và tối ưu hóa trải nghiệm người dùng trên hệ sinh thái Max HUB.",
+    pageDesc:
+      "Công cụ quản trị hiện đại dành riêng cho Admin, tích hợp các tính năng thông minh giúp theo dõi, phân tích và tối ưu hóa trải nghiệm người dùng trên hệ sinh thái Max HUB.",
     tabLogin: "ĐĂNG NHẬP",
     tabRegister: "ĐĂNG KÝ",
     account: "Tài khoản",
@@ -698,7 +699,8 @@ export default {
   withdrawPage: {
     title: "Rút tiền",
     currentBalance: "Số dư hiện tại:",
-    instruction: "Vui lòng đi tới danh sách ngân hàng, sau khi thêm tài khoản ngân hàng quý khách mới có thể thực hiện rút tiền",
+    instruction:
+      "Vui lòng đi tới danh sách ngân hàng, sau khi thêm tài khoản ngân hàng quý khách mới có thể thực hiện rút tiền",
     goToPage: "Đi tới trang",
   },
 
@@ -849,7 +851,8 @@ export default {
     confirmDeleteAll: "Bạn có chắc muốn **xóa TẤT CẢ** dữ liệu đồng bộ?\nHành động này không thể hoàn tác.",
     confirmDeleteAllTitle: "Xác nhận xóa tất cả",
     confirmDeleteAllBtn: "Xóa tất cả",
-    confirmDeleteAgent: "Bạn có chắc muốn **xóa dữ liệu** của đại lý **{name}**?\nHành động này không thể hoàn tác.",
+    confirmDeleteAgent:
+      "Bạn có chắc muốn **xóa dữ liệu** của đại lý **{name}**?\nHành động này không thể hoàn tác.",
     confirmDeleteAgentTitle: "Xác nhận xóa dữ liệu đại lý",
     // Toast messages
     enterAgentName: "Vui lòng nhập tên đại lý",
@@ -1078,6 +1081,9 @@ export default {
     colFirstDeposit: "Nạp đầu",
     uploadSuccess: "Upload thành công: {customers} KH, {employees} NV",
     uploadError: "Lỗi upload file",
+    exportXlsx: "Xuất XLSX",
+    exportSuccess: "Xuất file thành công",
+    exportError: "Lỗi xuất file",
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -1094,7 +1100,7 @@ export default {
     emptyInput: "Vui lòng dán dữ liệu vào ô bên trái",
     parseError: "Không nhận diện được dữ liệu. Vui lòng kiểm tra định dạng.",
     parseSuccess: "Đã nhận diện {count} khách hàng",
-    emptyPreview: "Dán dữ liệu bên trái rồi bấm \"Nhận diện\"",
+    emptyPreview: 'Dán dữ liệu bên trái rồi bấm "Nhận diện"',
     noData: "Chưa có dữ liệu để thêm",
     addBtn: "Thêm vào danh sách",
     addRow: "Thêm dòng",

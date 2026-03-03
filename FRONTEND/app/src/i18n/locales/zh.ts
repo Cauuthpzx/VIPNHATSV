@@ -109,7 +109,8 @@ export default {
   // ═══════════════════════════════════════════════════════════════════════════
   auth: {
     pageTitle: "Max HUB Admin – 智能运营中心",
-    pageDesc: "专为管理员打造的现代化管理工具，集成智能功能，帮助跟踪、分析和优化 Max HUB 生态系统的用户体验。",
+    pageDesc:
+      "专为管理员打造的现代化管理工具，集成智能功能，帮助跟踪、分析和优化 Max HUB 生态系统的用户体验。",
     tabLogin: "登录",
     tabRegister: "注册",
     account: "账号",
@@ -1078,6 +1079,9 @@ export default {
     colFirstDeposit: "首充",
     uploadSuccess: "上传成功：{customers} 客户，{employees} 员工",
     uploadError: "上传文件失败",
+    exportXlsx: "导出XLSX",
+    exportSuccess: "导出成功",
+    exportError: "导出失败",
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -1094,7 +1098,7 @@ export default {
     emptyInput: "请在左侧输入框粘贴数据",
     parseError: "无法识别数据格式，请检查。",
     parseSuccess: "已识别 {count} 位客户",
-    emptyPreview: '在左侧粘贴数据后点击「识别」',
+    emptyPreview: "在左侧粘贴数据后点击「识别」",
     noData: "没有数据可添加",
     addBtn: "添加到列表",
     addRow: "添加行",

@@ -178,9 +178,6 @@ importers:
       eslint-plugin-vue:
         specifier: ^10.8.0
         version: 10.8.0(@typescript-eslint/parser@8.56.1)(eslint@10.0.2)(vue-eslint-parser@10.4.0)
-      less:
-        specifier: ^4.5.1
-        version: 4.5.1
       prettier:
         specifier: ^3.8.1
         version: 3.8.1
@@ -192,7 +189,7 @@ importers:
         version: 8.56.1(eslint@10.0.2)(typescript@4.9.5)
       vite:
         specifier: 5.0.11
-        version: 5.0.11(@types/node@18.19.39)(less@4.5.1)
+        version: 5.0.11(@types/node@18.19.39)(less@4.2.0)
       vue-eslint-parser:
         specifier: ^10.4.0
         version: 10.4.0(eslint@10.0.2)
@@ -3857,7 +3854,7 @@ packages:
       '@babel/core': 7.24.7
       '@babel/plugin-transform-typescript': 7.24.7(@babel/core@7.24.7)
       '@vue/babel-plugin-jsx': 1.2.2(@babel/core@7.24.7)
-      vite: 5.0.11(@types/node@18.19.39)(less@4.5.1)
+      vite: 5.0.11(@types/node@18.19.39)(less@4.2.0)
       vue: 3.3.13(typescript@4.9.5)
     transitivePeerDependencies:
       - supports-color
@@ -3870,7 +3867,7 @@ packages:
       vite: ^4.0.0 || ^5.0.0
       vue: ^3.2.25
     dependencies:
-      vite: 5.0.11(@types/node@18.19.39)(less@4.5.1)
+      vite: 5.0.11(@types/node@18.19.39)(less@4.2.0)
       vue: 3.3.13(typescript@4.9.5)
     dev: true
 
@@ -7340,25 +7337,6 @@ packages:
       source-map: 0.6.1
     dev: true
 
-  /less@4.5.1:
-    resolution: {integrity: sha512-UKgI3/KON4u6ngSsnDADsUERqhZknsVZbnuzlRZXLQCmfC/MDld42fTydUE9B+Mla1AL6SJ/Pp6SlEFi/AVGfw==}
-    engines: {node: '>=14'}
-    hasBin: true
-    requiresBuild: true
-    dependencies:
-      copy-anything: 2.0.6
-      parse-node-version: 1.0.1
-      tslib: 2.8.1
-    optionalDependencies:
-      errno: 0.1.8
-      graceful-fs: 4.2.11
-      image-size: 0.5.5
-      make-dir: 2.1.0
-      mime: 1.6.0
-      needle: 3.3.1
-      source-map: 0.6.1
-    dev: true
-
   /levn@0.4.1:
     resolution: {integrity: sha512-+bT2uH4E5LGE7h/n3evcS/sQlJXCpIp6ym8OWJ5eV6+67Dsql/LaaT7qJBAt2rzfoa/5QBGBhxDix1dMt2kQKQ==}
     engines: {node: '>= 0.8.0'}
@@ -10085,43 +10063,6 @@ packages:
       '@types/node': 18.19.39
       esbuild: 0.19.12
       less: 4.2.0
-      postcss: 8.5.3
-      rollup: 4.18.0
-    optionalDependencies:
-      fsevents: 2.3.3
-    dev: true
-
-  /vite@5.0.11(@types/node@18.19.39)(less@4.5.1):
-    resolution: {integrity: sha512-XBMnDjZcNAw/G1gEiskiM1v6yzM4GE5aMGvhWTlHAYYhxb7S3/V1s3m2LDHa8Vh6yIWYYB0iJwsEaS523c4oYA==}
-    engines: {node: ^18.0.0 || >=20.0.0}
-    hasBin: true
-    peerDependencies:
-      '@types/node': ^18.0.0 || >=20.0.0
-      less: '*'
-      lightningcss: ^1.21.0
-      sass: '*'
-      stylus: '*'
-      sugarss: '*'
-      terser: ^5.4.0
-    peerDependenciesMeta:
-      '@types/node':
-        optional: true
-      less:
-        optional: true
-      lightningcss:
-        optional: true
-      sass:
-        optional: true
-      stylus:
-        optional: true
-      sugarss:
-        optional: true
-      terser:
-        optional: true
-    dependencies:
-      '@types/node': 18.19.39
-      esbuild: 0.19.12
-      less: 4.5.1
       postcss: 8.5.3
       rollup: 4.18.0
     optionalDependencies:

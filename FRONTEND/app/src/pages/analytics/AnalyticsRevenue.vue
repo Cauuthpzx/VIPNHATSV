@@ -2,27 +2,20 @@
 import { ref, onMounted, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { layer } from "@layui/layui-vue";
-import {
-  fetchRevenueSummary,
-  fetchRevenueExportData,
-  uploadCustomerFile,
-  type RevenueSummaryResult,
-} from "@/api/services/analytics";
-import { exportRevenueXlsx } from "@/composables/useRevenueExport";
+import { fetchRevenueSummary, uploadCustomerFile, type RevenueSummaryResult } from "@/api/services/analytics";
 import { useToolbarPermission } from "@/composables/useToolbarPermission";
+import { exportRevenueExcel } from "@/composables/useRevenueExport";
 
 const { t } = useI18n();
 const { canExport } = useToolbarPermission();
 const loading = ref(true);
-const exporting = ref(false);
 const uploading = ref(false);
+const exporting = ref(false);
 const data = ref<RevenueSummaryResult | null>(null);
 
 // Default to current month
 const now = new Date();
-const selectedMonth = ref(
-  `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`,
-);
+const selectedMonth = ref(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`);
 
 // Format number with locale and sign
 function fmtNum(v: number): string {
@@ -61,6 +54,15 @@ function triggerUpload() {
   fileInputRef.value?.click();
 }
 
+async function handleExport() {
+  exporting.value = true;
+  try {
+    await exportRevenueExcel(selectedMonth.value);
+  } finally {
+    exporting.value = false;
+  }
+}
+
 async function handleFileUpload(event: Event) {
   const input = event.target as HTMLInputElement;
   const file = input.files?.[0];
@@ -70,10 +72,10 @@ async function handleFileUpload(event: Event) {
   try {
     const res = await uploadCustomerFile(file);
     const { employeeCount, mappingCount } = res.data.data;
-    layer.msg(
-      t("analyticsRevenue.uploadSuccess", { employees: employeeCount, mappings: mappingCount }),
-      { icon: 1, time: 3000 },
-    );
+    layer.msg(t("analyticsRevenue.uploadSuccess", { employees: employeeCount, mappings: mappingCount }), {
+      icon: 1,
+      time: 3000,
+    });
     await loadData();
   } catch {
     layer.msg(t("analyticsRevenue.uploadError"), { icon: 2, time: 2000 });
@@ -82,39 +84,30 @@ async function handleFileUpload(event: Event) {
     input.value = "";
   }
 }
-
-// Export XLSX
-async function handleExport() {
-  if (exporting.value) return;
-  exporting.value = true;
-  const loadingId = layer.load(0, { shade: true });
-  try {
-    const res = await fetchRevenueExportData(selectedMonth.value);
-    await exportRevenueXlsx(res.data.data, selectedMonth.value);
-    layer.msg(t("analyticsRevenue.exportSuccess"), { icon: 1, time: 2000 });
-  } catch {
-    layer.msg(t("analyticsRevenue.exportError"), { icon: 2, time: 2000 });
-  } finally {
-    layer.close(loadingId);
-    exporting.value = false;
-  }
-}
 </script>
 
 <template>
   <div class="analytics-page">
     <div class="page-header">
-      <div class="page-title">{{ t("analyticsRevenue.title") }}</div>
+      <div class="page-title">
+        {{ t("analyticsRevenue.title") }}
+      </div>
       <div class="revenue-actions">
-        <input
-          type="month"
-          v-model="selectedMonth"
-          class="month-picker"
-        />
+        <input v-model="selectedMonth" type="month" class="month-picker" />
         <template v-if="canExport">
-          <lay-button size="sm" @click="triggerUpload" :loading="uploading">
-            <i class="layui-icon layui-icon-upload"></i>
+          <lay-button size="sm" :loading="uploading" @click="triggerUpload">
+            <i class="layui-icon layui-icon-upload" />
             {{ t("analyticsRevenue.uploadCustomers") }}
+          </lay-button>
+          <lay-button
+            size="sm"
+            type="normal"
+            :loading="exporting"
+            :disabled="!data || !data.hasCustomerData"
+            @click="handleExport"
+          >
+            <i class="layui-icon layui-icon-export" />
+            {{ t("analyticsRevenue.exportXlsx") }}
           </lay-button>
           <input
             ref="fileInputRef"
@@ -123,10 +116,6 @@ async function handleExport() {
             style="display: none"
             @change="handleFileUpload"
           />
-          <lay-button type="primary" size="sm" @click="handleExport" :loading="exporting" :disabled="!data?.hasCustomerData">
-            <i class="layui-icon layui-icon-export"></i>
-            {{ t("analyticsRevenue.exportXlsx") }}
-          </lay-button>
         </template>
       </div>
     </div>
@@ -136,14 +125,17 @@ async function handleExport() {
       <i
         class="layui-icon layui-icon-loading layui-anim layui-anim-rotate layui-anim-loop"
         style="font-size: 32px; color: #009688"
-      ></i>
+      />
     </div>
 
     <template v-else-if="data">
       <!-- No customer data -->
       <lay-card v-if="!data.hasCustomerData" class="section-card">
         <div style="text-align: center; padding: 40px 20px; color: #999">
-          <i class="layui-icon layui-icon-upload" style="font-size: 48px; display: block; margin-bottom: 12px"></i>
+          <i
+            class="layui-icon layui-icon-upload"
+            style="font-size: 48px; display: block; margin-bottom: 12px"
+          />
           {{ t("analyticsRevenue.noCustomerData") }}
         </div>
       </lay-card>
@@ -152,25 +144,33 @@ async function handleExport() {
         <!-- KPI Row -->
         <div class="kpi-row">
           <div class="kpi-mini">
-            <div class="kpi-mini-label">{{ t("analyticsRevenue.totalRevenue") }}</div>
+            <div class="kpi-mini-label">
+              {{ t("analyticsRevenue.totalRevenue") }}
+            </div>
             <div class="kpi-mini-value" :class="data.grandTotal.totalRevenue < 0 ? 'text-green' : 'text-red'">
               {{ fmtMoney(data.grandTotal.totalRevenue) }}
             </div>
           </div>
           <div class="kpi-mini">
-            <div class="kpi-mini-label">{{ t("analyticsRevenue.lotteryProfit") }}</div>
+            <div class="kpi-mini-label">
+              {{ t("analyticsRevenue.lotteryProfit") }}
+            </div>
             <div class="kpi-mini-value">
               {{ fmtMoney(data.grandTotal.lotteryWinLose) }}
             </div>
           </div>
           <div class="kpi-mini">
-            <div class="kpi-mini-label">{{ t("analyticsRevenue.thirdGameProfit") }}</div>
+            <div class="kpi-mini-label">
+              {{ t("analyticsRevenue.thirdGameProfit") }}
+            </div>
             <div class="kpi-mini-value">
               {{ fmtMoney(data.grandTotal.thirdGameWinLose) }}
             </div>
           </div>
           <div class="kpi-mini">
-            <div class="kpi-mini-label">{{ t("analyticsRevenue.totalCustomers") }}</div>
+            <div class="kpi-mini-label">
+              {{ t("analyticsRevenue.totalCustomers") }}
+            </div>
             <div class="kpi-mini-value">
               {{ data.grandTotal.customerCount.toLocaleString() }}
             </div>
@@ -179,53 +179,91 @@ async function handleExport() {
 
         <!-- Summary Table -->
         <lay-card class="section-card">
-          <div class="section-header">{{ t("analyticsRevenue.summaryTable") }}</div>
+          <div class="section-header">
+            {{ t("analyticsRevenue.summaryTable") }}
+          </div>
           <div style="overflow-x: auto">
             <table class="data-table">
               <thead>
                 <tr>
                   <th>STT</th>
                   <th>{{ t("analyticsRevenue.employeeName") }}</th>
-                  <th style="text-align: right">{{ t("analyticsRevenue.lotteryProfit") }}</th>
-                  <th style="text-align: right">{{ t("analyticsRevenue.thirdGameProfit") }}</th>
-                  <th style="text-align: right">{{ t("analyticsRevenue.promotionCol") }}</th>
-                  <th style="text-align: right">{{ t("analyticsRevenue.rebateCol") }}</th>
-                  <th style="text-align: right">{{ t("analyticsRevenue.totalRevenue") }}</th>
-                  <th style="text-align: right">{{ t("analyticsRevenue.customerCountCol") }}</th>
+                  <th style="text-align: right">
+                    {{ t("analyticsRevenue.lotteryProfit") }}
+                  </th>
+                  <th style="text-align: right">
+                    {{ t("analyticsRevenue.thirdGameProfit") }}
+                  </th>
+                  <th style="text-align: right">
+                    {{ t("analyticsRevenue.promotionCol") }}
+                  </th>
+                  <th style="text-align: right">
+                    {{ t("analyticsRevenue.rebateCol") }}
+                  </th>
+                  <th style="text-align: right">
+                    {{ t("analyticsRevenue.totalRevenue") }}
+                  </th>
+                  <th style="text-align: right">
+                    {{ t("analyticsRevenue.customerCountCol") }}
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-for="(emp, i) in data.employees" :key="emp.employeeId">
                   <td>{{ i + 1 }}</td>
-                  <td class="text-bold">{{ emp.employeeName }}</td>
-                  <td style="text-align: right">{{ fmtNum(emp.lotteryWinLose) }}</td>
-                  <td style="text-align: right">{{ fmtNum(emp.thirdGameWinLose) }}</td>
-                  <td style="text-align: right">{{ fmtNum(emp.promotion) }}</td>
-                  <td style="text-align: right">{{ fmtNum(emp.thirdRebate) }}</td>
+                  <td class="text-bold">
+                    {{ emp.employeeName }}
+                  </td>
+                  <td style="text-align: right">
+                    {{ fmtNum(emp.lotteryWinLose) }}
+                  </td>
+                  <td style="text-align: right">
+                    {{ fmtNum(emp.thirdGameWinLose) }}
+                  </td>
+                  <td style="text-align: right">
+                    {{ fmtNum(emp.promotion) }}
+                  </td>
+                  <td style="text-align: right">
+                    {{ fmtNum(emp.thirdRebate) }}
+                  </td>
                   <td
                     style="text-align: right; font-weight: 600"
                     :class="emp.totalRevenue < 0 ? 'text-green' : emp.totalRevenue > 0 ? 'text-red' : ''"
                   >
                     {{ fmtNum(emp.totalRevenue) }}
                   </td>
-                  <td style="text-align: right">{{ emp.customerCount }}</td>
+                  <td style="text-align: right">
+                    {{ emp.customerCount }}
+                  </td>
                 </tr>
               </tbody>
               <tfoot>
                 <tr class="total-row">
-                  <td></td>
-                  <td style="font-weight: 700">{{ t("analyticsRevenue.grandTotal") }}</td>
-                  <td style="text-align: right; font-weight: 600">{{ fmtNum(data.grandTotal.lotteryWinLose) }}</td>
-                  <td style="text-align: right; font-weight: 600">{{ fmtNum(data.grandTotal.thirdGameWinLose) }}</td>
-                  <td style="text-align: right; font-weight: 600">{{ fmtNum(data.grandTotal.promotion) }}</td>
-                  <td style="text-align: right; font-weight: 600">{{ fmtNum(data.grandTotal.thirdRebate) }}</td>
+                  <td />
+                  <td style="font-weight: 700">
+                    {{ t("analyticsRevenue.grandTotal") }}
+                  </td>
+                  <td style="text-align: right; font-weight: 600">
+                    {{ fmtNum(data.grandTotal.lotteryWinLose) }}
+                  </td>
+                  <td style="text-align: right; font-weight: 600">
+                    {{ fmtNum(data.grandTotal.thirdGameWinLose) }}
+                  </td>
+                  <td style="text-align: right; font-weight: 600">
+                    {{ fmtNum(data.grandTotal.promotion) }}
+                  </td>
+                  <td style="text-align: right; font-weight: 600">
+                    {{ fmtNum(data.grandTotal.thirdRebate) }}
+                  </td>
                   <td
                     style="text-align: right; font-weight: 700"
                     :class="data.grandTotal.totalRevenue < 0 ? 'text-green' : 'text-red'"
                   >
                     {{ fmtNum(data.grandTotal.totalRevenue) }}
                   </td>
-                  <td style="text-align: right; font-weight: 600">{{ data.grandTotal.customerCount }}</td>
+                  <td style="text-align: right; font-weight: 600">
+                    {{ data.grandTotal.customerCount }}
+                  </td>
                 </tr>
               </tfoot>
             </table>
