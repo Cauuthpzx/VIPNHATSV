@@ -147,7 +147,7 @@ const totalBetCount = computed(() => data.value?.lotteryTrend.reduce((s, d) => s
         <div class="kpi-mini">
           <div class="kpi-mini-label">{{ t('analyticsBetting.totalBetThird') }}</div>
           <div class="kpi-mini-value" style="color: #ffb800">{{ formatMoney(totalThirdBet) }}</div>
-          <div class="kpi-mini-sub">{{ data.thirdGameTrend.reduce((s, d) => s + d.betTimes, 0).toLocaleString() }} {{ t('analyticsBetting.plays') }}</div>
+          <div class="kpi-mini-sub">{{ data.thirdGameTrend.reduce((s: number, d: any) => s + d.betTimes, 0).toLocaleString() }} {{ t('analyticsBetting.plays') }}</div>
         </div>
         <div class="kpi-mini">
           <div class="kpi-mini-label">{{ t('analyticsBetting.totalProfit') }}</div>

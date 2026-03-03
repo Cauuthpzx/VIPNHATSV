@@ -3,7 +3,10 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "@layui/layui-vue": ["../packages/component/index.ts"],
+      "@layui/layer-vue": ["../packages/layer/index.ts"],
+      "@layui/icons-vue": ["../packages/icons/index.ts"]
     }
   },
   "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.tsx", "src/**/*.vue", "env.d.ts"]
