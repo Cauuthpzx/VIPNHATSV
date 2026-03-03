@@ -55,10 +55,10 @@ export const menuData: MenuItem[] = [
     title: "Rút hoa hồng",
     icon: "layui-icon-dollar",
     children: [
-      { id: "bankList", title: "Danh sách thẻ ngân hàng", path: "/agent/bank-list", permission: PERMISSIONS.FINANCE_READ },
+      // { id: "bankList", title: "Danh sách thẻ ngân hàng", path: "/agent/bank-list", permission: PERMISSIONS.FINANCE_READ },
       { id: "deposit", title: "Danh sách nạp tiền", path: "/agent/deposit", permission: PERMISSIONS.FINANCE_READ },
       { id: "withdrawalsRecord", title: "Lịch sử rút tiền", path: "/agent/withdrawals-record", permission: PERMISSIONS.FINANCE_READ },
-      { id: "withdraw", title: "Rút tiền", path: "/agent/withdraw", permission: PERMISSIONS.FINANCE_READ },
+      // { id: "withdraw", title: "Rút tiền", path: "/agent/withdraw", permission: PERMISSIONS.FINANCE_READ },
     ],
   },
   {

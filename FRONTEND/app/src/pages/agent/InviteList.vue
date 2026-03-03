@@ -2,6 +2,7 @@
 import { reactive } from "vue";
 import { useListPage } from "@/composables/useListPage";
 import { fetchInviteList } from "@/api/services/proxy";
+import { createExportAllFn } from "@/composables/useExportAll";
 import { layer } from "@layui/layui-vue";
 import { useAgentFilter } from "@/composables/useAgentFilter";
 import { useAuthStore } from "@/stores/auth";
@@ -54,6 +55,14 @@ async function loadData() {
 
 const { handlePageChange, handleSearch } = bindLoadData(loadData, selectedAgentId);
 
+const exportAllFn = createExportAllFn((p, limit) =>
+  fetchInviteList({
+    page: p, limit,
+    invite_code: searchForm.inviteCode || undefined,
+    create_time: searchForm.dateAdded?.length === 2 ? `${searchForm.dateAdded[0]} - ${searchForm.dateAdded[1]}` : undefined,
+  }).then(r => r.data.data),
+);
+
 function handleReset() {
   searchForm.dateAdded = [];
   searchForm.inviteCode = "";
@@ -98,6 +107,7 @@ function handleReset() {
           :loading="loading"
           :default-toolbar="true"
           :data-source="dataSource"
+          :export-all-fn="exportAllFn"
           @change="handlePageChange"
         >
           <template v-slot:toolbar>

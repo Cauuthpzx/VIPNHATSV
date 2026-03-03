@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, reactive, computed, watch, onMounted, onUnmounted } from "vue";
-import { fetchSyncStatus, triggerSync, triggerAgentSync, triggerAgentEndpointSync, stopSync, setSyncInterval, purgeAllData, purgeAgentData } from "@/api/services/sync";
+import { fetchSyncStatus, triggerSync, triggerAgentSync, triggerAgentEndpointSync, stopSync, setSyncIntervals, purgeAllData, purgeAgentData } from "@/api/services/sync";
 import {
   loginAgentEE88, logoutAgentEE88, loginAllAgentsEE88,
   createAgent, updateAgent, deleteAgent,
@@ -32,8 +32,21 @@ const activeAgents = ref(0);
 const totalAgents = ref(0);
 const isSyncing = ref(false);
 const intervalMs = ref(300000);
+const intervals = ref<Record<string, number>>({});
 const tables = ref<any[]>([]);
 const agents = ref<any[]>([]);
+
+// Map endpoint table → label tiếng Việt
+const ENDPOINT_LABELS: Record<string, string> = {
+  proxyUser: "Hội viên",
+  proxyDeposit: "Nạp tiền",
+  proxyWithdrawal: "Rút tiền",
+  proxyBet: "Đơn cược xổ số",
+  proxyBetOrder: "Đơn cược bên thứ 3",
+  proxyReportLottery: "Báo cáo xổ số",
+  proxyReportFunds: "Sao kê giao dịch",
+  proxyReportThirdGame: "Báo cáo NCC",
+};
 const expandKeys = ref<string[]>([]);
 
 // --- Agent CRUD modal ---
@@ -192,7 +205,7 @@ const agentColumns = computed(() => [
   { title: "Trạng thái", key: "_status", customSlot: "agentStatus", width: "120px" },
   { title: "Bản ghi", key: "totalRows", customSlot: "num", width: "80px" },
   { title: "Sync cuối", key: "lastSyncedAt", customSlot: "syncTime", width: "130px" },
-  ...(canWrite.value ? [{ title: "Thao tác", key: "_actions", customSlot: "actions", width: "440px", align: "center" }] : []),
+  ...(canWrite.value ? [{ title: "Thao tác", key: "_actions", customSlot: "actions", width: "140px", align: "center" }] : []),
 ]);
 
 const statusMap: Record<string, { color: string; label: string }> = {
@@ -265,6 +278,7 @@ async function loadStatus() {
       // Luôn cập nhật trạng thái syncing (nhẹ, không gây re-render bảng)
       isSyncing.value = d.isSyncing;
       intervalMs.value = d.intervalMs;
+      if (d.intervals) intervals.value = d.intervals;
 
       // Khi đang sync → luôn cập nhật (hiển thị realtime). Khi idle → chỉ khi data thay đổi
       if (fp !== lastFingerprint || d.isSyncing) {
@@ -322,33 +336,49 @@ async function handleStopSync() {
   }
 }
 
-// --- Cài đặt chu kỳ đồng bộ ---
+// --- Cài đặt chu kỳ đồng bộ (per-endpoint) ---
 const intervalEditing = ref(false);
-const intervalInput = ref(5);
+const intervalInputs = ref<Record<string, number>>({});
+const intervalSaving = ref(false);
 
 function openIntervalEdit() {
-  intervalInput.value = Math.round(intervalMs.value / 60000);
+  // Copy current intervals → form inputs (convert ms → phút)
+  const inputs: Record<string, number> = {};
+  for (const [table, ms] of Object.entries(intervals.value)) {
+    inputs[table] = Math.round(ms / 60000);
+  }
+  intervalInputs.value = inputs;
   intervalEditing.value = true;
 }
 
-async function saveInterval() {
-  const ms = intervalInput.value * 60000;
-  if (ms < 30000) {
-    layer.msg("Chu kỳ tối thiểu 30 giây", { icon: 0 });
-    return;
+async function saveIntervals() {
+  // Convert phút → ms
+  const payload: Record<string, number> = {};
+  for (const [table, minutes] of Object.entries(intervalInputs.value)) {
+    const ms = minutes * 60000;
+    if (ms < 30000) {
+      const label = ENDPOINT_LABELS[table] || table;
+      layer.msg(`${label}: tối thiểu 1 phút`, { icon: 0 });
+      return;
+    }
+    payload[table] = ms;
   }
+  intervalSaving.value = true;
   try {
-    const res = await setSyncInterval(ms);
+    const res = await setSyncIntervals(payload);
     if (res.data.success) {
-      intervalMs.value = ms;
-      layer.msg(`Đã cập nhật chu kỳ: ${intervalInput.value} phút`, { icon: 1 });
+      if (res.data.data?.intervals) {
+        intervals.value = res.data.data.intervals;
+      }
+      layer.msg("Đã cập nhật chu kỳ đồng bộ", { icon: 1 });
+      intervalEditing.value = false;
     } else {
       layer.msg(res.data.message || "Lỗi", { icon: 2 });
     }
   } catch {
     layer.msg("Lỗi cập nhật chu kỳ đồng bộ", { icon: 2 });
   } finally {
-    intervalEditing.value = false;
+    intervalSaving.value = false;
   }
 }
 
@@ -550,66 +580,58 @@ onUnmounted(() => {
 
 <template>
   <div class="sync-dashboard">
-    <!-- ===== OVERVIEW CARDS ===== -->
-    <lay-row :space="12">
-      <lay-col :md="6">
-        <lay-card class="stat-card">
-          <div class="stat-icon-wrap bg-teal">
-            <i class="layui-icon layui-icon-chart-screen"></i>
-          </div>
-          <div class="stat-info">
-            <div class="stat-num">
-              <lay-count-up :end-val="totalRows" :duration="800" :use-grouping="true" />
-            </div>
-            <div class="stat-desc">Tổng bản ghi</div>
-          </div>
-        </lay-card>
-      </lay-col>
-      <lay-col :md="6">
-        <lay-card class="stat-card">
-          <div class="stat-icon-wrap bg-blue">
-            <i class="layui-icon layui-icon-group"></i>
-          </div>
-          <div class="stat-info">
-            <div class="stat-num">
-              {{ activeAgents }}<span class="stat-sub">/{{ totalAgents }}</span>
-            </div>
-            <div class="stat-desc">Agent hoạt động</div>
-          </div>
-        </lay-card>
-      </lay-col>
-      <lay-col :md="6">
-        <lay-card class="stat-card" :class="{ clickable: canWrite }" @click="canWrite && openIntervalEdit()">
-          <div class="stat-icon-wrap bg-orange">
-            <i class="layui-icon layui-icon-timer"></i>
-          </div>
-          <div class="stat-info">
-            <div class="stat-num">{{ Math.round(intervalMs / 60000) }}<span class="stat-sub">phút</span></div>
-            <div class="stat-desc">Chu kỳ đồng bộ<template v-if="canWrite"> <i class="layui-icon layui-icon-edit" style="font-size: 12px; cursor: pointer"></i></template></div>
-          </div>
-        </lay-card>
-      </lay-col>
-      <lay-col :md="6">
-        <lay-card class="stat-card">
-          <div class="stat-icon-wrap" :class="isSyncing ? 'bg-yellow pulse' : 'bg-green'">
+    <!-- ===== OVERVIEW: 1 CARD GỘP 4 THỐNG KÊ ===== -->
+    <lay-card class="overview-card">
+      <div class="overview-stats">
+        <div class="overview-item" :class="{ 'overview-item--syncing': isSyncing }">
+          <div class="overview-icon" :class="isSyncing ? 'bg-yellow pulse' : 'bg-green'">
             <i class="layui-icon" :class="isSyncing ? 'layui-icon-loading-1 spin' : 'layui-icon-ok-circle'"></i>
           </div>
-          <div class="stat-info">
-            <div class="stat-num">
-              <lay-tag
-                :color="isSyncing ? '#ffb800' : '#16baaa'"
-                variant="light"
-                size="sm"
-                bordered
-              >
+          <div class="overview-text">
+            <div class="overview-label">Trạng thái</div>
+            <div class="overview-value">
+              <lay-tag :color="isSyncing ? '#ffb800' : '#16baaa'" variant="light" size="sm" bordered>
                 {{ isSyncing ? "Đang đồng bộ..." : "Sẵn sàng" }}
               </lay-tag>
             </div>
-            <div class="stat-desc">Trạng thái</div>
           </div>
-        </lay-card>
-      </lay-col>
-    </lay-row>
+        </div>
+        <div class="overview-divider"></div>
+        <div class="overview-item">
+          <div class="overview-icon bg-teal">
+            <i class="layui-icon layui-icon-chart-screen"></i>
+          </div>
+          <div class="overview-text">
+            <div class="overview-label">Tổng bản ghi</div>
+            <div class="overview-value">
+              <lay-count-up :end-val="totalRows" :duration="800" :use-grouping="true" />
+            </div>
+          </div>
+        </div>
+        <div class="overview-divider"></div>
+        <div class="overview-item">
+          <div class="overview-icon bg-blue">
+            <i class="layui-icon layui-icon-group"></i>
+          </div>
+          <div class="overview-text">
+            <div class="overview-label">Agent hoạt động</div>
+            <div class="overview-value">{{ activeAgents }}<span class="overview-sub">/{{ totalAgents }}</span></div>
+          </div>
+        </div>
+        <div class="overview-divider"></div>
+        <div class="overview-item" :class="{ clickable: canWrite }" @click="canWrite && openIntervalEdit()">
+          <div class="overview-icon bg-orange">
+            <svg xmlns="http://www.w3.org/2000/svg" height="20" viewBox="0 -960 960 960" width="20" fill="#fff"><path d="M360-860v-60h240v60H360Zm90 447h60v-230h-60v230ZM340.5-109.5Q275-138 226-187t-77.5-114.5Q120-367 120-441t28.5-139.5Q177-646 226-695t114.5-77.5Q406-801 480-801q67 0 126 22.5T711-716l51-51 42 42-51 51q36 40 61.5 97T840-441q0 74-28.5 139.5T734-187q-49 49-114.5 77.5T480-81q-74 0-139.5-28.5Zm352-119Q780-316 780-441t-87.5-212.5Q605-741 480-741t-212.5 87.5Q180-566 180-441t87.5 212.5Q355-141 480-141t212.5-87.5ZM480-440Z"/></svg>
+          </div>
+          <div class="overview-text">
+            <div class="overview-label">Chu kỳ đồng bộ<template v-if="canWrite"> <i class="layui-icon layui-icon-edit" style="font-size: 11px; cursor: pointer; color: #999"></i></template></div>
+            <div class="overview-value">
+              <lay-tag color="#ffb800" variant="light" size="sm" bordered>Tuỳ chỉnh</lay-tag>
+            </div>
+          </div>
+        </div>
+      </div>
+    </lay-card>
 
     <!-- ===== AGENT TABLE ===== -->
     <lay-card style="margin-top: 12px">
@@ -625,9 +647,6 @@ onUnmounted(() => {
             v-model:expandKeys="expandKeys"
           >
             <template v-slot:toolbar>
-              <lay-button size="sm" type="normal">
-                <b>{{ activeAgents }}/{{ totalAgents }} HOẠT ĐỘNG</b>
-              </lay-button>
               <template v-if="canWrite">
                 <lay-button
                   size="sm"
@@ -638,13 +657,11 @@ onUnmounted(() => {
                 </lay-button>
                 <lay-button
                   size="sm"
-                  type="primary"
                   :loading="loggingInAll"
                   @click="handleLoginAll"
                 >
                   <i class="layui-icon layui-icon-key"></i> Login tất cả
                 </lay-button>
-                <!-- Sync controls: Bắt đầu / Dừng -->
                 <lay-button
                   v-if="!isSyncing"
                   size="sm"
@@ -652,7 +669,7 @@ onUnmounted(() => {
                   :loading="triggering"
                   @click="handleSyncAll"
                 >
-                  <i class="layui-icon layui-icon-play"></i> Bắt đầu đồng bộ
+                  <i class="layui-icon layui-icon-play"></i> Đồng bộ
                 </lay-button>
                 <lay-button
                   v-else
@@ -661,27 +678,16 @@ onUnmounted(() => {
                   :loading="stopping"
                   @click="handleStopSync"
                 >
-                  <i class="layui-icon layui-icon-pause"></i> Dừng đồng bộ
-                </lay-button>
-                <lay-button
-                  size="sm"
-                  type="warm"
-                  :loading="purgingAll"
-                  :disabled="isSyncing"
-                  @click="confirmPurgeAll"
-                >
-                  <i class="layui-icon layui-icon-delete"></i> Xóa tất cả DB
+                  <i class="layui-icon layui-icon-pause"></i> Dừng
                 </lay-button>
               </template>
             </template>
 
             <template #agentName="{ row }">
-              <!-- Child row: table label with icon -->
               <span v-if="row.icon" class="agent-name-cell" style="color: #666">
                 <i class="layui-icon" :class="row.icon" style="margin-right: 6px; font-size: 14px; color: #999"></i>
                 {{ row.name }}
               </span>
-              <!-- Parent row: agent name with status icon -->
               <span v-else class="agent-name-cell">
                 <i
                   class="layui-icon"
@@ -729,49 +735,19 @@ onUnmounted(() => {
             <template #actions="{ row }">
               <!-- Child row: per-table sync button -->
               <template v-if="row.icon && row.table">
-                <div class="action-btns">
-                  <lay-button
-                    size="xs"
-                    type="primary"
-                    :loading="syncingEndpointKey === `${row.agentId}__${row.table}`"
-                    :disabled="isSyncing"
-                    @click="handleSyncAgentEndpoint(row.agentId, row.table, row.name)"
-                  >
-                    <i class="layui-icon layui-icon-refresh-1"></i> Sync
-                  </lay-button>
-                </div>
+                <lay-button
+                  size="xs"
+                  type="primary"
+                  :loading="syncingEndpointKey === `${row.agentId}__${row.table}`"
+                  :disabled="isSyncing"
+                  @click="handleSyncAgentEndpoint(row.agentId, row.table, row.name)"
+                >
+                  <svg class="sync-icon" xmlns="http://www.w3.org/2000/svg" height="14" viewBox="0 -960 960 960" width="14" fill="currentColor"><path d="M238-211q-57-53-87.5-122.5T120-480q0-150 105-255t255-105v-80l183 140-183 140v-80q-100 0-170 70t-70 170q0 57 25 107.5t67 88.5l-94 73ZM480-40 297-180l183-140v80q100 0 170-70t70-170q0-57-25-108t-70-88l95-71q58 51 89 120.5T840-480q0 150-105 255T480-120v80Z"/></svg> Sync
+                </lay-button>
               </template>
-              <!-- Parent row: agent-level actions -->
+              <!-- Parent row: Sync + dropdown menu -->
               <template v-else-if="!row.icon">
                 <div class="action-btns">
-                  <lay-button
-                    size="xs"
-                    @click="openEditAgent(row)"
-                  >
-                    <i class="layui-icon layui-icon-edit"></i> Sửa
-                  </lay-button>
-                  <lay-button
-                    size="xs"
-                    type="primary"
-                    :loading="loggingInAgentId === row.id"
-                    @click="handleLoginAgent(row.id)"
-                  >
-                    <i class="layui-icon layui-icon-key"></i> Login
-                  </lay-button>
-                  <lay-button
-                    size="xs"
-                    type="warm"
-                    @click="openChangePassword(row)"
-                  >
-                    <i class="layui-icon layui-icon-password" style="font-size: 14px; font-weight: bold"></i> Đổi MK
-                  </lay-button>
-                  <lay-button
-                    size="xs"
-                    :loading="loggingOutAgentId === row.id"
-                    @click="handleLogoutAgent(row.id)"
-                  >
-                    Logout
-                  </lay-button>
                   <lay-button
                     size="xs"
                     :type="agentStore.cookieHealthMap[row.id] === true ? 'primary' : 'normal'"
@@ -779,24 +755,45 @@ onUnmounted(() => {
                     :disabled="isSyncing || agentStore.cookieHealthMap[row.id] !== true"
                     @click="handleSyncAgent(row.id)"
                   >
-                    <i class="layui-icon layui-icon-refresh-1"></i> Sync
+                    <svg class="sync-icon" xmlns="http://www.w3.org/2000/svg" height="14" viewBox="0 -960 960 960" width="14" fill="currentColor"><path d="M238-211q-57-53-87.5-122.5T120-480q0-150 105-255t255-105v-80l183 140-183 140v-80q-100 0-170 70t-70 170q0 57 25 107.5t67 88.5l-94 73ZM480-40 297-180l183-140v80q100 0 170-70t70-170q0-57-25-108t-70-88l95-71q58 51 89 120.5T840-480q0 150-105 255T480-120v80Z"/></svg> Sync
                   </lay-button>
-                  <lay-button
-                    size="xs"
-                    type="warm"
-                    :loading="purgingAgentId === row.id"
-                    :disabled="isSyncing"
-                    @click="confirmPurgeAgent(row.id, row.name)"
-                  >
-                    <i class="layui-icon layui-icon-delete"></i> Xóa DB
-                  </lay-button>
-                  <lay-button
-                    size="xs"
-                    type="danger"
-                    @click="confirmDeleteAgent(row.id, row.name)"
-                  >
-                    <i class="layui-icon layui-icon-close"></i>
-                  </lay-button>
+                  <lay-dropdown>
+                    <lay-button size="xs">
+                      <i class="layui-icon layui-icon-more-vertical"></i>
+                    </lay-button>
+                    <template #content>
+                      <lay-dropdown-menu>
+                        <lay-dropdown-menu-item @click="openEditAgent(row)">
+                          <i class="layui-icon layui-icon-edit" style="margin-right: 6px"></i>Sửa thông tin
+                        </lay-dropdown-menu-item>
+                        <lay-dropdown-menu-item
+                          @click="loggingInAgentId !== row.id && handleLoginAgent(row.id)"
+                          :disabled="loggingInAgentId === row.id"
+                        >
+                          <i class="layui-icon layui-icon-key" style="margin-right: 6px"></i>{{ loggingInAgentId === row.id ? 'Đang login...' : 'Login EE88' }}
+                        </lay-dropdown-menu-item>
+                        <lay-dropdown-menu-item
+                          @click="loggingOutAgentId !== row.id && handleLogoutAgent(row.id)"
+                          :disabled="loggingOutAgentId === row.id"
+                        >
+                          <i class="layui-icon layui-icon-release" style="margin-right: 6px"></i>{{ loggingOutAgentId === row.id ? 'Đang logout...' : 'Logout EE88' }}
+                        </lay-dropdown-menu-item>
+                        <lay-dropdown-menu-item @click="openChangePassword(row)">
+                          <i class="layui-icon layui-icon-password" style="margin-right: 6px"></i>Đổi mật khẩu
+                        </lay-dropdown-menu-item>
+                        <li style="border-top: 1px solid #eee; margin: 4px 0"></li>
+                        <lay-dropdown-menu-item
+                          @click="!isSyncing && purgingAgentId !== row.id && confirmPurgeAgent(row.id, row.name)"
+                          :disabled="isSyncing || purgingAgentId === row.id"
+                        >
+                          <span style="color: #ff9900"><i class="layui-icon layui-icon-delete" style="margin-right: 6px"></i>Xóa dữ liệu</span>
+                        </lay-dropdown-menu-item>
+                        <lay-dropdown-menu-item @click="confirmDeleteAgent(row.id, row.name)">
+                          <span style="color: #ff4d4f"><i class="layui-icon layui-icon-close" style="margin-right: 6px"></i>Vô hiệu hoá</span>
+                        </lay-dropdown-menu-item>
+                      </lay-dropdown-menu>
+                    </template>
+                  </lay-dropdown>
                 </div>
               </template>
             </template>
@@ -805,11 +802,6 @@ onUnmounted(() => {
       </lay-field>
     </lay-card>
 
-    <!-- ===== AUTO-REFRESH ===== -->
-    <div class="auto-refresh-note">
-      <i class="layui-icon layui-icon-refresh-1"></i>
-      Tự động cập nhật mỗi 30 giây
-    </div>
 
     <!-- ===== MODAL THÊM/SỬA AGENT ===== -->
     <lay-layer
@@ -865,31 +857,44 @@ onUnmounted(() => {
       </div>
     </lay-layer>
 
-    <!-- ===== MODAL CÀI ĐẶT CHU KỲ ĐỒNG BỘ ===== -->
+    <!-- ===== MODAL CÀI ĐẶT CHU KỲ ĐỒNG BỘ (PER-ENDPOINT) ===== -->
     <lay-layer
       v-model="intervalEditing"
-      title="Cài đặt chu kỳ đồng bộ tự động"
-      :area="['380px', 'auto']"
+      title="Cài đặt chu kỳ đồng bộ"
+      :area="['500px', 'auto']"
       :shade-close="true"
       :btn="[
-        { text: 'Lưu', callback: () => saveInterval() },
+        { text: intervalSaving ? 'Đang lưu...' : 'Lưu tất cả', callback: () => saveIntervals() },
         { text: 'Hủy', callback: () => { intervalEditing = false; } },
       ]"
     >
-      <div style="padding: 20px">
+      <div style="padding: 16px 20px">
         <div style="margin-bottom: 12px; color: #666; font-size: 13px">
-          Chu kỳ tự động đồng bộ dữ liệu (phút). Tối thiểu 1 phút.
+          Cài đặt chu kỳ đồng bộ riêng cho từng loại dữ liệu (phút). Tối thiểu 1 phút.
         </div>
-        <lay-input-number
-          v-model="intervalInput"
-          :min="1"
-          :max="1440"
-          :step="1"
-          position="right"
-        />
-        <div style="margin-top: 8px; color: #999; font-size: 12px">
-          Giá trị hiện tại: {{ intervalInput }} phút ({{ intervalInput * 60 }} giây)
-        </div>
+        <table class="interval-table">
+          <thead>
+            <tr>
+              <th>Loại dữ liệu</th>
+              <th style="width: 120px; text-align: center">Chu kỳ (phút)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(label, table) in ENDPOINT_LABELS" :key="table">
+              <td>{{ label }}</td>
+              <td style="text-align: center">
+                <lay-input-number
+                  v-model="intervalInputs[table]"
+                  :min="1"
+                  :max="1440"
+                  :step="1"
+                  size="sm"
+                  position="right"
+                />
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </lay-layer>
   </div>
@@ -900,26 +905,48 @@ onUnmounted(() => {
   padding: 0;
 }
 
-.stat-card {
+/* ===== OVERVIEW CARD ===== */
+.overview-stats {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 16px 18px !important;
-  min-height: 80px;
+  gap: 0;
+  padding: 4px 8px;
 }
 
-.stat-icon-wrap {
-  width: 48px;
-  height: 48px;
-  border-radius: 10px;
+.overview-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  padding: 8px 16px;
+  border-radius: 6px;
+  transition: background 0.2s;
+}
+
+.overview-item.clickable:hover {
+  background: #f6f6f6;
+  cursor: pointer;
+}
+
+.overview-divider {
+  width: 1px;
+  height: 36px;
+  background: #e8e8e8;
+  flex-shrink: 0;
+}
+
+.overview-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
 }
 
-.stat-icon-wrap .layui-icon {
-  font-size: 24px;
+.overview-icon .layui-icon {
+  font-size: 18px;
   color: #fff;
 }
 
@@ -929,31 +956,30 @@ onUnmounted(() => {
 .bg-green { background: linear-gradient(135deg, #16baaa, #5cd7ca); }
 .bg-yellow { background: linear-gradient(135deg, #ffb800, #ffe066); }
 
-.stat-info {
-  flex: 1;
+.overview-text {
   min-width: 0;
 }
 
-.stat-num {
-  font-size: 22px;
-  font-weight: 700;
-  color: #333;
+.overview-label {
+  font-size: 12px;
+  color: #999;
   line-height: 1.2;
 }
 
-.stat-sub {
+.overview-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: #333;
+  line-height: 1.3;
+}
+
+.overview-sub {
   font-size: 13px;
   font-weight: 400;
   color: #999;
-  margin-left: 2px;
 }
 
-.stat-desc {
-  font-size: 12px;
-  color: #999;
-  margin-top: 4px;
-}
-
+/* ===== ANIMATIONS ===== */
 .pulse {
   animation: pulse-ring 1.5s ease-in-out infinite;
 }
@@ -973,6 +999,7 @@ onUnmounted(() => {
   to { transform: rotate(360deg); }
 }
 
+/* ===== TABLE ===== */
 .table-container {
   margin-top: 8px;
 }
@@ -987,19 +1014,12 @@ onUnmounted(() => {
   display: flex;
   gap: 4px;
   justify-content: center;
-  flex-wrap: wrap;
+  align-items: center;
 }
 
-.auto-refresh-note {
-  text-align: center;
-  padding: 12px 0 4px;
-  font-size: 12px;
-  color: #bbb;
-}
-
-.auto-refresh-note .layui-icon {
-  font-size: 12px;
-  margin-right: 4px;
+.sync-icon {
+  vertical-align: middle;
+  margin-right: 2px;
 }
 
 .login-error-text {
@@ -1012,11 +1032,27 @@ onUnmounted(() => {
   white-space: nowrap;
 }
 
-.clickable {
-  cursor: pointer;
-  transition: box-shadow 0.2s;
+/* ===== INTERVAL TABLE ===== */
+.interval-table {
+  width: 100%;
+  border-collapse: collapse;
 }
-.clickable:hover {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+
+.interval-table th,
+.interval-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 13px;
+}
+
+.interval-table th {
+  background: #fafafa;
+  color: #666;
+  font-weight: 500;
+  text-align: left;
+}
+
+.interval-table td:first-child {
+  color: #333;
 }
 </style>

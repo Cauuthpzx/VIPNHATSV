@@ -238,6 +238,7 @@ const tableToolbarProps = computed(() => {
     hierarchicalColumns: hierarchicalColumns.value,
     lastLevelAllColumns: lastLevelAllColumns.value,
     tableRef: tableRef.value,
+    exportAllFn: props.exportAllFn,
   };
 });
 

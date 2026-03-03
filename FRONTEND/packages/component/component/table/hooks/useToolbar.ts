@@ -35,7 +35,11 @@ export function useToolBar(props: TableToolBarType) {
   };
 
   // 报表导出
-  const exportData = () => {
+  const exportData = async () => {
+    const source = props.exportAllFn
+      ? await props.exportAllFn().catch(() => props.tableDataSource)
+      : props.tableDataSource;
+
     let tableStr = ``;
     for (const tableHeadColumn of props.hierarchicalColumns) {
       tableStr += "<tr>";
@@ -53,8 +57,8 @@ export function useToolBar(props: TableToolBarType) {
       }
       tableStr += "</tr>";
     }
-    const doExport = (source: Array<any>) => {
-      source.forEach((item, rowIndex) => {
+    const doExport = (rows: Array<any>) => {
+      rows.forEach((item, rowIndex) => {
         tableStr += "<tr>";
         props.lastLevelAllColumns.forEach((tableColumn, columnIndex) => {
           if (!tableColumn.ignoreExport) {
@@ -98,7 +102,7 @@ export function useToolBar(props: TableToolBarType) {
           doExport(item.children);
       });
     };
-    doExport(props.tableDataSource);
+    doExport(source);
     const worksheet = "Sheet1";
     const uri = "data:application/vnd.ms-excel;base64,";
     const exportTemplate = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"

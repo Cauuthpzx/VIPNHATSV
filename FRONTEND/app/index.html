@@ -5,9 +5,47 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>MAXHUB</title>
+    <style>
+      /* Critical inline CSS — giữ background liền mạch từ frame 0, CSS thuần */
+      html, body, #app {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        background:
+          repeating-linear-gradient(0deg, transparent, transparent 1px, rgba(0,0,0,0.03) 1px, rgba(0,0,0,0.03) 2px),
+          repeating-linear-gradient(90deg, transparent, transparent 1px, rgba(0,0,0,0.025) 1px, rgba(0,0,0,0.025) 2px),
+          #f5f0e1;
+      }
+      /* Loading spinner hiển thị ngay, ẩn khi Vue mount xong */
+      #app-loader {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 99999;
+      }
+      #app-loader .spinner {
+        width: 36px;
+        height: 36px;
+        border: 3px solid #d5d0c1;
+        border-top-color: #009688;
+        border-radius: 50%;
+        animation: spin 0.7s linear infinite;
+      }
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+    </style>
   </head>
   <body>
-    <div id="app"></div>
+    <div id="app">
+      <!-- Loader tĩnh — Vue sẽ replace toàn bộ innerHTML khi mount -->
+      <div id="app-loader">
+        <div class="spinner"></div>
+      </div>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

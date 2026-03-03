@@ -5,6 +5,7 @@ import { useListPage } from "@/composables/useListPage";
 import { useAutoFitSelect } from "@/composables/useAutoFitSelect";
 import { useAgentFilter } from "@/composables/useAgentFilter";
 import { fetchReportLottery, fetchLotteryDropdown } from "@/api/services/proxy";
+import { createExportAllFn } from "@/composables/useExportAll";
 import { layer } from "@layui/layui-vue";
 import CookieBadge from "@/components/CookieBadge.vue";
 
@@ -90,6 +91,8 @@ async function loadData() {
     page.total = res.data.data.total;
     if (res.data.data.totalData) {
       summaryData.value = [res.data.data.totalData as any];
+    } else {
+      summaryData.value = [{ total_bet_number: 0, total_bet_count: 0, total_bet_amount: "0.0000", total_valid_amount: "0.0000", total_rebate_amount: "0.0000", total_result: "0.0000", total_win_lose: "0.0000", total_prize: "0.0000" }];
     }
   } catch {
     if (!isStale()) layer.msg("Lỗi tải dữ liệu", { icon: 2 });
@@ -98,7 +101,16 @@ async function loadData() {
   }
 }
 
-const { handlePageChange, handleSearch } = bindLoadData(loadData, selectedAgentId);
+const { handlePageChange, handleSearch } = bindLoadData(loadData, selectedAgentId, [dateRange]);
+
+const exportAllFn = createExportAllFn((p, limit) =>
+  fetchReportLottery({
+    page: p, limit,
+    username: searchForm.username || undefined,
+    lottery_id: searchForm.lotteryType || undefined,
+    date: dateRange.value?.length === 2 ? `${dateRange.value[0]} - ${dateRange.value[1]}` : undefined,
+  }).then(r => r.data.data),
+);
 
 function handleReset() {
   resetDateRange();
@@ -158,6 +170,7 @@ onMounted(() => loadLotteryOptions());
           :loading="loading"
           :default-toolbar="true"
           :data-source="dataSource"
+          :export-all-fn="exportAllFn"
           @change="handlePageChange"
         >
           <template v-slot:toolbar>

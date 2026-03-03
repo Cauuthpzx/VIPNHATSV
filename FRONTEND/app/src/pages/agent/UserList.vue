@@ -6,6 +6,7 @@ import { useAgentFilter } from "@/composables/useAgentFilter";
 import { useAuthStore } from "@/stores/auth";
 import { PERMISSIONS } from "@/constants/permissions";
 import { fetchUserList } from "@/api/services/proxy";
+import { createExportAllFn } from "@/composables/useExportAll";
 import { layer } from "@layui/layui-vue";
 import CookieBadge from "@/components/CookieBadge.vue";
 
@@ -85,6 +86,16 @@ async function loadData() {
 
 const { handlePageChange, handleSearch } = bindLoadData(loadData, selectedAgentId);
 
+const exportAllFn = createExportAllFn((p, limit) =>
+  fetchUserList({
+    page: p, limit,
+    username: searchForm.username || undefined,
+    status: searchForm.status || undefined,
+    sort_field: searchForm.sortField || undefined,
+    sort_order: searchForm.sortOrder || undefined,
+  }).then(r => r.data.data),
+);
+
 function handleReset() {
   searchForm.username = "";
   searchForm.dateRange = [];
@@ -152,6 +163,7 @@ function handleReset() {
           :loading="loading"
           :default-toolbar="true"
           :data-source="dataSource"
+          :export-all-fn="exportAllFn"
           @change="handlePageChange"
         >
           <template v-slot:toolbar>

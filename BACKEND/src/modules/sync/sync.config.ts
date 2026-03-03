@@ -14,6 +14,8 @@ export interface SyncEndpointConfig {
   syncOnce: boolean;
   /** Extra params to send with every request (e.g. { es: "1" } for betOrder) */
   extraParams?: Record<string, string>;
+  /** Default sync interval in ms. 0 = dùng global interval. */
+  defaultIntervalMs: number;
 }
 
 /**
@@ -34,15 +36,15 @@ export const SYNC_DATE_START = process.env.SYNC_DATE_START || "2026-01-01";
  * - bank           → KHÔNG sync (fetch trực tiếp từ upstream khi cần)
  */
 export const SYNC_ENDPOINTS: SyncEndpointConfig[] = [
-  { table: "proxyUser",            path: "/agent/user.html",                 needsDateRange: false, pageSize: 20000, syncOnce: false },
-  { table: "proxyInvite",          path: "/agent/inviteList.html",           needsDateRange: false, pageSize: 5000, syncOnce: true },
-  { table: "proxyDeposit",         path: "/agent/depositAndWithdrawal.html", needsDateRange: true,  pageSize: 5000, syncOnce: false, extraParams: { es: "1" } },
-  { table: "proxyWithdrawal",      path: "/agent/withdrawalsRecord.html",    needsDateRange: true,  pageSize: 5000, syncOnce: false, extraParams: { es: "1" } },
-  { table: "proxyBet",             path: "/agent/bet.html",                  needsDateRange: true,  pageSize: 5000, syncOnce: false, extraParams: { es: "1" } },
-  { table: "proxyBetOrder",        path: "/agent/betOrder.html",             needsDateRange: true,  pageSize: 5000, syncOnce: false, extraParams: { es: "1" } },
-  { table: "proxyReportLottery",   path: "/agent/reportLottery.html",        needsDateRange: true,  pageSize: 5000, syncOnce: false, extraParams: { username: "", lottery_id: "", es: "1", is_summary: "1" } },
-  { table: "proxyReportFunds",     path: "/agent/reportFunds.html",          needsDateRange: true,  pageSize: 5000, syncOnce: false, extraParams: { username: "" } },
-  { table: "proxyReportThirdGame", path: "/agent/reportThirdGame.html",      needsDateRange: true,  pageSize: 5000, syncOnce: false, extraParams: { username: "", es: "1", is_summary: "1" } },
+  { table: "proxyUser",            path: "/agent/user.html",                 needsDateRange: false, pageSize: 20000, syncOnce: false, defaultIntervalMs: 300000 },
+  { table: "proxyInvite",          path: "/agent/inviteList.html",           needsDateRange: false, pageSize: 5000, syncOnce: true,  defaultIntervalMs: 0 },
+  { table: "proxyDeposit",         path: "/agent/depositAndWithdrawal.html", needsDateRange: true,  pageSize: 5000, syncOnce: false, defaultIntervalMs: 60000,  extraParams: { es: "1" } },
+  { table: "proxyWithdrawal",      path: "/agent/withdrawalsRecord.html",    needsDateRange: true,  pageSize: 5000, syncOnce: false, defaultIntervalMs: 60000,  extraParams: { es: "1" } },
+  { table: "proxyBet",             path: "/agent/bet.html",                  needsDateRange: true,  pageSize: 5000, syncOnce: false, defaultIntervalMs: 60000,  extraParams: { es: "1" } },
+  { table: "proxyBetOrder",        path: "/agent/betOrder.html",             needsDateRange: true,  pageSize: 5000, syncOnce: false, defaultIntervalMs: 60000,  extraParams: { es: "1" } },
+  { table: "proxyReportLottery",   path: "/agent/reportLottery.html",        needsDateRange: true,  pageSize: 5000, syncOnce: false, defaultIntervalMs: 300000, extraParams: { username: "", lottery_id: "", es: "1", is_summary: "1" } },
+  { table: "proxyReportFunds",     path: "/agent/reportFunds.html",          needsDateRange: true,  pageSize: 5000, syncOnce: false, defaultIntervalMs: 300000, extraParams: { username: "" } },
+  { table: "proxyReportThirdGame", path: "/agent/reportThirdGame.html",      needsDateRange: true,  pageSize: 5000, syncOnce: false, defaultIntervalMs: 300000, extraParams: { username: "", es: "1", is_summary: "1" } },
 ];
 
 /** Max pages fetched concurrently per agent */

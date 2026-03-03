@@ -34,6 +34,7 @@ export interface TableProps {
   autoColsWidth?: boolean;
   emptyDescription?: string;
   initSort?: initSort;
+  exportAllFn?: () => Promise<Recordable[]>;
 }
 
 type OptionalKeys = "skin" | "page" | "height" | "emptyDescription";

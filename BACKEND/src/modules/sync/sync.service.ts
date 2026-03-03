@@ -11,6 +11,7 @@ import {
   SYNC_PAGE_CONCURRENCY,
   type SyncEndpointConfig,
 } from "./sync.config.js";
+import { shouldRunEndpoint, markEndpointRan } from "./sync.scheduler.js";
 import { logger } from "../../utils/logger.js";
 import { wsManager } from "../../websocket/ws.manager.js";
 import { AppError } from "../../errors/AppError.js";
@@ -280,9 +281,27 @@ export async function runFullSync(app: FastifyInstance): Promise<void> {
 
     logger.info(`[Sync] ${agents.length} active agents — launching ${agents.length} independent streams`);
 
+    // Xác định endpoint nào cần chạy lần này (per-endpoint interval)
+    const endpointsToRun = new Set<string>();
+    for (const ep of SYNC_ENDPOINTS) {
+      if (ep.syncOnce) {
+        endpointsToRun.add(ep.table); // syncOnce luôn check (đã có isSyncOnceDone guard)
+      } else if (shouldRunEndpoint(ep.table)) {
+        endpointsToRun.add(ep.table);
+        markEndpointRan(ep.table);
+      }
+    }
+
+    if (endpointsToRun.size === 0) {
+      logger.debug("[Sync] No endpoints due this cycle, skipping");
+      return;
+    }
+
+    logger.info(`[Sync] Endpoints this cycle: ${[...endpointsToRun].join(", ")}`);
+
     // Mỗi agent là 1 stream độc lập, chạy song song tất cả
     const agentPromises = agents.map((agent) =>
-      runAgentStream(app, agent).catch((err) => {
+      runAgentStream(app, agent, endpointsToRun).catch((err) => {
         logger.error(`[Sync] Agent stream fatal error: ${agent.name}`, {
           agentId: agent.id,
           error: err instanceof Error ? err.message : String(err),
@@ -321,17 +340,24 @@ export async function runFullSync(app: FastifyInstance): Promise<void> {
  * Lỗi ở 1 agent KHÔNG ảnh hưởng agent khác.
  * Lỗi ở 1 endpoint KHÔNG ảnh hưởng endpoint khác.
  */
-async function runAgentStream(app: FastifyInstance, agent: Agent): Promise<void> {
+async function runAgentStream(
+  app: FastifyInstance,
+  agent: Agent,
+  endpointsToRun?: Set<string>,
+): Promise<void> {
   const cookie = decryptSessionCookie(agent.sessionCookie);
   const today = formatDate(new Date());
 
   logger.info(`[Sync] Agent stream started: ${agent.name} (${agent.extUsername})`);
   const agentStart = Date.now();
 
-  // Phân nhóm endpoints
-  const syncOnceEndpoints = SYNC_ENDPOINTS.filter((ep) => ep.syncOnce);
-  const noDateEndpoints = SYNC_ENDPOINTS.filter((ep) => !ep.syncOnce && !ep.needsDateRange);
-  const dateRangeEndpoints = SYNC_ENDPOINTS.filter((ep) => ep.needsDateRange);
+  // Phân nhóm endpoints — filter theo endpointsToRun nếu có
+  const shouldInclude = (ep: SyncEndpointConfig) =>
+    !endpointsToRun || endpointsToRun.has(ep.table);
+
+  const syncOnceEndpoints = SYNC_ENDPOINTS.filter((ep) => ep.syncOnce && shouldInclude(ep));
+  const noDateEndpoints = SYNC_ENDPOINTS.filter((ep) => !ep.syncOnce && !ep.needsDateRange && shouldInclude(ep));
+  const dateRangeEndpoints = SYNC_ENDPOINTS.filter((ep) => ep.needsDateRange && shouldInclude(ep));
 
   // Helper: nếu lỗi là session expired → throw AgentSessionExpiredError để dừng agent ngay
   const rethrowIfSessionExpired = (err: unknown) => {

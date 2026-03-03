@@ -38,7 +38,12 @@ export function purgeAgentData(agentId: string) {
   return api.delete(`/sync/purge/${agentId}`);
 }
 
-/** Set auto sync interval (ms) */
+/** Set auto sync interval (ms) — legacy: set tất cả endpoint cùng 1 giá trị */
 export function setSyncInterval(intervalMs: number) {
   return api.put("/sync/interval", { intervalMs });
+}
+
+/** Set per-endpoint sync intervals (batch) */
+export function setSyncIntervals(intervals: Record<string, number>) {
+  return api.put("/sync/intervals", { intervals });
 }

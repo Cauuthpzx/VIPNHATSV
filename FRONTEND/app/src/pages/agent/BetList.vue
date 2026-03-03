@@ -5,6 +5,7 @@ import { useListPage } from "@/composables/useListPage";
 import { useAutoFitSelect } from "@/composables/useAutoFitSelect";
 import { useAgentFilter } from "@/composables/useAgentFilter";
 import { fetchBetList, fetchLotteryDropdown } from "@/api/services/proxy";
+import { createExportAllFn } from "@/composables/useExportAll";
 import { layer } from "@layui/layui-vue";
 import CookieBadge from "@/components/CookieBadge.vue";
 
@@ -233,6 +234,8 @@ async function loadData() {
     page.total = res.data.data.total;
     if (sumRes.data.data.totalData) {
       summaryData.value = [sumRes.data.data.totalData as any];
+    } else {
+      summaryData.value = [{ total_money: "0.0000", total_result: "0.0000", total_rebate_amount: "0.0000" }];
     }
   } catch {
     if (!isStale()) layer.msg("Lỗi tải dữ liệu", { icon: 2 });
@@ -241,7 +244,21 @@ async function loadData() {
   }
 }
 
-const { handlePageChange, handleSearch } = bindLoadData(loadData, selectedAgentId);
+const { handlePageChange, handleSearch } = bindLoadData(loadData, selectedAgentId, [dateRange]);
+
+const exportAllFn = createExportAllFn((p, limit) =>
+  fetchBetList({
+    page: p, limit,
+    username: searchForm.username || undefined,
+    serial_no: searchForm.serialNo || undefined,
+    date: dateRange.value?.length === 2 ? `${dateRange.value[0]} - ${dateRange.value[1]}` : undefined,
+    lottery_id: searchForm.lotteryType || undefined,
+    play_type_id: searchForm.playType || undefined,
+    play_id: searchForm.play || undefined,
+    status: searchForm.status || undefined,
+    es: 1,
+  }).then(r => r.data.data),
+);
 
 function handleReset() {
   resetDateRange();
@@ -327,6 +344,7 @@ onMounted(() => loadDropdownData());
           :loading="loading"
           :default-toolbar="true"
           :data-source="dataSource"
+          :export-all-fn="exportAllFn"
           @change="handlePageChange"
         >
           <template v-slot:toolbar>

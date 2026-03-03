@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onBeforeUnmount, ref } from "vue";
+import { computed, onMounted, onBeforeUnmount, ref, nextTick } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useAppStore } from "@/stores/app";
 import { useAuthStore } from "@/stores/auth";
@@ -13,6 +13,9 @@ import LayoutTabs from "./LayoutTabs.vue";
 const router = useRouter();
 const route = useRoute();
 const store = useAppStore();
+
+// Skip page transition lần đầu load — tránh nhấp nháy opacity 0→1
+const transitionReady = ref(false);
 const authStore = useAuthStore();
 
 const sideWidth = computed(() => (store.collapsed ? 60 : 200));
@@ -65,6 +68,8 @@ function connectWs() {
 onMounted(() => {
   notificationStore.startPolling();
   connectWs();
+  // Bật transition sau frame đầu tiên — lần đầu render không animate
+  nextTick(() => { transitionReady.value = true; });
 });
 
 onBeforeUnmount(() => {
@@ -104,7 +109,7 @@ onBeforeUnmount(() => {
     <div class="layui-body" :style="{ left: sideWidth + 'px' }">
       <div class="layadmin-tabsbody-item layui-show">
         <router-view v-slot="{ Component }">
-          <transition name="page-upbit" mode="out-in">
+          <transition :name="transitionReady ? 'page-upbit' : ''" mode="out-in">
             <component :is="Component" :key="route.path" />
           </transition>
         </router-view>
@@ -173,7 +178,7 @@ onBeforeUnmount(() => {
   z-index: 998;
   overflow-y: auto;
   overflow-x: hidden;
-  background: #f2f2f2;
+  background: var(--bg-texture-image), var(--bg-color);
   transition: left 0.3s;
 }
 

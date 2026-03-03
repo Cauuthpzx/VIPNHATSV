@@ -4,7 +4,12 @@ import {
   SYNC_ENDPOINTS,
   SYNC_PAGE_CONCURRENCY,
 } from "./sync.config.js";
-import { getSyncIntervalMs, setSyncInterval } from "./sync.scheduler.js";
+import {
+  getSyncIntervalMs,
+  setSyncInterval,
+  getAllIntervals,
+  setEndpointIntervals,
+} from "./sync.scheduler.js";
 import { logger } from "../../utils/logger.js";
 
 const TABLE_LABELS: Record<string, string> = {
@@ -187,6 +192,7 @@ export async function syncStatusHandler(request: FastifyRequest, reply: FastifyR
       totalAgents: agentList.length,
       isSyncing: getIsSyncing(),
       intervalMs: getSyncIntervalMs(),
+      intervals: getAllIntervals(),
       tables,
       agents: agentList,
     },
@@ -341,6 +347,47 @@ export async function syncSetIntervalHandler(request: FastifyRequest, reply: Fas
     success: true,
     message: `Đã cập nhật chu kỳ đồng bộ: ${intervalMs / 1000}s`,
     data: { intervalMs },
+  });
+}
+
+/**
+ * PUT /sync/intervals — Set per-endpoint sync intervals (batch)
+ * Body: { intervals: { proxyDeposit: 60000, proxyUser: 300000, ... } }
+ */
+export async function syncSetIntervalsHandler(request: FastifyRequest, reply: FastifyReply) {
+  const { intervals } = request.body as { intervals: Record<string, number> };
+
+  if (!intervals || typeof intervals !== "object") {
+    return reply.status(400).send({
+      success: false,
+      message: "intervals phải là object { table: ms }",
+    });
+  }
+
+  // Validate all table names and values
+  const validTables = SYNC_ENDPOINTS.map((ep) => ep.table);
+  for (const [table, ms] of Object.entries(intervals)) {
+    if (!validTables.includes(table)) {
+      return reply.status(400).send({
+        success: false,
+        message: `Loại dữ liệu không hợp lệ: ${table}`,
+      });
+    }
+    if (typeof ms !== "number" || ms < 30000) {
+      const label = TABLE_LABELS[MODEL_TO_TABLE[table] ?? ""] ?? table;
+      return reply.status(400).send({
+        success: false,
+        message: `${label}: interval phải >= 30000 (30 giây)`,
+      });
+    }
+  }
+
+  await setEndpointIntervals(request.server, intervals);
+
+  return reply.send({
+    success: true,
+    message: "Đã cập nhật chu kỳ đồng bộ theo endpoint",
+    data: { intervals: getAllIntervals() },
   });
 }
 

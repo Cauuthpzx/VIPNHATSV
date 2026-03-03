@@ -1,6 +1,25 @@
 /* === CSS Variable Overrides === */
 :root {
   --input-focus-border-color: #009688;
+  /* Rough cloth texture — CSS thuần, không cần file ngoài, render frame 0 */
+  --bg-color: #f5f0e1;
+  --bg-texture-image:
+    /* Sợi ngang — nhám mịn */
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 1px,
+      rgba(0,0,0,0.008) 1px,
+      rgba(0,0,0,0.008) 2px
+    ),
+    /* Sợi dọc — nhám mịn */
+    repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 1px,
+      rgba(0,0,0,0.006) 1px,
+      rgba(0,0,0,0.006) 2px
+    );
 }
 
 /* === RESET === */
@@ -22,7 +41,7 @@ body,
   font-family: "Helvetica Neue", Helvetica, "PingFang SC", Tahoma, Arial, sans-serif;
   font-size: 14px;
   color: #333;
-  background: #f2f2f2;
+  background: var(--bg-texture-image), var(--bg-color);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
@@ -96,10 +115,17 @@ body {
   font-size: 14px;
 }
 
-/* Tắt transition trên table body — tránh giật khi data thay đổi */
-.table-container .layui-table-body {
-  transition: none !important;
+
+/* Nền đồng màu content cho search fieldset, tiêu đề bảng, toolbar */
+.layui-field,
+.table-container .layui-table-tool,
+.table-container .layui-table-header,
+.table-container .layui-table-header .layui-table-cell,
+.table-container .layui-table-box-header,
+.table-container .layui-table thead tr {
+  background: var(--bg-texture-image), #fbf8ef !important;
 }
+
 
 /* Tiêu đề cột table: 1 dòng, ellipsis — tooltip qua native title attr */
 .table-container .layui-table-header th {

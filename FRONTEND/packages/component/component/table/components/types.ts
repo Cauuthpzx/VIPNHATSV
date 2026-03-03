@@ -7,4 +7,5 @@ export interface TableToolBarType {
   lastLevelAllColumns: Array<TableColumn>;
   tableDataSource: TableProps["dataSource"];
   tableRef: HTMLDivElement | null;
+  exportAllFn?: TableProps["exportAllFn"];
 }

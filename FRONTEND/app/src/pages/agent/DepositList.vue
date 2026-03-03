@@ -5,6 +5,7 @@ import { useListPage } from "@/composables/useListPage";
 import { useAutoFitSelect } from "@/composables/useAutoFitSelect";
 import { useAgentFilter } from "@/composables/useAgentFilter";
 import { fetchDepositList } from "@/api/services/proxy";
+import { createExportAllFn } from "@/composables/useExportAll";
 import { layer } from "@layui/layui-vue";
 import StatusBadge from "@/components/StatusBadge.vue";
 import CookieBadge from "@/components/CookieBadge.vue";
@@ -71,7 +72,15 @@ async function loadData() {
   }
 }
 
-const { handlePageChange, handleSearch } = bindLoadData(loadData, selectedAgentId);
+const { handlePageChange, handleSearch } = bindLoadData(loadData, selectedAgentId, [dateRange]);
+
+const exportAllFn = createExportAllFn((p, limit) =>
+  fetchDepositList({
+    page: p, limit,
+    username: searchForm.username || undefined,
+    date: dateRange.value?.length === 2 ? `${dateRange.value[0]} - ${dateRange.value[1]}` : undefined,
+  }).then(r => r.data.data),
+);
 
 function handleReset() {
   resetDateRange();
@@ -138,6 +147,7 @@ function handleReset() {
           :loading="loading"
           :default-toolbar="true"
           :data-source="dataSource"
+          :export-all-fn="exportAllFn"
           @change="handlePageChange"
         >
           <template v-slot:toolbar>

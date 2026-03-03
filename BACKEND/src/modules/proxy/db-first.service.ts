@@ -110,6 +110,151 @@ const DB_FIRST_ENDPOINTS: Record<string, DbFirstConfig> = {
 };
 
 // ---------------------------------------------------------------------------
+// DB Total Data — aggregate config for totalData computation
+// ---------------------------------------------------------------------------
+
+/**
+ * Maps endpoint → { totalDataOutputKey: prismaFieldName }.
+ * "COUNT_DISTINCT" means COUNT(DISTINCT username).
+ * All numeric fields use Prisma aggregate _sum.
+ */
+const DB_TOTAL_DATA_CONFIG: Record<string, Record<string, string | "COUNT_DISTINCT">> = {
+  "/agent/reportLottery.html": {
+    total_bet_count: "betCount",
+    total_bet_amount: "betAmount",
+    total_valid_amount: "validAmount",
+    total_rebate_amount: "rebateAmount",
+    total_result: "result",
+    total_win_lose: "winLose",
+    total_prize: "prize",
+    total_bet_number: "COUNT_DISTINCT",
+  },
+  "/agent/reportFunds.html": {
+    total_deposit_count: "depositCount",
+    total_deposit_amount: "depositAmount",
+    total_withdrawal_count: "withdrawalCount",
+    total_withdrawal_amount: "withdrawalAmount",
+    total_charge_fee: "chargeFee",
+    total_agent_commission: "agentCommission",
+    total_promotion: "promotion",
+    total_third_rebate: "thirdRebate",
+    total_third_activity_amount: "thirdActivityAmount",
+    total_user_count: "COUNT_DISTINCT",
+  },
+  "/agent/reportThirdGame.html": {
+    total_bet_times: "tBetTimes",
+    total_bet_amount: "tBetAmount",
+    total_turnover: "tTurnover",
+    total_prize: "tPrize",
+    total_win_lose: "tWinLose",
+    total_bet_number: "COUNT_DISTINCT",
+  },
+  "/agent/bet.html": {
+    total_money: "money",
+    total_rebate_amount: "rebateAmount",
+    total_result: "result",
+  },
+};
+
+/**
+ * Compute totalData via Prisma aggregate + raw COUNT(DISTINCT username).
+ * Runs in parallel: _sum aggregate + distinct count (if needed).
+ */
+async function computeDbTotalData(
+  app: FastifyInstance,
+  config: DbFirstConfig,
+  path: string,
+  where: Record<string, unknown>,
+): Promise<Record<string, unknown> | undefined> {
+  const fieldMap = DB_TOTAL_DATA_CONFIG[path];
+  if (!fieldMap) return undefined;
+
+  const prismaModel = (app.prisma as any)[config.prismaModel];
+  if (!prismaModel) return undefined;
+
+  // Collect numeric fields for _sum
+  const sumFields: Record<string, true> = {};
+  let needDistinct = false;
+  let distinctKey = "";
+
+  for (const [outputKey, prismaField] of Object.entries(fieldMap)) {
+    if (prismaField === "COUNT_DISTINCT") {
+      needDistinct = true;
+      distinctKey = outputKey;
+    } else {
+      sumFields[prismaField] = true;
+    }
+  }
+
+  // Run aggregate + distinct count in parallel
+  const [agg, distinctCount] = await Promise.all([
+    Object.keys(sumFields).length > 0
+      ? prismaModel.aggregate({ where, _sum: sumFields })
+      : Promise.resolve({ _sum: {} }),
+    needDistinct
+      ? app.prisma.$queryRawUnsafe<[{ cnt: bigint }]>(
+          `SELECT COUNT(DISTINCT username) as cnt FROM "${config.table}" WHERE ${buildRawWhereClause(where, config)}`,
+        ).then((rows: [{ cnt: bigint }]) => Number(rows[0]?.cnt ?? 0))
+      : Promise.resolve(0),
+  ]);
+
+  const result: Record<string, unknown> = {};
+  for (const [outputKey, prismaField] of Object.entries(fieldMap)) {
+    if (prismaField === "COUNT_DISTINCT") {
+      result[outputKey] = distinctCount;
+    } else {
+      const val = agg._sum?.[prismaField];
+      result[outputKey] = val != null ? Number(val).toFixed(4) : "0.0000";
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Build a raw SQL WHERE clause from the Prisma-style where object.
+ * Supports: equals, in, gte, lte, contains+insensitive.
+ */
+function buildRawWhereClause(where: Record<string, unknown>, config: DbFirstConfig): string {
+  const clauses: string[] = [];
+
+  for (const [field, condition] of Object.entries(where)) {
+    const sqlCol = toSqlColumn(field);
+
+    if (condition === null || condition === undefined) continue;
+
+    if (typeof condition === "string" || typeof condition === "number") {
+      clauses.push(`"${sqlCol}" = '${String(condition).replace(/'/g, "''")}'`);
+      continue;
+    }
+
+    if (typeof condition === "object" && condition !== null) {
+      const cond = condition as Record<string, unknown>;
+
+      if ("in" in cond && Array.isArray(cond.in)) {
+        const values = cond.in.map((v: unknown) => `'${String(v).replace(/'/g, "''")}'`).join(",");
+        clauses.push(`"${sqlCol}" IN (${values})`);
+      } else if ("contains" in cond) {
+        const val = String(cond.contains).replace(/'/g, "''");
+        clauses.push(`"${sqlCol}" ILIKE '%${val}%'`);
+      } else if ("gte" in cond || "lte" in cond) {
+        if ("gte" in cond) clauses.push(`"${sqlCol}" >= '${String(cond.gte).replace(/'/g, "''")}'`);
+        if ("lte" in cond) clauses.push(`"${sqlCol}" <= '${String(cond.lte).replace(/'/g, "''")}'`);
+      } else if ("equals" in cond) {
+        clauses.push(`"${sqlCol}" = '${String(cond.equals).replace(/'/g, "''")}'`);
+      }
+    }
+  }
+
+  return clauses.length > 0 ? clauses.join(" AND ") : "1=1";
+}
+
+/** Convert Prisma camelCase field to SQL snake_case column. */
+function toSqlColumn(prismaField: string): string {
+  return prismaField.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`);
+}
+
+// ---------------------------------------------------------------------------
 // Date range helpers
 // ---------------------------------------------------------------------------
 
@@ -152,7 +297,7 @@ export async function tryDbFirst<T>(
 
   // "always" mode (user endpoint) — always try DB if data exists
   if (config.mode === "always") {
-    return queryDb<T>(app, config, params, agentIds, page, limit, requestId);
+    return queryDb<T>(app, config, params, agentIds, page, limit, requestId, undefined, undefined, path);
   }
 
   // "locked" mode — check date range is fully locked
@@ -181,12 +326,13 @@ export async function tryDbFirst<T>(
     return null;
   }
 
-  return queryDb<T>(app, config, params, agentIds, page, limit, requestId, startDate, endDate);
+  return queryDb<T>(app, config, params, agentIds, page, limit, requestId, startDate, endDate, path);
 }
 
 /**
  * Query DB with pagination, filters, and sorting.
  * Returns items as upstream-compatible format (using the `raw` JSON column).
+ * Also computes totalData (aggregate sums) for endpoints with DB_TOTAL_DATA_CONFIG.
  */
 async function queryDb<T>(
   app: FastifyInstance,
@@ -198,6 +344,7 @@ async function queryDb<T>(
   requestId?: string,
   startDate?: string,
   endDate?: string,
+  path?: string,
 ): Promise<{ items: T[]; total: number; totalData?: Record<string, unknown> } | null> {
   try {
     const prismaModel = (app.prisma as any)[config.prismaModel];
@@ -215,8 +362,8 @@ async function queryDb<T>(
       where[dateField] = { gte: startDate, lte: endDate };
     }
 
-    // Query DB with pagination
-    const [rows, total] = await Promise.all([
+    // Query DB with pagination + totalData in parallel
+    const [rows, total, totalData] = await Promise.all([
       prismaModel.findMany({
         where,
         orderBy: { [toPrismaField(config.sortColumn)]: "desc" },
@@ -225,6 +372,7 @@ async function queryDb<T>(
         select: { raw: true, agentId: true },
       }),
       prismaModel.count({ where }),
+      path ? computeDbTotalData(app, config, path, where) : Promise.resolve(undefined),
     ]);
 
     if (total === 0) {
@@ -245,9 +393,9 @@ async function queryDb<T>(
       ...(typeof row.raw === "object" ? row.raw : {}),
     })) as T[];
 
-    logger.debug("DB-first hit", { table: config.table, total, page, requestId });
+    logger.debug("DB-first hit", { table: config.table, total, page, requestId, hasTotalData: !!totalData });
 
-    return { items, total };
+    return { items, total, totalData };
   } catch (err) {
     logger.warn("DB-first query failed, falling back to upstream", {
       table: config.table,

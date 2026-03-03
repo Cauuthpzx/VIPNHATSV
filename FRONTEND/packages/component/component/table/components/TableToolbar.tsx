@@ -137,6 +137,11 @@ const TableToolbar = defineComponent({
       required: true,
       type: [Object, null] as PropType<TableToolBarType["tableRef"]>,
     },
+
+    exportAllFn: {
+      type: Function as PropType<TableToolBarType["exportAllFn"]>,
+      default: undefined,
+    },
   },
 
   setup(props) {

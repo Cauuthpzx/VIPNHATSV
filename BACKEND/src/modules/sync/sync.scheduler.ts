@@ -1,66 +1,160 @@
 import type { FastifyInstance } from "fastify";
 import { runFullSync, getIsSyncing } from "./sync.service.js";
+import { SYNC_ENDPOINTS } from "./sync.config.js";
 import { logger } from "../../utils/logger.js";
 
-const REDIS_INTERVAL_KEY = "sync:interval_ms";
-const DEFAULT_INTERVAL_MS = 5 * 60 * 1000; // 5 phút mặc định
+// ---------------------------------------------------------------------------
+// Redis keys
+// ---------------------------------------------------------------------------
+const REDIS_INTERVAL_PREFIX = "sync:interval:"; // per-endpoint: sync:interval:proxyDeposit
+const REDIS_GLOBAL_INTERVAL_KEY = "sync:interval_ms"; // legacy global (fallback)
+const MIN_INTERVAL_MS = 30000; // 30 giây tối thiểu
+const DEFAULT_GLOBAL_INTERVAL_MS = 60000; // 1 phút — scheduler tick frequency
 
 let syncTimer: ReturnType<typeof setTimeout> | null = null;
 let initialTimer: ReturnType<typeof setTimeout> | null = null;
 let appRef: FastifyInstance | null = null;
-let currentIntervalMs = DEFAULT_INTERVAL_MS;
 let schedulerRunning = false;
 
-/** Đọc interval từ Redis, fallback env, fallback default. */
-async function getIntervalMs(app: FastifyInstance): Promise<number> {
+// Per-endpoint: lần chạy gần nhất (epoch ms)
+const lastRunAt = new Map<string, number>();
+
+// Per-endpoint: interval hiện tại (ms) — cache in-memory
+const endpointIntervals = new Map<string, number>();
+
+// ---------------------------------------------------------------------------
+// Interval management — per-endpoint
+// ---------------------------------------------------------------------------
+
+/** Đọc interval cho 1 endpoint từ Redis, fallback config default. */
+async function getEndpointIntervalMs(app: FastifyInstance, table: string): Promise<number> {
   try {
-    const cached = await app.redis.get(REDIS_INTERVAL_KEY);
+    const cached = await app.redis.get(REDIS_INTERVAL_PREFIX + table);
     if (cached) {
       const n = parseInt(cached, 10);
-      if (!isNaN(n) && n >= 30000) return n; // min 30s
+      if (!isNaN(n) && n >= MIN_INTERVAL_MS) return n;
     }
   } catch { /* ignore */ }
 
-  const envVal = Number(process.env.SYNC_INTERVAL_MS);
-  if (!isNaN(envVal) && envVal >= 30000) return envVal;
-
-  return DEFAULT_INTERVAL_MS;
+  // Fallback: config default
+  const ep = SYNC_ENDPOINTS.find((e) => e.table === table);
+  return ep?.defaultIntervalMs || DEFAULT_GLOBAL_INTERVAL_MS;
 }
 
-/** Set interval — lưu Redis + restart timer. */
-export async function setSyncInterval(app: FastifyInstance, ms: number): Promise<void> {
-  const clampedMs = Math.max(30000, ms); // min 30s
-  try {
-    await app.redis.set(REDIS_INTERVAL_KEY, String(clampedMs));
-  } catch { /* ignore */ }
-
-  currentIntervalMs = clampedMs;
-  logger.info(`[Sync] Interval updated: ${clampedMs / 1000}s`);
-
-  // Restart timer nếu scheduler đang chạy
-  if (schedulerRunning) {
-    scheduleNextRun();
+/** Load all per-endpoint intervals from Redis vào memory cache. */
+async function loadAllIntervals(app: FastifyInstance): Promise<void> {
+  for (const ep of SYNC_ENDPOINTS) {
+    if (ep.syncOnce) continue; // syncOnce không cần interval
+    const ms = await getEndpointIntervalMs(app, ep.table);
+    endpointIntervals.set(ep.table, ms);
   }
 }
 
-/** Get current interval. */
-export function getSyncIntervalMs(): number {
-  return currentIntervalMs;
+/** Set interval cho 1 endpoint — lưu Redis + update memory. */
+export async function setEndpointInterval(app: FastifyInstance, table: string, ms: number): Promise<void> {
+  const clamped = Math.max(MIN_INTERVAL_MS, ms);
+  try {
+    await app.redis.set(REDIS_INTERVAL_PREFIX + table, String(clamped));
+  } catch { /* ignore */ }
+
+  endpointIntervals.set(table, clamped);
+  logger.info(`[Sync] Interval updated: ${table} = ${clamped / 1000}s`);
+}
+
+/** Set interval cho nhiều endpoints cùng lúc. */
+export async function setEndpointIntervals(
+  app: FastifyInstance,
+  intervals: Record<string, number>,
+): Promise<void> {
+  for (const [table, ms] of Object.entries(intervals)) {
+    await setEndpointInterval(app, table, ms);
+  }
+}
+
+/** Get all current intervals (per-endpoint). */
+export function getAllIntervals(): Record<string, number> {
+  const result: Record<string, number> = {};
+  for (const ep of SYNC_ENDPOINTS) {
+    if (ep.syncOnce) continue;
+    result[ep.table] = endpointIntervals.get(ep.table) ?? ep.defaultIntervalMs;
+  }
+  return result;
+}
+
+/** Get interval for a specific endpoint. */
+export function getEndpointInterval(table: string): number {
+  return endpointIntervals.get(table) ?? DEFAULT_GLOBAL_INTERVAL_MS;
 }
 
 /**
- * Schedule next run using setTimeout (not setInterval).
- * Luôn dùng "full" mode — isDateDone skip ngày đã xong (Redis GET nhanh).
- * Đảm bảo phải sync hết tới hôm nay trước khi chỉ sync ngày hôm nay.
+ * Check xem endpoint có nên chạy trong lần sync này không.
+ * So sánh thời gian hiện tại với lastRunAt + intervalMs.
  */
+export function shouldRunEndpoint(table: string): boolean {
+  const interval = endpointIntervals.get(table);
+  if (!interval || interval <= 0) return false; // interval = 0 → disabled
+
+  const last = lastRunAt.get(table) ?? 0;
+  return Date.now() - last >= interval;
+}
+
+/** Đánh dấu endpoint vừa chạy xong. */
+export function markEndpointRan(table: string): void {
+  lastRunAt.set(table, Date.now());
+}
+
+// ---------------------------------------------------------------------------
+// Backward compat: global interval (dùng cho scheduler tick frequency)
+// ---------------------------------------------------------------------------
+
+/** Tính scheduler tick frequency = min(all endpoint intervals), min 30s. */
+function getSchedulerTickMs(): number {
+  let minMs = DEFAULT_GLOBAL_INTERVAL_MS;
+  for (const ms of endpointIntervals.values()) {
+    if (ms > 0 && ms < minMs) minMs = ms;
+  }
+  return Math.max(MIN_INTERVAL_MS, minMs);
+}
+
+/**
+ * Legacy compat: getSyncIntervalMs returns scheduler tick frequency.
+ * Frontend overview card có thể dùng hoặc hiện "Tuỳ chỉnh".
+ */
+export function getSyncIntervalMs(): number {
+  return getSchedulerTickMs();
+}
+
+/**
+ * Legacy compat: setSyncInterval updates all endpoints to same value.
+ * Nếu frontend gọi API cũ (PUT /sync/interval { intervalMs }),
+ * sẽ set tất cả recurring endpoints cùng 1 giá trị.
+ */
+export async function setSyncInterval(app: FastifyInstance, ms: number): Promise<void> {
+  const clamped = Math.max(MIN_INTERVAL_MS, ms);
+
+  // Lưu global key (legacy)
+  try { await app.redis.set(REDIS_GLOBAL_INTERVAL_KEY, String(clamped)); } catch { /* ignore */ }
+
+  // Set tất cả recurring endpoints
+  for (const ep of SYNC_ENDPOINTS) {
+    if (ep.syncOnce) continue;
+    await setEndpointInterval(app, ep.table, clamped);
+  }
+
+  // Restart timer
+  if (schedulerRunning) scheduleNextRun();
+}
+
+// ---------------------------------------------------------------------------
+// Scheduler — single timer, checks per-endpoint intervals
+// ---------------------------------------------------------------------------
+
 function scheduleNextRun(): void {
   if (syncTimer) clearTimeout(syncTimer);
+  const tickMs = getSchedulerTickMs();
 
   syncTimer = setTimeout(async () => {
     if (!appRef || !schedulerRunning) return;
-
-    // Đọc interval mới nhất từ Redis (có thể đã thay đổi qua GUI)
-    currentIntervalMs = await getIntervalMs(appRef);
 
     if (!getIsSyncing()) {
       try {
@@ -74,36 +168,30 @@ function scheduleNextRun(): void {
       logger.debug("[Sync] Skipping scheduled run — sync already in progress");
     }
 
-    // Schedule lại với interval mới nhất
-    if (schedulerRunning) {
-      scheduleNextRun();
-    }
-  }, currentIntervalMs);
+    if (schedulerRunning) scheduleNextRun();
+  }, tickMs);
 }
 
 /**
  * Start the background sync scheduler.
- * Runs first sync 10s after startup (full mode), then recurring every interval.
+ * Loads per-endpoint intervals, first sync 10s after startup, then recurring.
  */
 export async function startSyncScheduler(app: FastifyInstance): Promise<void> {
   appRef = app;
   schedulerRunning = true;
 
-  // Đọc interval từ Redis
-  currentIntervalMs = await getIntervalMs(app);
+  await loadAllIntervals(app);
 
-  logger.info(`[Sync] Scheduler started (interval: ${currentIntervalMs / 1000}s)`);
+  const tickMs = getSchedulerTickMs();
+  logger.info(`[Sync] Scheduler started (interval: ${tickMs / 1000}s)`);
 
-  // First sync after 10s
   initialTimer = setTimeout(() => {
     runFullSync(app).catch((err) => {
       logger.error("[Sync] Initial run failed", {
         error: err instanceof Error ? err.message : String(err),
       });
     }).finally(() => {
-      if (schedulerRunning) {
-        scheduleNextRun();
-      }
+      if (schedulerRunning) scheduleNextRun();
     });
   }, 10_000);
 }

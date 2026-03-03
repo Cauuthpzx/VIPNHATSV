@@ -2,6 +2,7 @@
 import { reactive } from "vue";
 import { useListPage } from "@/composables/useListPage";
 import { fetchBetOrder } from "@/api/services/proxy";
+import { createExportAllFn } from "@/composables/useExportAll";
 import { layer } from "@layui/layui-vue";
 import { useAgentFilter } from "@/composables/useAgentFilter";
 import CookieBadge from "@/components/CookieBadge.vue";
@@ -53,6 +54,16 @@ async function loadData() {
 
 const { handlePageChange, handleSearch } = bindLoadData(loadData, selectedAgentId);
 
+const exportAllFn = createExportAllFn((p, limit) =>
+  fetchBetOrder({
+    page: p, limit,
+    serial_no: searchForm.serialNo || undefined,
+    platform_username: searchForm.platformUsername || undefined,
+    bet_time: searchForm.dateRange?.length === 2 ? `${searchForm.dateRange[0]} - ${searchForm.dateRange[1]}` : undefined,
+    es: 1,
+  }).then(r => r.data.data),
+);
+
 function handleReset() {
   searchForm.dateRange = [];
   searchForm.serialNo = "";
@@ -102,6 +113,7 @@ function handleReset() {
           :loading="loading"
           :default-toolbar="true"
           :data-source="dataSource"
+          :export-all-fn="exportAllFn"
           @change="handlePageChange"
         >
           <template v-slot:toolbar>

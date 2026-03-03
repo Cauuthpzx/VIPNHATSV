@@ -3,6 +3,7 @@ import { reactive, ref } from "vue";
 import { useDateRange } from "@/composables/useDateRange";
 import { useListPage } from "@/composables/useListPage";
 import { fetchReportFunds } from "@/api/services/proxy";
+import { createExportAllFn } from "@/composables/useExportAll";
 import { layer } from "@layui/layui-vue";
 import { useAgentFilter } from "@/composables/useAgentFilter";
 import CookieBadge from "@/components/CookieBadge.vue";
@@ -38,7 +39,7 @@ const summaryColumns = [
   { title: "Hoa hồng đại lý", key: "total_agent_commission", customSlot: "sumNum", ellipsisTooltip: true },
   { title: "Ưu đãi", key: "total_promotion", customSlot: "sumNum", ellipsisTooltip: true },
   { title: "Hoàn trả bên thứ 3", key: "total_third_rebate", customSlot: "sumNum", ellipsisTooltip: true },
-  { title: "Tiền thưởng từ bên thứ 3", key: "third_activity_amount", customSlot: "sumNum", ellipsisTooltip: true },
+  { title: "Tiền thưởng từ bên thứ 3", key: "total_third_activity_amount", customSlot: "sumNum", ellipsisTooltip: true },
 ];
 
 const summaryData = ref([
@@ -49,7 +50,7 @@ const summaryData = ref([
     total_agent_commission: "0.0000",
     total_promotion: "0.0000",
     total_third_rebate: "0.0000",
-    third_activity_amount: "0.0000",
+    total_third_activity_amount: "0.0000",
   },
 ]);
 
@@ -68,6 +69,8 @@ async function loadData() {
     page.total = res.data.data.total;
     if (res.data.data.totalData) {
       summaryData.value = [res.data.data.totalData as any];
+    } else {
+      summaryData.value = [{ total_deposit_amount: "0.0000", total_withdrawal_amount: "0.0000", total_charge_fee: "0.0000", total_agent_commission: "0.0000", total_promotion: "0.0000", total_third_rebate: "0.0000", total_third_activity_amount: "0.0000" }];
     }
   } catch {
     if (!isStale()) layer.msg("Lỗi tải dữ liệu", { icon: 2 });
@@ -76,7 +79,15 @@ async function loadData() {
   }
 }
 
-const { handlePageChange, handleSearch } = bindLoadData(loadData, selectedAgentId);
+const { handlePageChange, handleSearch } = bindLoadData(loadData, selectedAgentId, [dateRange]);
+
+const exportAllFn = createExportAllFn((p, limit) =>
+  fetchReportFunds({
+    page: p, limit,
+    username: searchForm.username || undefined,
+    date: dateRange.value?.length === 2 ? `${dateRange.value[0]} - ${dateRange.value[1]}` : undefined,
+  }).then(r => r.data.data),
+);
 
 function handleReset() {
   resetDateRange();
@@ -127,6 +138,7 @@ function handleReset() {
           :loading="loading"
           :default-toolbar="true"
           :data-source="dataSource"
+          :export-all-fn="exportAllFn"
           @change="handlePageChange"
         >
           <template v-slot:toolbar>

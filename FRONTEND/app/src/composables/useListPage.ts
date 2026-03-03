@@ -47,7 +47,10 @@ export function useListPage<T = Record<string, any>>(initialLimit = 10) {
   /**
    * Tạo các handler chuẩn cho pagination page.
    */
-  function bindLoadData(loadData: () => void | Promise<void>, agentIdSource?: WatchSource) {
+  function bindLoadData(loadData: () => void | Promise<void>, agentIdSource?: WatchSource, extraSources?: WatchSource[]) {
+    // Set loading ngay lập tức (sync, trước render) → tránh flash empty state
+    loading.value = true;
+
     function handlePageChange(p: { current: number; limit: number }) {
       page.current = p.current;
       page.limit = p.limit;
@@ -65,6 +68,15 @@ export function useListPage<T = Record<string, any>>(initialLimit = 10) {
         page.current = 1;
         loadData();
       });
+    }
+
+    if (extraSources) {
+      for (const src of extraSources) {
+        watch(src, () => {
+          page.current = 1;
+          loadData();
+        });
+      }
     }
 
     onMounted(() => loadData());

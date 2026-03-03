@@ -55,7 +55,7 @@ const needTooltip = computed(
     <template v-if="needTooltip">
       <LayTooltip position="right" :is-dark="theme !== 'light'">
         <a href="javascript:void(0)">
-          <i v-if="slots.icon">
+          <i v-if="slots.icon" class="layui-sub-menu-icon">
             <slot name="icon" />
           </i>
         </a>

@@ -185,6 +185,11 @@ const TOTAL_DATA_FIELDS: Record<string, Record<string, string | "COUNT_DISTINCT"
     total_third_activity_amount: "third_activity_amount",
     total_user_count: "COUNT_DISTINCT",
   },
+  "/agent/bet.html": {
+    total_money: "money",
+    total_rebate_amount: "rebate_amount",
+    total_result: "result",
+  },
 };
 
 function computeTotalFromItems<T>(

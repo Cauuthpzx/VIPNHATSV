@@ -2,6 +2,7 @@
 import { reactive } from "vue";
 import { useListPage } from "@/composables/useListPage";
 import { fetchBankList } from "@/api/services/proxy";
+import { createExportAllFn } from "@/composables/useExportAll";
 import { layer } from "@layui/layui-vue";
 import { useAgentFilter } from "@/composables/useAgentFilter";
 import CookieBadge from "@/components/CookieBadge.vue";
@@ -49,6 +50,13 @@ async function loadData() {
 }
 
 const { handlePageChange, handleSearch } = bindLoadData(loadData, selectedAgentId);
+
+const exportAllFn = createExportAllFn((p, limit) =>
+  fetchBankList({
+    page: p, limit,
+    card_no: searchForm.accountNumber || undefined,
+  }).then(r => r.data.data),
+);
 
 function handleReset() {
   searchForm.accountNumber = "";
@@ -103,6 +111,7 @@ function handleDelete(row: any) {
           :loading="loading"
           :default-toolbar="true"
           :data-source="dataSource"
+          :export-all-fn="exportAllFn"
           @change="handlePageChange"
         >
           <template v-slot:toolbar>

@@ -3,7 +3,6 @@ import { createPinia } from "pinia";
 import { createApp } from "vue";
 import App from "./App.vue";
 import { router } from "./router";
-import { useAuthStore } from "./stores/auth";
 import "./styles/global.css";
 
 const app = createApp(App);
@@ -13,10 +12,6 @@ app.use(pinia);
 app.use(router);
 app.use(Layui);
 
-// Initialize auth BEFORE mounting so router guard has user data ready
-const authStore = useAuthStore(pinia);
-authStore.init().catch(() => {
-  authStore.initialized = true;
-}).finally(() => {
-  app.mount("#app");
-});
+// Mount ngay lập tức — không chờ auth init
+// Auth init sẽ chạy bởi router guard (beforeEach) trước khi vào protected route
+app.mount("#app");
