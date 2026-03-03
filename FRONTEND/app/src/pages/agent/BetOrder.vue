@@ -6,12 +6,14 @@ import { fetchBetOrder } from "@/api/services/proxy";
 import { createExportAllFn } from "@/composables/useExportAll";
 import { layer } from "@layui/layui-vue";
 import { useAgentFilter } from "@/composables/useAgentFilter";
+import { useToolbarPermission } from "@/composables/useToolbarPermission";
 import CookieBadge from "@/components/CookieBadge.vue";
 
 const { t } = useI18n();
 
 const { dataSource, loading, page, setLoading, bindLoadData, guardStale } = useListPage();
 const { selectedAgentId, agentOptions, agentWidth } = useAgentFilter();
+const { defaultToolbar, canExport } = useToolbarPermission();
 
 const searchForm = reactive({
   dateRange: [] as string[],
@@ -114,9 +116,9 @@ function handleReset() {
           :resize="true"
           :columns="columns"
           :loading="loading"
-          :default-toolbar="true"
+          :default-toolbar="defaultToolbar"
           :data-source="dataSource"
-          :export-all-fn="exportAllFn"
+          :export-all-fn="canExport ? exportAllFn : undefined"
           @change="handlePageChange"
         >
           <template v-slot:toolbar>

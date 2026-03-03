@@ -4,7 +4,8 @@ import { api } from "../client";
 
 export interface SystemUser {
   id: string;
-  email: string;
+  username: string;
+  email: string | null;
   name: string;
   isActive: boolean;
   roleId: string;
@@ -43,7 +44,7 @@ export function fetchUserById(id: string) {
   return api.get<SingleResponse<SystemUser>>(`/users/${id}`);
 }
 
-export function createUser(data: { email: string; password: string; name: string; roleId: string }) {
+export function createUser(data: { username: string; email?: string; password: string; name: string; roleId: string }) {
   return api.post<SingleResponse<SystemUser>>("/users", data);
 }
 

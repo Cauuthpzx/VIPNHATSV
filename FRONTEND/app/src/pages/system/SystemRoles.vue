@@ -5,6 +5,7 @@ import { layer } from "@layui/layui-vue";
 import { useAuthStore } from "@/stores/auth";
 import { PERMISSIONS, PERMISSION_LABEL_KEYS, ALL_PERMISSIONS } from "@/constants/permissions";
 import { buildPermissionTreeData, extractPermissions } from "@/constants/permissionTree";
+import { useToolbarPermission } from "@/composables/useToolbarPermission";
 import {
   fetchRoles,
   createRole,
@@ -17,6 +18,7 @@ const { t } = useI18n();
 const authStore = useAuthStore();
 const canWrite = authStore.hasPermission(PERMISSIONS.ROLES_WRITE);
 const canDelete = authStore.hasPermission(PERMISSIONS.ROLES_DELETE);
+const { defaultToolbar } = useToolbarPermission();
 
 const dataSource = ref<SystemRole[]>([]);
 const loading = ref(false);
@@ -225,7 +227,7 @@ onMounted(() => loadData());
             :resize="true"
             :columns="columns"
             :loading="loading"
-            :default-toolbar="true"
+            :default-toolbar="defaultToolbar"
             :data-source="dataSource"
           >
             <template v-slot:toolbar>

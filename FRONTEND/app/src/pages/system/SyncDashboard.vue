@@ -10,12 +10,14 @@ import {
 import { useAuthStore } from "@/stores/auth";
 import { useAgentStore } from "@/stores/agent";
 import { useWsBus } from "@/composables/useWsBus";
+import { useToolbarPermission } from "@/composables/useToolbarPermission";
 import { PERMISSIONS } from "@/constants/permissions";
 import { layer } from "@layui/layui-vue";
 
 const { t } = useI18n();
 const authStore = useAuthStore();
 const agentStore = useAgentStore();
+const { defaultToolbar } = useToolbarPermission();
 const canWrite = computed(() => authStore.hasPermission(PERMISSIONS.SYNC_WRITE));
 
 const loading = ref(true);
@@ -643,7 +645,7 @@ onUnmounted(() => {
             :columns="agentColumns"
             :data-source="agents"
             :loading="loading"
-            :default-toolbar="true"
+            :default-toolbar="defaultToolbar"
             childrenColumnName="children"
             :indentSize="20"
             v-model:expandKeys="expandKeys"

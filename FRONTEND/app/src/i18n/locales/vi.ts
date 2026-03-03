@@ -156,6 +156,7 @@ export default {
     analyticsMembers: "Phân tích Hội viên",
     analyticsAgents: "Hiệu suất Agent",
     analyticsRevenue: "Doanh thu",
+    oldCustomers: "Khách hàng",
     member: "Quản lí hội viên thuộc cấp",
     userList: "Danh sách hội viên",
     invite: "Mã giới thiệu",
@@ -324,6 +325,7 @@ export default {
     status: "Trạng thái",
     lastLogin: "Đăng nhập lần cuối",
     loginIp: "IP đăng nhập",
+    userId: "User ID",
     nameEmpty: "Tên không được để trống",
     nameUpdateSuccess: "Cập nhật tên thành công",
     nameUpdateFailed: "Cập nhật thất bại, vui lòng thử lại",
@@ -705,10 +707,11 @@ export default {
   // ═══════════════════════════════════════════════════════════════════════════
   systemUsers: {
     title: "Quản lý người dùng",
+    username: "Tài khoản",
     name: "Tên",
     role: "Vai trò",
     createdAt: "Ngày tạo",
-    searchPlaceholder: "Email hoặc tên",
+    searchPlaceholder: "Tài khoản hoặc tên",
     addNew: "Thêm mới",
     editUser: "Sửa người dùng",
     addUser: "Thêm người dùng",
@@ -717,13 +720,14 @@ export default {
     active: "Hoạt động",
     locked: "Đã khóa",
     confirmDelete: "Bạn có chắc muốn xóa người dùng này?",
-    emailPlaceholder: "Nhập email",
-    passwordPlaceholder: "Nhập mật khẩu (tối thiểu 6 ký tự)",
+    usernamePlaceholder: "Nhập tài khoản (chữ cái, số, _)",
+    passwordPlaceholder: "Nhập mật khẩu (tối thiểu 8 ký tự)",
     namePlaceholder: "Nhập tên người dùng",
     selectRole: "Chọn vai trò",
-    enterEmail: "Vui lòng nhập email",
+    enterUsername: "Vui lòng nhập tài khoản",
+    usernameRule: "Tài khoản ít nhất 4 ký tự, chỉ chữ cái, số và _",
     enterPassword: "Vui lòng nhập mật khẩu",
-    passwordMinLength: "Mật khẩu phải có ít nhất 6 ký tự",
+    passwordMinLength: "Mật khẩu phải có ít nhất 8 ký tự",
     enterName: "Vui lòng nhập tên",
     selectRoleRequired: "Vui lòng chọn vai trò",
     updateSuccess: "Cập nhật thành công",
@@ -732,6 +736,7 @@ export default {
     unlockedSuccess: "Đã mở khóa tài khoản",
     deleteSuccess: "Xóa thành công",
     deleteFailed: "Xóa thất bại",
+    emailOptional: "Email (không bắt buộc)",
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -1041,6 +1046,61 @@ export default {
     uploadCustomers: "Upload KH",
     exportXlsx: "Xuất XLSX",
     noCustomerData: "Chưa có dữ liệu nhân viên — khách hàng. Vui lòng upload file Excel.",
+    uploadSuccess: "Upload thành công: {employees} nhân viên, {mappings} liên kết",
+    uploadError: "Lỗi upload file",
+    exportSuccess: "Xuất file thành công",
+    exportError: "Lỗi xuất file",
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // OLD CUSTOMERS (Khách hàng cũ)
+  // ═══════════════════════════════════════════════════════════════════════════
+  oldCustomers: {
+    title: "Khách hàng",
+    upload: "Upload KH",
+    totalCustomers: "Tổng khách hàng",
+    totalEmployees: "Nhân viên",
+    totalAgents: "Đại lý",
+    totalSources: "Nguồn",
+    filterEmployee: "Nhân viên",
+    filterAgent: "Đại lý",
+    searchPlaceholder: "Tìm tài khoản, liên hệ...",
+    noData: "Chưa có dữ liệu khách hàng cũ. Vui lòng upload file Excel.",
+    listTitle: "Danh sách khách hàng",
+    records: "bản ghi",
+    colDate: "Ngày",
+    colEmployee: "Nhân viên",
+    colAgent: "Đại lý",
+    colUsername: "Tài khoản",
+    colContact: "Liên hệ",
+    colSource: "Nguồn",
+    colReferral: "TK giới thiệu",
+    colFirstDeposit: "Nạp đầu",
+    uploadSuccess: "Upload thành công: {customers} KH, {employees} NV",
+    uploadError: "Lỗi upload file",
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // NOTE CUSTOMER (thêm KH từ text paste)
+  // ═══════════════════════════════════════════════════════════════════════════
+  noteCustomer: {
+    btn: "Note Khách",
+    title: "Note Khách Hàng",
+    pasteLabel: "Dán dữ liệu",
+    pastePlaceholder: "Paste nội dung từ Telegram/Zalo vào đây...",
+    parseBtn: "Nhận diện",
+    previewLabel: "Xem trước",
+    clearAll: "Xóa tất cả",
+    emptyInput: "Vui lòng dán dữ liệu vào ô bên trái",
+    parseError: "Không nhận diện được dữ liệu. Vui lòng kiểm tra định dạng.",
+    parseSuccess: "Đã nhận diện {count} khách hàng",
+    emptyPreview: "Dán dữ liệu bên trái rồi bấm \"Nhận diện\"",
+    noData: "Chưa có dữ liệu để thêm",
+    addBtn: "Thêm vào danh sách",
+    addRow: "Thêm dòng",
+    missingUsername: "Dòng {row} chưa có tài khoản (username)",
+    addSuccess: "Đã thêm {inserted} khách hàng, bỏ qua {skipped} trùng",
+    addError: "Lỗi thêm khách hàng",
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -1176,6 +1236,52 @@ export default {
     binhDinh: "Bình Định",
     dakLak: "Đắk Lắk",
     dakNong: "Đắk Nông",
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // EXPORT DIALOG
+  // ═══════════════════════════════════════════════════════════════════════════
+  exportDialog: {
+    title: "Chọn nguồn xuất dữ liệu",
+    dbLocalDesc: "Xuất từ dữ liệu đã đồng bộ, nhanh hơn.",
+    ee88Desc: "Xuất trực tiếp từ nguồn, dữ liệu mới nhất nhưng chậm hơn.",
+    dbLocal: "DB Local",
+    ee88: "ee88",
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // EXCEL EXPORT (Revenue)
+  // ═══════════════════════════════════════════════════════════════════════════
+  excelExport: {
+    monthLabel: "THÁNG {month}/{year}",
+    fileName: "DoanhThu_{timestamp}.xlsx",
+    sheetSummary: "TỔNG QUÁT",
+    sheetDetail: "CHI TIẾT DOANH THU",
+    headerNo: "序号\nSTT",
+    headerEmployee: "员工姓名\nTên nhân viên",
+    headerLotteryProfit: "彩票利润\nLợi nhuận XS",
+    headerThirdProfit: "第三者利润\nLợi nhuận bên thứ 3",
+    headerPromotion: "优惠\nƯu đãi",
+    headerRebate: "第三者退款\nHoàn trả",
+    headerTotalRevenue: "总营收\nTổng doanh thu",
+    grandTotal: "总计\nTỔNG CỘNG",
+    detailTitle: "各月利润明细\nLỢI NHUẬN CHI TIẾT THEO THÁNG",
+    headerDeveloper: "开发人\nNHÂN VIÊN",
+    headerTotal: "总营收\nTỔNG",
+    profitLabel: "利润\nLỢI NHUẬN",
+    headerDate: "日期\nNgày",
+    headerTotalCustomers: "开发客户总数量\nTổng lượng khách",
+    headerDailyCustomers: "今日开发客户数量\nLượng khách trong ngày",
+    headerCustomerAccount: "客户账号\nTài khoản khách hàng",
+    headerFirstDeposit: "首次充值\nNạp tiền lần đầu",
+    headerDetailLottery: "彩票利润\nLợi nhuận xổ số",
+    headerDetailThird: "第三者利润\nLợi nhuận bên thứ 3",
+    headerDetailPromotion: "优惠\nƯu Đãi",
+    headerDetailRebate: "第三者退款\nHoàn trả bên thứ 3",
+    headerDetailTotal: "总\nTổng",
+    headerWinLose: "输赢 2M\nTHẮNG THUA",
+    monthlyProfit: "LỢI NHUẬN THÁNG {month}/{year}",
+    grandTotalLabel: "TỔNG CỘNG",
   },
 
   // ═══════════════════════════════════════════════════════════════════════════

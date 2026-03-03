@@ -239,7 +239,7 @@ onMounted(() => {
                 <span class="detail-value">{{ authStore.user?.email || t("profile.emailNotSet") }}</span>
               </div>
               <div class="detail-row">
-                <span class="detail-label">User ID</span>
+                <span class="detail-label">{{ t("profile.userId") }}</span>
                 <span class="detail-value detail-id">{{ authStore.user?.id || "—" }}</span>
               </div>
               <div class="detail-row">

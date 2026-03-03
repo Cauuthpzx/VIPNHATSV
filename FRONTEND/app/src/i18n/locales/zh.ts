@@ -155,6 +155,8 @@ export default {
     analyticsBetting: "投注分析",
     analyticsMembers: "会员分析",
     analyticsAgents: "代理绩效",
+    analyticsRevenue: "营收报告",
+    oldCustomers: "客户",
     member: "下级会员管理",
     userList: "会员列表",
     invite: "邀请码",
@@ -323,6 +325,7 @@ export default {
     status: "状态",
     lastLogin: "最后登录",
     loginIp: "登录IP",
+    userId: "用户ID",
     nameEmpty: "名称不能为空",
     nameUpdateSuccess: "名称更新成功",
     nameUpdateFailed: "更新失败，请重试",
@@ -704,10 +707,11 @@ export default {
   // ═══════════════════════════════════════════════════════════════════════════
   systemUsers: {
     title: "用户管理",
+    username: "账号",
     name: "名称",
     role: "角色",
     createdAt: "创建时间",
-    searchPlaceholder: "邮箱或名称",
+    searchPlaceholder: "账号或名称",
     addNew: "新增",
     editUser: "编辑用户",
     addUser: "新增用户",
@@ -716,13 +720,14 @@ export default {
     active: "活跃",
     locked: "已锁定",
     confirmDelete: "确定要删除此用户吗？",
-    emailPlaceholder: "输入邮箱",
-    passwordPlaceholder: "输入密码（至少6位）",
+    usernamePlaceholder: "输入账号（字母、数字、_）",
+    passwordPlaceholder: "输入密码（至少8位）",
     namePlaceholder: "输入用户名",
     selectRole: "选择角色",
-    enterEmail: "请输入邮箱",
+    enterUsername: "请输入账号",
+    usernameRule: "账号至少4位，只能包含字母、数字和_",
     enterPassword: "请输入密码",
-    passwordMinLength: "密码至少6位",
+    passwordMinLength: "密码至少8位",
     enterName: "请输入名称",
     selectRoleRequired: "请选择角色",
     updateSuccess: "更新成功",
@@ -731,6 +736,7 @@ export default {
     unlockedSuccess: "已解锁账户",
     deleteSuccess: "删除成功",
     deleteFailed: "删除失败",
+    emailOptional: "邮箱（可选）",
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -1023,6 +1029,81 @@ export default {
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
+  // ANALYTICS — REVENUE (营收)
+  // ═══════════════════════════════════════════════════════════════════════════
+  analyticsRevenue: {
+    title: "营收报表",
+    summaryTable: "员工营收总览",
+    employeeName: "员工姓名",
+    lotteryProfit: "彩票利润",
+    thirdGameProfit: "第三方利润",
+    promotionCol: "优惠",
+    rebateCol: "返点",
+    totalRevenue: "总营收",
+    customerCountCol: "客户数",
+    grandTotal: "合计",
+    totalCustomers: "总客户",
+    uploadCustomers: "上传客户",
+    exportXlsx: "导出XLSX",
+    noCustomerData: "暂无员工-客户数据，请上传Excel文件。",
+    uploadSuccess: "上传成功：{employees} 名员工，{mappings} 条关联",
+    uploadError: "上传文件失败",
+    exportSuccess: "导出成功",
+    exportError: "导出失败",
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // OLD CUSTOMERS (旧客户)
+  // ═══════════════════════════════════════════════════════════════════════════
+  oldCustomers: {
+    title: "客户",
+    upload: "上传客户",
+    totalCustomers: "客户总数",
+    totalEmployees: "员工",
+    totalAgents: "代理",
+    totalSources: "来源",
+    filterEmployee: "员工",
+    filterAgent: "代理",
+    searchPlaceholder: "搜索账号、联系方式...",
+    noData: "暂无旧客户数据，请上传Excel文件。",
+    listTitle: "客户列表",
+    records: "条记录",
+    colDate: "日期",
+    colEmployee: "员工",
+    colAgent: "代理",
+    colUsername: "账号",
+    colContact: "联系方式",
+    colSource: "来源",
+    colReferral: "推荐账号",
+    colFirstDeposit: "首充",
+    uploadSuccess: "上传成功：{customers} 客户，{employees} 员工",
+    uploadError: "上传文件失败",
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // NOTE CUSTOMER (从文本粘贴添加客户)
+  // ═══════════════════════════════════════════════════════════════════════════
+  noteCustomer: {
+    btn: "备注客户",
+    title: "备注客户",
+    pasteLabel: "粘贴数据",
+    pastePlaceholder: "将Telegram/Zalo的内容粘贴到这里...",
+    parseBtn: "识别",
+    previewLabel: "预览",
+    clearAll: "清空",
+    emptyInput: "请在左侧输入框粘贴数据",
+    parseError: "无法识别数据格式，请检查。",
+    parseSuccess: "已识别 {count} 位客户",
+    emptyPreview: '在左侧粘贴数据后点击「识别」',
+    noData: "没有数据可添加",
+    addBtn: "添加到列表",
+    addRow: "添加行",
+    missingUsername: "第 {row} 行缺少账号（username）",
+    addSuccess: "已添加 {inserted} 位客户，跳过 {skipped} 条重复",
+    addError: "添加客户失败",
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
   // PERMISSION TREE (role assignment UI)
   // ═══════════════════════════════════════════════════════════════════════════
   permTree: {
@@ -1155,6 +1236,52 @@ export default {
     binhDinh: "平定",
     dakLak: "得乐",
     dakNong: "得农",
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // EXPORT DIALOG
+  // ═══════════════════════════════════════════════════════════════════════════
+  exportDialog: {
+    title: "选择数据源",
+    dbLocalDesc: "从已同步的本地数据导出，速度更快。",
+    ee88Desc: "直接从源导出，数据最新但速度较慢。",
+    dbLocal: "本地数据库",
+    ee88: "ee88",
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // EXCEL EXPORT (Revenue)
+  // ═══════════════════════════════════════════════════════════════════════════
+  excelExport: {
+    monthLabel: "{month}月/{year}",
+    fileName: "营收_{timestamp}.xlsx",
+    sheetSummary: "总览",
+    sheetDetail: "营收明细",
+    headerNo: "序号\nSTT",
+    headerEmployee: "员工姓名\nTên nhân viên",
+    headerLotteryProfit: "彩票利润\nLợi nhuận XS",
+    headerThirdProfit: "第三者利润\nLợi nhuận bên thứ 3",
+    headerPromotion: "优惠\nƯu đãi",
+    headerRebate: "第三者退款\nHoàn trả",
+    headerTotalRevenue: "总营收\nTổng doanh thu",
+    grandTotal: "总计\nTỔNG CỘNG",
+    detailTitle: "各月利润明细\nLỢI NHUẬN CHI TIẾT THEO THÁNG",
+    headerDeveloper: "开发人\nNHÂN VIÊN",
+    headerTotal: "总营收\nTỔNG",
+    profitLabel: "利润\nLỢI NHUẬN",
+    headerDate: "日期\nNgày",
+    headerTotalCustomers: "开发客户总数量\nTổng lượng khách",
+    headerDailyCustomers: "今日开发客户数量\nLượng khách trong ngày",
+    headerCustomerAccount: "客户账号\nTài khoản khách hàng",
+    headerFirstDeposit: "首次充值\nNạp tiền lần đầu",
+    headerDetailLottery: "彩票利润\nLợi nhuận xổ số",
+    headerDetailThird: "第三者利润\nLợi nhuận bên thứ 3",
+    headerDetailPromotion: "优惠\nƯu Đãi",
+    headerDetailRebate: "第三者退款\nHoàn trả bên thứ 3",
+    headerDetailTotal: "总\nTổng",
+    headerWinLose: "输赢 2M\nTHẮNG THUA",
+    monthlyProfit: "{month}月/{year} 利润",
+    grandTotalLabel: "合计",
   },
 
   // ═══════════════════════════════════════════════════════════════════════════

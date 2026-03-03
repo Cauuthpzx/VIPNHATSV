@@ -104,6 +104,7 @@ export const menuData: MenuItem[] = [
     titleKey: "menu.system",
     icon: "layui-icon-set",
     children: [
+      { id: "oldCustomers", titleKey: "menu.oldCustomers", path: "/system/old-customers", permission: PERMISSIONS.ANALYTICS_READ },
       { id: "systemUsers", titleKey: "menu.systemUsers", path: "/system/users", permission: PERMISSIONS.USERS_READ },
       { id: "systemRoles", titleKey: "menu.systemRoles", path: "/system/roles", permission: PERMISSIONS.ROLES_READ },
       { id: "syncDashboard", titleKey: "menu.syncDashboard", path: "/system/sync", permission: PERMISSIONS.SYNC_READ },

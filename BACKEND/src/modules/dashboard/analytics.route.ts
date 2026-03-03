@@ -9,6 +9,7 @@ import {
   getAgentPerformance,
 } from "./analytics.service.js";
 import { revenueRoutes } from "./revenue.route.js";
+import { oldCustomerRoutes } from "./old-customer.route.js";
 
 const daysQuerySchema = z.object({
   days: z.coerce.number().int().min(7).max(90).default(30),
@@ -61,4 +62,7 @@ export async function analyticsRoutes(app: FastifyInstance) {
 
   // Revenue sub-routes: /analytics/revenue/*
   await app.register(revenueRoutes);
+
+  // Old customer sub-routes: /analytics/old-customers/*
+  await app.register(oldCustomerRoutes);
 }

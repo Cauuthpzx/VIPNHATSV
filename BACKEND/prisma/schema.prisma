@@ -420,3 +420,27 @@ model EmployeeCustomer {
   @@index([employeeId])
   @@map("employee_customers")
 }
+
+// ===================================================================
+// OLD CUSTOMER — Khách hàng cũ trước khi tách đại lý
+// ===================================================================
+
+model OldCustomer {
+  id               String   @id @default(cuid())
+  assignedDate     String?  @map("assigned_date")       // Cột A: Ngày tháng (YYYY-MM-DD)
+  employeeName     String   @map("employee_name")       // Cột B: Tên nhân viên
+  agentCode        String?  @map("agent_code")          // Cột C: Dây đại lí
+  username         String   @map("username")            // Cột D: Tên tài khoản
+  contactInfo      String?  @map("contact_info")        // Cột E: Zalo/FB/Tele
+  source           String?  @map("source")              // Cột F: Nguồn
+  referralAccount  String?  @map("referral_account")    // Cột G: TK giới thiệu
+  firstDeposit     Decimal? @map("first_deposit") @db.Decimal(18, 2) // Cột I: Nạp đầu
+  onlineDays       Json?    @map("online_days")   @db.JsonB          // ["11-01","11-15",...] ngày online
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  @@unique([username, employeeName], name: "uq_old_customer")
+  @@index([username])
+  @@index([employeeName])
+  @@index([agentCode])
+  @@map("old_customers")
+}

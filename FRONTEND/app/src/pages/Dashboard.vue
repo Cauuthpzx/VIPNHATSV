@@ -7,6 +7,7 @@ import { registerCharts, formatMoney as fmtMoney, tooltipFormatter, yAxisMoneyFo
 import { fetchDashboardSummary, fetchActivityFeed, fetchDashboardSettings, saveDashboardSettings, fetchMemberDetail, fetchOnlineMembers, type DashboardSummary, type ActivityItem, type DashboardSettings, type MemberDetail } from "@/api/services/dashboard";
 import { useAuthStore } from "@/stores/auth";
 import { useDateRange } from "@/composables/useDateRange";
+import { useToolbarPermission } from "@/composables/useToolbarPermission";
 
 const { t } = useI18n();
 
@@ -14,6 +15,7 @@ registerCharts();
 
 const authStore = useAuthStore();
 const { dateRange, dateQuickSelect, dateQuickOptions, dateQuickWidth } = useDateRange("today");
+const { defaultToolbar } = useToolbarPermission();
 const loading = ref(true);
 const data = ref<DashboardSummary | null>(null);
 const activityItems = ref<ActivityItem[]>([]);
@@ -551,7 +553,7 @@ async function openOnlineMembers(agentId: string, date: string) {
       <!-- === AGENT TABLE === -->
       <lay-card class="section-card">
         <div class="section-header">{{ t('dashboard.agentOverview') }}</div>
-        <lay-table :columns="agentColumns" :data-source="agentTableData" size="sm" :default-toolbar="true">
+        <lay-table :columns="agentColumns" :data-source="agentTableData" size="sm" :default-toolbar="defaultToolbar">
           <template #toolbar>
             <div class="agent-toolbar">
               <lay-select v-model="dateQuickSelect" :style="{ width: dateQuickWidth }" size="xs">

@@ -8,6 +8,7 @@ import { useAuthStore } from "@/stores/auth";
 import { PERMISSIONS } from "@/constants/permissions";
 import { fetchUserList } from "@/api/services/proxy";
 import { createExportAllFn } from "@/composables/useExportAll";
+import { useToolbarPermission } from "@/composables/useToolbarPermission";
 import { layer } from "@layui/layui-vue";
 import CookieBadge from "@/components/CookieBadge.vue";
 
@@ -18,6 +19,7 @@ const canWrite = authStore.hasPermission(PERMISSIONS.MEMBER_WRITE);
 
 const { dataSource, loading, page, setLoading, bindLoadData, guardStale } = useListPage();
 const { selectedAgentId, agentOptions, agentWidth } = useAgentFilter();
+const { defaultToolbar, canExport } = useToolbarPermission();
 
 const searchForm = reactive({
   username: "",
@@ -164,9 +166,9 @@ function handleReset() {
           :resize="true"
           :columns="columns"
           :loading="loading"
-          :default-toolbar="true"
+          :default-toolbar="defaultToolbar"
           :data-source="dataSource"
-          :export-all-fn="exportAllFn"
+          :export-all-fn="canExport ? exportAllFn : undefined"
           @change="handlePageChange"
         >
           <template v-slot:toolbar>

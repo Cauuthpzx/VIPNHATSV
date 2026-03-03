@@ -7,6 +7,7 @@ import { useAutoFitSelect } from "@/composables/useAutoFitSelect";
 import { useAgentFilter } from "@/composables/useAgentFilter";
 import { fetchBetList, fetchLotteryDropdown } from "@/api/services/proxy";
 import { createExportAllFn } from "@/composables/useExportAll";
+import { useToolbarPermission } from "@/composables/useToolbarPermission";
 import { layer } from "@layui/layui-vue";
 import CookieBadge from "@/components/CookieBadge.vue";
 
@@ -15,6 +16,7 @@ const { t } = useI18n();
 const { dateRange, dateQuickSelect, dateQuickOptions, dateQuickWidth, resetDateRange } = useDateRange("today");
 const { dataSource, loading, page, setLoading, bindLoadData, guardStale } = useListPage();
 const { selectedAgentId, agentOptions, agentWidth } = useAgentFilter();
+const { defaultToolbar, canExport } = useToolbarPermission();
 
 const searchForm = reactive({
   username: "",
@@ -26,15 +28,15 @@ const searchForm = reactive({
 });
 
 const lotteryOptions = ref([
-  { label: "Tất cả", value: "" },
+  { label: t("common.all"), value: "" },
 ]);
 
 const playTypeOptions = ref([
-  { label: "Tất cả", value: "" },
+  { label: t("common.all"), value: "" },
 ]);
 
 const playOptions = ref([
-  { label: "Tất cả", value: "" },
+  { label: t("common.all"), value: "" },
 ]);
 
 const statusOptions = computed(() => [
@@ -120,7 +122,7 @@ const allLotteryData = ref<any[]>(STATIC_LOTTERY_DATA);
 
 // Initialize lottery options from static data
 lotteryOptions.value = [
-  { label: "Tất cả", value: "" },
+  { label: t("common.all"), value: "" },
   ...STATIC_LOTTERY_DATA.map((l) => ({ label: l.name, value: String(l.id) })),
 ];
 
@@ -136,7 +138,7 @@ async function loadDropdownData() {
     if (items?.lotteryData && Array.isArray(items.lotteryData) && items.lotteryData.length > 0) {
       allLotteryData.value = items.lotteryData;
       lotteryOptions.value = [
-        { label: "Tất cả", value: "" },
+        { label: t("common.all"), value: "" },
         ...items.lotteryData.map((l: any) => ({ label: l.name, value: String(l.id) })),
       ];
     }
@@ -147,8 +149,8 @@ async function loadDropdownData() {
 watch(() => searchForm.lotteryType, async (lotteryId) => {
   searchForm.playType = "";
   searchForm.play = "";
-  playTypeOptions.value = [{ label: "Tất cả", value: "" }];
-  playOptions.value = [{ label: "Tất cả", value: "" }];
+  playTypeOptions.value = [{ label: t("common.all"), value: "" }];
+  playOptions.value = [{ label: t("common.all"), value: "" }];
   if (!lotteryId) return;
   const lottery = allLotteryData.value.find((l: any) => String(l.id) === lotteryId);
   const seriesId = lottery ? String(lottery.series_id) : "";
@@ -158,7 +160,7 @@ watch(() => searchForm.lotteryType, async (lotteryId) => {
     const items = res.data.data.items;
     if (Array.isArray(items) && items.length > 0) {
       playTypeOptions.value = [
-        { label: "Tất cả", value: "" },
+        { label: t("common.all"), value: "" },
         ...(items as any[]).map((p: any) => ({ label: p.name, value: String(p.id) })),
       ];
     }
@@ -168,14 +170,14 @@ watch(() => searchForm.lotteryType, async (lotteryId) => {
 // When playType changes → load play options via POST /agent/bet {play_type:2, play_type_id}
 watch(() => searchForm.playType, async (playTypeId) => {
   searchForm.play = "";
-  playOptions.value = [{ label: "Tất cả", value: "" }];
+  playOptions.value = [{ label: t("common.all"), value: "" }];
   if (!playTypeId) return;
   try {
     const res = await fetchBetList({ page: 1, limit: 200, play_type: 2, play_type_id: playTypeId });
     const items = res.data.data.items;
     if (Array.isArray(items) && items.length > 0) {
       playOptions.value = [
-        { label: "Tất cả", value: "" },
+        { label: t("common.all"), value: "" },
         ...(items as any[]).map((p: any) => ({ label: p.name, value: String(p.id) })),
       ];
     }
@@ -345,9 +347,9 @@ onMounted(() => loadDropdownData());
           :resize="true"
           :columns="columns"
           :loading="loading"
-          :default-toolbar="true"
+          :default-toolbar="defaultToolbar"
           :data-source="dataSource"
-          :export-all-fn="exportAllFn"
+          :export-all-fn="canExport ? exportAllFn : undefined"
           @change="handlePageChange"
         >
           <template v-slot:toolbar>
@@ -357,7 +359,7 @@ onMounted(() => loadDropdownData());
             <lay-count-up :end-val="Number(row[column.key]) || 0" :duration="0" :decimal-places="String(row[column.key]).includes('.') ? 2 : 0" :use-grouping="false" />
           </template>
         </lay-table>
-        <lay-table :columns="summaryColumns" :data-source="summaryData" :default-toolbar="true">
+        <lay-table :columns="summaryColumns" :data-source="summaryData" :default-toolbar="defaultToolbar">
           <template v-slot:toolbar>
             <lay-button size="xs" type="normal"><b>{{ t("common.summaryData") }}</b></lay-button>
           </template>

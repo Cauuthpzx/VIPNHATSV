@@ -5,6 +5,7 @@ import { fetchLotteryDropdown, fetchRebateOdds } from "@/api/services/proxy";
 import { layer } from "@layui/layui-vue";
 import { useAutoFitSelect } from "@/composables/useAutoFitSelect";
 import { useAgentFilter } from "@/composables/useAgentFilter";
+import { useToolbarPermission } from "@/composables/useToolbarPermission";
 import CookieBadge from "@/components/CookieBadge.vue";
 
 const { t } = useI18n();
@@ -18,6 +19,7 @@ const loading = ref(false);
 const { selectWidth: seriesWidth } = useAutoFitSelect(seriesOptions);
 const { selectWidth: lotteryWidth } = useAutoFitSelect(lotteryOptions);
 const { selectedAgentId, agentOptions, agentWidth } = useAgentFilter();
+const { defaultToolbar } = useToolbarPermission();
 
 const agentColumn = { title: t("common.agent"), key: "_agentName" };
 const columns = ref<{ title: string; key: string }[]>([]);
@@ -211,7 +213,7 @@ onMounted(() => {
           :resize="true"
           :columns="columns"
           :loading="loading"
-          :default-toolbar="true"
+          :default-toolbar="defaultToolbar"
           :data-source="dataSource"
         >
           <template v-slot:toolbar>

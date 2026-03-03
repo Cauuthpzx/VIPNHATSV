@@ -22,7 +22,7 @@ const searchForm = reactive({
 });
 
 const lotteryOptions = ref([
-  { label: "Tất cả", value: "" },
+  { label: t("common.all"), value: "" },
 ]);
 
 const { selectWidth: lotteryWidth } = useAutoFitSelect(lotteryOptions);
@@ -33,7 +33,7 @@ async function loadLotteryOptions() {
     const items = res.data.data.items as any;
     if (items?.lotteryData) {
       lotteryOptions.value = [
-        { label: "Tất cả", value: "" },
+        { label: t("common.all"), value: "" },
         ...items.lotteryData.map((l: any) => ({ label: l.name, value: String(l.id) })),
       ];
     }

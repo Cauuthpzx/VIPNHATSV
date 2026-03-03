@@ -3,6 +3,7 @@ import { reactive, ref, computed, onMounted } from "vue";
 import { useI18n } from "vue-i18n";
 import { layer } from "@layui/layui-vue";
 import { useListPage } from "@/composables/useListPage";
+import { useToolbarPermission } from "@/composables/useToolbarPermission";
 import { useAuthStore } from "@/stores/auth";
 import { PERMISSIONS } from "@/constants/permissions";
 import {
@@ -20,13 +21,15 @@ const authStore = useAuthStore();
 const canWrite = authStore.hasPermission(PERMISSIONS.USERS_WRITE);
 const canDelete = authStore.hasPermission(PERMISSIONS.USERS_DELETE);
 
+const { defaultToolbar } = useToolbarPermission();
 const { dataSource, loading, page, setLoading, bindLoadData } = useListPage<SystemUser>();
 
 const searchKeyword = ref("");
 
 const columns = computed(() => [
-  { title: "Email", key: "email", ellipsisTooltip: true },
+  { title: t("systemUsers.username"), key: "username", ellipsisTooltip: true },
   { title: t("systemUsers.name"), key: "name", ellipsisTooltip: true },
+  { title: "Email", key: "email", ellipsisTooltip: true },
   { title: t("systemUsers.role"), key: "role", customSlot: "role", width: "150px" },
   { title: t("common.status"), key: "isActive", customSlot: "status", width: "120px" },
   { title: t("systemUsers.createdAt"), key: "createdAt", customSlot: "date", width: "180px" },
@@ -78,6 +81,7 @@ const editingId = ref("");
 const submitting = ref(false);
 
 const formData = reactive({
+  username: "",
   email: "",
   password: "",
   name: "",
@@ -86,6 +90,7 @@ const formData = reactive({
 });
 
 function resetForm() {
+  formData.username = "";
   formData.email = "";
   formData.password = "";
   formData.name = "";
@@ -103,7 +108,8 @@ function openCreate() {
 function openEdit(row: SystemUser) {
   isEdit.value = true;
   editingId.value = row.id;
-  formData.email = row.email;
+  formData.username = row.username || "";
+  formData.email = row.email || "";
   formData.password = "";
   formData.name = row.name || "";
   formData.roleId = row.roleId;
@@ -112,15 +118,19 @@ function openEdit(row: SystemUser) {
 }
 
 async function handleSubmit() {
-  if (!formData.email) {
-    layer.msg(t("systemUsers.enterEmail"), { icon: 2 });
+  if (!isEdit.value && !formData.username) {
+    layer.msg(t("systemUsers.enterUsername"), { icon: 2 });
+    return;
+  }
+  if (!isEdit.value && (formData.username.length < 4 || !/^[a-zA-Z0-9_]+$/.test(formData.username))) {
+    layer.msg(t("systemUsers.usernameRule"), { icon: 2 });
     return;
   }
   if (!isEdit.value && !formData.password) {
     layer.msg(t("systemUsers.enterPassword"), { icon: 2 });
     return;
   }
-  if (!isEdit.value && formData.password.length < 6) {
+  if (!isEdit.value && formData.password.length < 8) {
     layer.msg(t("systemUsers.passwordMinLength"), { icon: 2 });
     return;
   }
@@ -137,7 +147,7 @@ async function handleSubmit() {
   try {
     if (isEdit.value) {
       await updateUser(editingId.value, {
-        email: formData.email,
+        email: formData.email || undefined,
         name: formData.name,
         roleId: formData.roleId,
         isActive: formData.isActive,
@@ -145,7 +155,8 @@ async function handleSubmit() {
       layer.msg(t("systemUsers.updateSuccess"), { icon: 1 });
     } else {
       await createUser({
-        email: formData.email,
+        username: formData.username,
+        email: formData.email || undefined,
         password: formData.password,
         name: formData.name,
         roleId: formData.roleId,
@@ -236,7 +247,7 @@ onMounted(() => {
           :resize="true"
           :columns="columns"
           :loading="loading"
-          :default-toolbar="true"
+          :default-toolbar="defaultToolbar"
           :data-source="dataSource"
           @change="handlePageChange"
         >
@@ -313,11 +324,11 @@ onMounted(() => {
     >
       <div style="padding: 20px 30px;">
         <div class="layui-form-item">
-          <label class="layui-form-label">Email</label>
+          <label class="layui-form-label">{{ t('systemUsers.username') }}</label>
           <div class="layui-input-block">
             <lay-input
-              v-model="formData.email"
-              :placeholder="t('systemUsers.emailPlaceholder')"
+              v-model="formData.username"
+              :placeholder="t('systemUsers.usernamePlaceholder')"
               :disabled="isEdit"
             />
           </div>
@@ -330,6 +341,16 @@ onMounted(() => {
               v-model="formData.password"
               type="password"
               :placeholder="t('systemUsers.passwordPlaceholder')"
+            />
+          </div>
+        </div>
+
+        <div class="layui-form-item">
+          <label class="layui-form-label">Email</label>
+          <div class="layui-input-block">
+            <lay-input
+              v-model="formData.email"
+              :placeholder="t('systemUsers.emailOptional')"
             />
           </div>
         </div>

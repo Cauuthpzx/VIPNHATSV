@@ -4,8 +4,10 @@ import { useI18n } from "vue-i18n";
 import { layer } from "@layui/layui-vue";
 import { api } from "@/api/client";
 import { stopSync } from "@/api/services/sync";
+import { useToolbarPermission } from "@/composables/useToolbarPermission";
 
 const { t } = useI18n();
+const { defaultToolbar } = useToolbarPermission();
 
 interface AgentRow {
   id: string;
@@ -67,7 +69,7 @@ onMounted(() => loadAgents());
             :columns="columns"
             :loading="loading"
             :data-source="agents"
-            :default-toolbar="true"
+            :default-toolbar="defaultToolbar"
           >
             <template v-slot:toolbar>
               <lay-button

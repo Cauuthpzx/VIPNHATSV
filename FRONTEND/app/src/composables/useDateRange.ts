@@ -1,4 +1,5 @@
-import { ref, watch } from "vue";
+import { ref, watch, computed } from "vue";
+import { useI18n } from "vue-i18n";
 import { useAutoFitSelect } from "./useAutoFitSelect";
 
 export type DateQuickType = "today" | "yesterday" | "thisWeek" | "thisMonth" | "lastMonth";
@@ -8,13 +9,7 @@ export interface DateQuickOption {
   value: DateQuickType;
 }
 
-const DATE_QUICK_OPTIONS: DateQuickOption[] = [
-  { label: "Hôm nay", value: "today" },
-  { label: "Hôm qua", value: "yesterday" },
-  { label: "Tuần này", value: "thisWeek" },
-  { label: "Tháng này", value: "thisMonth" },
-  { label: "Tháng trước", value: "lastMonth" },
-];
+const DATE_QUICK_KEYS: DateQuickType[] = ["today", "yesterday", "thisWeek", "thisMonth", "lastMonth"];
 
 function formatDate(d: Date): string {
   const y = d.getFullYear();
@@ -58,9 +53,12 @@ function computeDateRange(type: DateQuickType): [string, string] {
 }
 
 export function useDateRange(initial: DateQuickType = "today") {
+  const { t } = useI18n();
   let isResetting = false;
   const dateQuickSelect = ref<DateQuickType>(initial);
-  const dateQuickOptions = DATE_QUICK_OPTIONS;
+  const dateQuickOptions = computed<DateQuickOption[]>(() =>
+    DATE_QUICK_KEYS.map((key) => ({ label: t(`dateRange.${key}`), value: key })),
+  );
   const dateRange = ref<string[]>(computeDateRange(initial));
 
   watch(dateQuickSelect, (val) => {
@@ -75,7 +73,7 @@ export function useDateRange(initial: DateQuickType = "today") {
     isResetting = false;
   }
 
-  const { selectWidth: dateQuickWidth } = useAutoFitSelect(DATE_QUICK_OPTIONS);
+  const { selectWidth: dateQuickWidth } = useAutoFitSelect(dateQuickOptions);
 
   return {
     dateRange,

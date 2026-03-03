@@ -22,7 +22,15 @@ async function main() {
 
   const managerRole = await prisma.role.upsert({
     where: { name: "Manager" },
-    update: {},
+    update: {
+      permissions: [
+        "users:read", "users:write", "roles:read",
+        "member:read", "member:write", "invite:read", "invite:write",
+        "report:read", "finance:read", "finance:write",
+        "bet:read", "password:write", "rebate:read",
+        "analytics:read", "sync:read", "sync:write",
+      ],
+    },
     create: {
       name: "Manager",
       type: RoleType.MANAGER,
@@ -32,6 +40,7 @@ async function main() {
         "member:read", "member:write", "invite:read", "invite:write",
         "report:read", "finance:read", "finance:write",
         "bet:read", "password:write", "rebate:read",
+        "analytics:read", "sync:read", "sync:write",
       ],
     },
   });
@@ -42,6 +51,7 @@ async function main() {
       permissions: [
         "member:read", "invite:read", "report:read",
         "finance:read", "bet:read", "password:write", "rebate:read",
+        "analytics:read",
       ],
     },
     create: {
@@ -51,6 +61,7 @@ async function main() {
       permissions: [
         "member:read", "invite:read", "report:read",
         "finance:read", "bet:read", "password:write", "rebate:read",
+        "analytics:read",
       ],
     },
   });

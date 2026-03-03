@@ -1,4 +1,5 @@
 import { layer } from "@layui/layer-vue";
+import { i18n } from "@/i18n";
 
 /**
  * Wrapper hiện loading shade trong khi fetch data.
@@ -66,20 +67,21 @@ export function createDualExportFn<T = Record<string, unknown>>(
   upstreamFn: () => Promise<T[]>,
 ): () => Promise<T[]> {
   return () => {
+    const t = i18n.global.t;
     return new Promise<T[]>((resolve, reject) => {
       let chosen = false;
 
       layer.confirm(
         `<div style="line-height: 1.6">
-          <p style="margin: 0 0 8px"><b>DB Local</b> — Xuất từ dữ liệu đã đồng bộ, nhanh hơn.</p>
-          <p style="margin: 0"><b>ee88</b> — Xuất trực tiếp từ nguồn, dữ liệu mới nhất nhưng chậm hơn.</p>
+          <p style="margin: 0 0 8px"><b>${t("exportDialog.dbLocal")}</b> — ${t("exportDialog.dbLocalDesc")}</p>
+          <p style="margin: 0"><b>${t("exportDialog.ee88")}</b> — ${t("exportDialog.ee88Desc")}</p>
         </div>`,
         {
-          title: "Chọn nguồn xuất dữ liệu",
+          title: t("exportDialog.title"),
           isHtmlFragment: true,
           btn: [
-            { text: "DB Local", callback: (id: string) => { chosen = true; layer.close(id); resolve(dbFn()); } },
-            { text: "ee88", callback: (id: string) => { chosen = true; layer.close(id); resolve(upstreamFn()); } },
+            { text: t("exportDialog.dbLocal"), callback: (id: string) => { chosen = true; layer.close(id); resolve(dbFn()); } },
+            { text: t("exportDialog.ee88"), callback: (id: string) => { chosen = true; layer.close(id); resolve(upstreamFn()); } },
           ],
           close: () => { if (!chosen) reject(new Error("EXPORT_CANCELLED")); },
         },

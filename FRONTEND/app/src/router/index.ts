@@ -143,6 +143,12 @@ const routes = [
       },
       // --- SYSTEM ---
       {
+        path: "system/old-customers",
+        name: "OldCustomers",
+        component: () => import("@/pages/analytics/OldCustomers.vue"),
+        meta: { titleKey: "menu.oldCustomers", permission: PERMISSIONS.ANALYTICS_READ },
+      },
+      {
         path: "system/users",
         name: "SystemUsers",
         component: () => import("@/pages/system/SystemUsers.vue"),

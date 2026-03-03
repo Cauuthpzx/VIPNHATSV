@@ -173,3 +173,121 @@ export function uploadCustomerFile(file: File) {
 export function fetchRevenueEmployees() {
   return api.get<{ success: boolean; data: any[] }>("/analytics/revenue/employees");
 }
+
+// --- Old Customer (Khách hàng cũ) ---
+
+export interface CalendarMonth {
+  label: string; // "T11", "T12", "T1", ...
+  days: number;  // 28-31
+}
+
+export interface OldCustomerItem {
+  id: string;
+  assignedDate: string | null;
+  employeeName: string;
+  agentCode: string | null;
+  username: string;
+  contactInfo: string | null;
+  source: string | null;
+  referralAccount: string | null;
+  firstDeposit: number | null;
+  onlineDays: string[] | null;
+  createdAt: string;
+}
+
+export interface OldCustomerListResult {
+  total: number;
+  items: OldCustomerItem[];
+  page: number;
+  limit: number;
+  calendarMonths: CalendarMonth[];
+}
+
+export interface OldCustomerUploadResult {
+  totalRows: number;
+  insertedRows: number;
+  skippedRows: number;
+  employeeNames: string[];
+  calendarMonths: CalendarMonth[];
+}
+
+export interface OldCustomerSummary {
+  totalCustomers: number;
+  employees: { name: string; count: number }[];
+  agents: { code: string; count: number }[];
+  sources: { name: string; count: number }[];
+  calendarMonths: CalendarMonth[];
+}
+
+export function fetchOldCustomers(params: {
+  page?: number;
+  limit?: number;
+  employee?: string;
+  agentCode?: string;
+  source?: string;
+  search?: string;
+}) {
+  return api.get<{ success: boolean; data: OldCustomerListResult }>(
+    "/analytics/old-customers",
+    { params },
+  );
+}
+
+export function fetchOldCustomerSummary() {
+  return api.get<{ success: boolean; data: OldCustomerSummary }>(
+    "/analytics/old-customers/summary",
+  );
+}
+
+export function uploadOldCustomerFile(file: File) {
+  const formData = new FormData();
+  formData.append("file", file);
+  return api.post<{ success: boolean; data: OldCustomerUploadResult }>(
+    "/analytics/old-customers/upload",
+    formData,
+    { headers: { "Content-Type": "multipart/form-data" }, timeout: 120000 },
+  );
+}
+
+export interface OldCustomerExportResult {
+  items: OldCustomerItem[];
+  total: number;
+  calendarMonths: CalendarMonth[];
+}
+
+export function exportOldCustomers(params: {
+  employee?: string;
+  agentCode?: string;
+  search?: string;
+}) {
+  return api.get<{ success: boolean; data: OldCustomerExportResult }>(
+    "/analytics/old-customers/export",
+    { params, timeout: 120000 },
+  );
+}
+
+// --- Note Customer (thêm KH từ text paste) ---
+
+export interface NoteCustomerInput {
+  assignedDate: string;
+  employeeName: string;
+  agentCode: string;
+  username: string;
+  contactInfo: string;
+  source: string;
+  referralAccount: string;
+  firstDeposit: number | null;
+}
+
+export interface NoteCustomerResult {
+  insertedCount: number;
+  skippedCount: number;
+}
+
+export function addNoteCustomers(customers: NoteCustomerInput[]) {
+  return api.post<{ success: boolean; data: NoteCustomerResult }>(
+    "/analytics/old-customers/note",
+    { customers },
+    { timeout: 30000 },
+  );
+}

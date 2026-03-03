@@ -9,6 +9,7 @@ import { useAgentFilter } from "@/composables/useAgentFilter";
 import CookieBadge from "@/components/CookieBadge.vue";
 import { useAuthStore } from "@/stores/auth";
 import { PERMISSIONS } from "@/constants/permissions";
+import { useToolbarPermission } from "@/composables/useToolbarPermission";
 
 const { t } = useI18n();
 
@@ -17,6 +18,7 @@ const canWrite = authStore.hasPermission(PERMISSIONS.FINANCE_WRITE);
 
 const { dataSource, loading, page, setLoading, bindLoadData, guardStale } = useListPage();
 const { selectedAgentId, agentOptions, agentWidth } = useAgentFilter();
+const { defaultToolbar, canExport } = useToolbarPermission();
 
 const searchForm = reactive({
   accountNumber: "",
@@ -112,9 +114,9 @@ function handleDelete(_row: Record<string, unknown>) {
           :resize="true"
           :columns="columns"
           :loading="loading"
-          :default-toolbar="true"
+          :default-toolbar="defaultToolbar"
           :data-source="dataSource"
-          :export-all-fn="exportAllFn"
+          :export-all-fn="canExport ? exportAllFn : undefined"
           @change="handlePageChange"
         >
           <template v-slot:toolbar>

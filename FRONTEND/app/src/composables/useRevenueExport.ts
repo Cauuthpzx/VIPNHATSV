@@ -5,9 +5,15 @@ import type {
   RevenueMatrixResult,
   EmployeeDetailResult,
 } from "@/api/services/analytics";
+import { i18n } from "@/i18n";
+
+function t(key: string, params?: Record<string, string | number>): string {
+  return i18n.global.t(key, params || {});
+}
 
 // ===================================================================
-// Styling constants
+// Styling — Pre-built objects, tạo 1 lần dùng cho toàn bộ workbook
+// (QUY TẮC 3 optimize_service: THỐNG NHẤT STYLES — DÙNG CHUNG FORMAT)
 // ===================================================================
 
 const HEADER_FONT: Partial<ExcelJS.Font> = {
@@ -30,6 +36,13 @@ const TITLE_FONT: Partial<ExcelJS.Font> = {
   color: { argb: "FF000000" },
 };
 
+const SUMMARY_FONT: Partial<ExcelJS.Font> = {
+  name: "Arial",
+  size: 10,
+  bold: true,
+  color: { argb: "FF333333" },
+};
+
 const HEADER_FILL: ExcelJS.Fill = {
   type: "pattern",
   pattern: "solid",
@@ -49,42 +62,47 @@ const THIN_BORDER: Partial<ExcelJS.Borders> = {
   right: { style: "thin", color: { argb: "FFD0D0D0" } },
 };
 
+const ALIGN_CENTER: Partial<ExcelJS.Alignment> = { vertical: "middle", horizontal: "center", wrapText: true };
+const ALIGN_LEFT: Partial<ExcelJS.Alignment> = { vertical: "middle", horizontal: "left" };
+const ALIGN_RIGHT: Partial<ExcelJS.Alignment> = { vertical: "middle", horizontal: "right" };
+
+const NUM_FMT = "#,##0.##";
+
+// ===================================================================
+// Style helpers — dùng { includeEmpty: true } để style TẤT CẢ ô
+// (kể cả ô null), tránh bị mờ/thiếu border
+// ===================================================================
+
 function applyHeaderStyle(row: ExcelJS.Row) {
-  row.eachCell((cell) => {
+  row.eachCell({ includeEmpty: true }, (cell) => {
     cell.font = HEADER_FONT;
     cell.fill = HEADER_FILL;
     cell.border = THIN_BORDER;
-    cell.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
+    cell.alignment = ALIGN_CENTER;
   });
   row.height = 36;
 }
 
 function applyDataStyle(row: ExcelJS.Row, numCols: number[] = []) {
-  row.eachCell((cell, colNumber) => {
+  row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
     cell.font = DATA_FONT;
     cell.border = THIN_BORDER;
-    cell.alignment = {
-      vertical: "middle",
-      horizontal: numCols.includes(colNumber) ? "right" : "left",
-    };
+    cell.alignment = numCols.includes(colNumber) ? ALIGN_RIGHT : ALIGN_LEFT;
     if (numCols.includes(colNumber) && typeof cell.value === "number") {
-      cell.numFmt = "#,##0.##";
+      cell.numFmt = NUM_FMT;
     }
   });
   row.height = 22;
 }
 
 function applySummaryStyle(row: ExcelJS.Row, numCols: number[] = []) {
-  row.eachCell((cell, colNumber) => {
-    cell.font = { ...HEADER_FONT, size: 10 };
+  row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+    cell.font = SUMMARY_FONT;
     cell.fill = SUMMARY_FILL;
     cell.border = THIN_BORDER;
-    cell.alignment = {
-      vertical: "middle",
-      horizontal: numCols.includes(colNumber) ? "right" : "center",
-    };
+    cell.alignment = numCols.includes(colNumber) ? ALIGN_RIGHT : ALIGN_CENTER;
     if (numCols.includes(colNumber) && typeof cell.value === "number") {
-      cell.numFmt = "#,##0.##";
+      cell.numFmt = NUM_FMT;
     }
   });
   row.height = 26;
@@ -92,12 +110,24 @@ function applySummaryStyle(row: ExcelJS.Row, numCols: number[] = []) {
 
 function formatMonth(month: string): string {
   const [y, m] = month.split("-");
-  return `THÁNG ${parseInt(m)}/${y}`;
+  return t("excelExport.monthLabel", { month: parseInt(m), year: y });
 }
 
 function safeSheetName(name: string): string {
-  // Excel sheet name max 31 chars, no special chars: \ / * ? : [ ]
   return name.replace(/[\\/*?:\[\]]/g, "").substring(0, 31);
+}
+
+/**
+ * Tạo array đủ totalCols phần tử, pad null ở cuối.
+ * Giúp addRow tạo cell cho TẤT CẢ cột → eachCell({ includeEmpty }) sẽ iterate hết.
+ */
+function padRow(values: (string | number | null | undefined)[], totalCols: number): (string | number | null)[] {
+  const result: (string | number | null)[] = [];
+  for (let i = 0; i < totalCols; i++) {
+    const v = i < values.length ? values[i] : null;
+    result.push(v ?? null);
+  }
+  return result;
 }
 
 // ===================================================================
@@ -128,7 +158,7 @@ export async function exportRevenueXlsx(
   const a = document.createElement("a");
   a.href = url;
   const ts = new Date().toISOString().replace(/[-:T]/g, "").substring(0, 14);
-  a.download = `DoanhThu_${ts}.xlsx`;
+  a.download = t("excelExport.fileName", { timestamp: ts });
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -141,24 +171,23 @@ function buildSummarySheet(
   workbook: ExcelJS.Workbook,
   summary: RevenueSummaryResult,
 ) {
-  const ws = workbook.addWorksheet("TỔNG QUÁT");
+  const ws = workbook.addWorksheet(t("excelExport.sheetSummary"));
 
-  // Bilingual headers matching the sample file
   const headers = [
-    "序号\nSTT",
-    "员工姓名\nTên nhân viên",
-    "彩票利润\nLợi nhuận XS",
-    "第三者利润\nLợi nhuận bên thứ 3",
-    "优惠\nƯu đãi",
-    "第三者退款\nHoàn trả",
-    "总营收\nTổng doanh thu",
+    t("excelExport.headerNo"),
+    t("excelExport.headerEmployee"),
+    t("excelExport.headerLotteryProfit"),
+    t("excelExport.headerThirdProfit"),
+    t("excelExport.headerPromotion"),
+    t("excelExport.headerRebate"),
+    t("excelExport.headerTotalRevenue"),
   ];
 
   const headerRow = ws.addRow(headers);
   applyHeaderStyle(headerRow);
 
   // Data rows
-  const numCols = [3, 4, 5, 6, 7]; // columns C-G are numeric
+  const numCols = [3, 4, 5, 6, 7];
   summary.employees.forEach((emp, idx) => {
     const row = ws.addRow([
       idx + 1,
@@ -174,8 +203,8 @@ function buildSummarySheet(
 
   // Grand total row
   const totalRow = ws.addRow([
-    "总计\nTỔNG CỘNG",
-    "总计\nTỔNG CỘNG",
+    t("excelExport.grandTotal"),
+    t("excelExport.grandTotal"),
     summary.grandTotal.lotteryWinLose,
     summary.grandTotal.thirdGameWinLose,
     summary.grandTotal.promotion,
@@ -185,13 +214,10 @@ function buildSummarySheet(
   applySummaryStyle(totalRow, numCols);
 
   // Column widths
-  ws.getColumn(1).width = 8;
-  ws.getColumn(2).width = 22;
-  ws.getColumn(3).width = 18;
-  ws.getColumn(4).width = 22;
-  ws.getColumn(5).width = 16;
-  ws.getColumn(6).width = 16;
-  ws.getColumn(7).width = 22;
+  const widths = [8, 22, 18, 22, 16, 16, 22];
+  for (let i = 0; i < widths.length; i++) {
+    ws.getColumn(i + 1).width = widths[i];
+  }
 
   // Freeze header
   ws.views = [{ state: "frozen", ySplit: 1 }];
@@ -206,49 +232,48 @@ function buildRevenueMatrixSheet(
   summary: RevenueSummaryResult,
   matrix: RevenueMatrixResult,
 ) {
-  const ws = workbook.addWorksheet("CHI TIẾT DOANH THU");
+  const ws = workbook.addWorksheet(t("excelExport.sheetDetail"));
 
   const empIds = summary.employees.map((e) => e.employeeId);
   const empNames = summary.employees.map((e) => e.employeeName);
-  // Total columns: col 1 = month label, cols 2..N+1 = employees, col N+2 = row total
   const totalCols = empNames.length + 2;
 
   // Title row (merged)
-  const titleText = "各月利润明细\nLỢI NHUẬN CHI TIẾT THEO THÁNG";
-  const titleValues = Array(totalCols).fill(titleText);
+  const titleText = t("excelExport.detailTitle");
+  const titleValues = padRow([titleText], totalCols);
   const titleRow = ws.addRow(titleValues);
-  titleRow.eachCell((cell) => {
+  titleRow.eachCell({ includeEmpty: true }, (cell) => {
     cell.font = TITLE_FONT;
-    cell.alignment = { vertical: "middle", horizontal: "center", wrapText: true };
+    cell.alignment = ALIGN_CENTER;
     cell.fill = HEADER_FILL;
     cell.border = THIN_BORDER;
   });
   titleRow.height = 36;
   ws.mergeCells(1, 1, 1, totalCols);
 
-  // Employee name header row + "总营收\nTỔNG" column
-  const headerRow = ws.addRow(["开发人\nNHÂN VIÊN", ...empNames, "总营收\nTỔNG"]);
+  // Employee name header row
+  const headerRow = ws.addRow([t("excelExport.headerDeveloper"), ...empNames, t("excelExport.headerTotal")]);
   applyHeaderStyle(headerRow);
 
-  // Numeric columns: 2 to totalCols (employees + row total)
+  // Numeric columns: 2 to totalCols
   const numCols = Array.from({ length: totalCols - 1 }, (_, i) => i + 2);
 
   // Data rows — one per month
   for (const monthRow of matrix.months) {
     const monthLabel = formatMonth(monthRow.month);
     const empValues = empIds.map((id) => monthRow.byEmployee[id] ?? 0);
-    // Only show non-zero values, replace 0 with null for cleaner display
     const displayValues = empValues.map((v) => (v === 0 ? null : v));
     const rowTotal = monthRow.rowTotal === 0 ? null : monthRow.rowTotal;
 
-    const dataRow = ws.addRow([monthLabel, ...displayValues, rowTotal]);
+    // padRow để tạo cell cho TẤT CẢ cột → eachCell({ includeEmpty }) style hết
+    const dataRow = ws.addRow(padRow([monthLabel, ...displayValues, rowTotal], totalCols));
     applyDataStyle(dataRow, numCols);
   }
 
-  // Grand total row — "利润\nLỢI NHUẬN"
+  // Grand total row
   const grandValues = empIds.map((id) => matrix.grandTotalByEmployee[id] ?? 0);
   const totalRow = ws.addRow([
-    "利润\nLỢI NHUẬN",
+    t("excelExport.profitLabel"),
     ...grandValues,
     matrix.grandTotal,
   ]);
@@ -267,13 +292,15 @@ function buildRevenueMatrixSheet(
 // Sheet 3+: Per-employee detail
 // ===================================================================
 
+const DETAIL_COLS = 11;
+const DETAIL_NUM_COLS = [5, 6, 7, 8, 9, 10, 11];
+
 function buildEmployeeDetailSheet(
   workbook: ExcelJS.Workbook,
   detail: EmployeeDetailResult,
 ) {
   const sheetName = safeSheetName(detail.employeeName);
 
-  // Ensure unique sheet name
   let finalName = sheetName;
   let suffix = 2;
   while (workbook.getWorksheet(finalName)) {
@@ -283,25 +310,22 @@ function buildEmployeeDetailSheet(
 
   const ws = workbook.addWorksheet(finalName);
 
-  // Bilingual headers matching the sample
   const headers = [
-    "日期\nNgày",
-    "开发客户总数量\nTổng lượng khách",
-    "今日开发客户数量\nLượng khách trong ngày",
-    "客户账号\nTài khoản khách hàng",
-    "首次充值\nNạp tiền lần đầu",
-    "彩票利润\nLợi nhuận xổ số",
-    "第三者利润\nLợi nhuận bên thứ 3",
-    "优惠\nƯu Đãi",
-    "第三者退款\nHoàn trả bên thứ 3",
-    "总\nTổng",
-    "输赢 2M\nTHẮNG THUA",
+    t("excelExport.headerDate"),
+    t("excelExport.headerTotalCustomers"),
+    t("excelExport.headerDailyCustomers"),
+    t("excelExport.headerCustomerAccount"),
+    t("excelExport.headerFirstDeposit"),
+    t("excelExport.headerDetailLottery"),
+    t("excelExport.headerDetailThird"),
+    t("excelExport.headerDetailPromotion"),
+    t("excelExport.headerDetailRebate"),
+    t("excelExport.headerDetailTotal"),
+    t("excelExport.headerWinLose"),
   ];
 
   const headerRow = ws.addRow(headers);
   applyHeaderStyle(headerRow);
-
-  const numCols = [5, 6, 7, 8, 9, 10, 11]; // E-K numeric
 
   // Group customers by assignedDate
   const dateGroups = new Map<string, typeof detail.customers>();
@@ -316,13 +340,12 @@ function buildEmployeeDetailSheet(
     }
   }
 
-  // Sort dates ascending (oldest first)
   const sortedDates = [...dateGroups.keys()].sort();
 
-  // Group dates by month (YYYY-MM) to insert monthly summary rows
-  const monthGroups = new Map<string, string[]>(); // "YYYY-MM" → [date1, date2, ...]
+  // Group dates by month
+  const monthGroups = new Map<string, string[]>();
   for (const date of sortedDates) {
-    const monthKey = date.substring(0, 7); // "YYYY-MM"
+    const monthKey = date.substring(0, 7);
     if (!monthGroups.has(monthKey)) monthGroups.set(monthKey, []);
     monthGroups.get(monthKey)!.push(date);
   }
@@ -340,37 +363,38 @@ function buildEmployeeDetailSheet(
       for (let i = 0; i < group.length; i++) {
         const c = group[i];
         const total = c.lotteryWinLose + c.thirdGameWinLose + c.promotion + c.thirdRebate;
-        const row = ws.addRow([
-          i === 0 ? formatDateVN(date) : null, // Date only on first row of group
+        // padRow → cell cho tất cả 11 cột → style hết kể cả null
+        const row = ws.addRow(padRow([
+          i === 0 ? formatDateVN(date) : null,
           i === 0 ? runningTotal : null,
           i === 0 ? group.length : null,
           c.customerUsername,
-          0, // firstDeposit — not available
+          0,
           c.lotteryWinLose,
           c.thirdGameWinLose,
           c.promotion,
           c.thirdRebate,
           total,
-          "",
-        ]);
-        applyDataStyle(row, numCols);
+          null,
+        ], DETAIL_COLS));
+        applyDataStyle(row, DETAIL_NUM_COLS);
       }
     }
 
-    // Monthly summary row after each month
+    // Monthly summary row
     const [y, m] = monthKey.split("-");
-    const summaryLabel = ` LỢI NHUẬN THÁNG ${parseInt(m, 10).toString().padStart(2, "0")}/${y}`;
-    const summaryRow = ws.addRow([summaryLabel]);
+    const summaryLabel = ` ${t("excelExport.monthlyProfit", { month: parseInt(m, 10).toString().padStart(2, "0"), year: y })}`;
+    const summaryRow = ws.addRow(padRow([summaryLabel], DETAIL_COLS));
     applySummaryStyle(summaryRow, []);
   }
 
-  // Customers without assigned date (at the end)
+  // Customers without assigned date
   if (noDateCustomers.length > 0) {
     runningTotal += noDateCustomers.length;
     for (let i = 0; i < noDateCustomers.length; i++) {
       const c = noDateCustomers[i];
       const total = c.lotteryWinLose + c.thirdGameWinLose + c.promotion + c.thirdRebate;
-      const row = ws.addRow([
+      const row = ws.addRow(padRow([
         null,
         i === 0 ? runningTotal : null,
         i === 0 ? noDateCustomers.length : null,
@@ -381,28 +405,21 @@ function buildEmployeeDetailSheet(
         c.promotion,
         c.thirdRebate,
         total,
-        "",
-      ]);
-      applyDataStyle(row, numCols);
+        null,
+      ], DETAIL_COLS));
+      applyDataStyle(row, DETAIL_NUM_COLS);
     }
   }
 
-  // Grand total row at the very end
-  const grandTotalRow = ws.addRow(["TỔNG CỘNG"]);
+  // Grand total row
+  const grandTotalRow = ws.addRow(padRow([t("excelExport.grandTotalLabel")], DETAIL_COLS));
   applySummaryStyle(grandTotalRow, []);
 
   // Column widths
-  ws.getColumn(1).width = 14;
-  ws.getColumn(2).width = 12;
-  ws.getColumn(3).width = 12;
-  ws.getColumn(4).width = 22;
-  ws.getColumn(5).width = 14;
-  ws.getColumn(6).width = 16;
-  ws.getColumn(7).width = 18;
-  ws.getColumn(8).width = 14;
-  ws.getColumn(9).width = 18;
-  ws.getColumn(10).width = 16;
-  ws.getColumn(11).width = 14;
+  const widths = [14, 12, 12, 22, 14, 16, 18, 14, 18, 16, 14];
+  for (let i = 0; i < widths.length; i++) {
+    ws.getColumn(i + 1).width = widths[i];
+  }
 
   ws.views = [{ state: "frozen", ySplit: 1 }];
 }
@@ -412,7 +429,6 @@ function buildEmployeeDetailSheet(
 // ===================================================================
 
 function formatDateVN(dateStr: string): string {
-  // Convert YYYY-MM-DD → DD/MM/YYYY
   if (!dateStr) return "";
   const parts = dateStr.split("-");
   if (parts.length === 3) {

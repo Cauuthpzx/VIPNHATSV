@@ -7,6 +7,7 @@ import { useAutoFitSelect } from "@/composables/useAutoFitSelect";
 import { useAgentFilter } from "@/composables/useAgentFilter";
 import { fetchDepositList } from "@/api/services/proxy";
 import { createExportAllFn } from "@/composables/useExportAll";
+import { useToolbarPermission } from "@/composables/useToolbarPermission";
 import { layer } from "@layui/layui-vue";
 import StatusBadge from "@/components/StatusBadge.vue";
 import CookieBadge from "@/components/CookieBadge.vue";
@@ -16,6 +17,7 @@ const { t } = useI18n();
 const { dateRange, dateQuickSelect, dateQuickOptions, dateQuickWidth, resetDateRange } = useDateRange("today");
 const { dataSource, loading, page, setLoading, bindLoadData, guardStale } = useListPage();
 const { selectedAgentId, agentOptions, agentWidth } = useAgentFilter();
+const { defaultToolbar, canExport } = useToolbarPermission();
 
 const searchForm = reactive({
   username: "",
@@ -148,9 +150,9 @@ function handleReset() {
           :resize="true"
           :columns="columns"
           :loading="loading"
-          :default-toolbar="true"
+          :default-toolbar="defaultToolbar"
           :data-source="dataSource"
-          :export-all-fn="exportAllFn"
+          :export-all-fn="canExport ? exportAllFn : undefined"
           @change="handlePageChange"
         >
           <template v-slot:toolbar>

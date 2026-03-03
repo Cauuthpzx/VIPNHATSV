@@ -55,16 +55,16 @@
 }
 .layui-date-range-picker-single {
   &[size="lg"] {
-    .set-size(@lg, 272px);
+    .set-size(@lg, 320px);
   }
   &[size="md"] {
-    .set-size(@md, 272px);
+    .set-size(@md, 300px);
   }
   &[size="sm"] {
     .set-size(@sm, 272px);
   }
   &[size="xs"] {
-    .set-size(@xs, 272px);
+    .set-size(@xs, 240px);
   }
 }
 
@@ -593,6 +593,8 @@ html #layuicss-laydate {
   .layui-input {
     border: none;
     background-color: transparent;
+    flex: 1;
+    min-width: 0;
   }
 }
 .layui-laydate-range {
@@ -655,9 +657,7 @@ html #layuicss-laydate {
 .layui-date-range-picker {
   .end-input {
     .layui-input-clear {
-      opacity: 0;
-      visibility: hidden;
-      display: block;
+      display: none;
       padding: 0 10px;
     }
   }
@@ -666,8 +666,8 @@ html #layuicss-laydate {
     &:hover {
       .end-input {
         .layui-input-clear {
-          opacity: 1;
-          visibility: visible;
+          display: flex;
+          align-items: center;
         }
       }
     }

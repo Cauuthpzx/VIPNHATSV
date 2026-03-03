@@ -9,8 +9,10 @@ import {
   type RevenueSummaryResult,
 } from "@/api/services/analytics";
 import { exportRevenueXlsx } from "@/composables/useRevenueExport";
+import { useToolbarPermission } from "@/composables/useToolbarPermission";
 
 const { t } = useI18n();
+const { canExport } = useToolbarPermission();
 const loading = ref(true);
 const exporting = ref(false);
 const uploading = ref(false);
@@ -69,12 +71,12 @@ async function handleFileUpload(event: Event) {
     const res = await uploadCustomerFile(file);
     const { employeeCount, mappingCount } = res.data.data;
     layer.msg(
-      `Upload thành công: ${employeeCount} nhân viên, ${mappingCount} liên kết`,
+      t("analyticsRevenue.uploadSuccess", { employees: employeeCount, mappings: mappingCount }),
       { icon: 1, time: 3000 },
     );
     await loadData();
   } catch {
-    layer.msg("Lỗi upload file", { icon: 2, time: 2000 });
+    layer.msg(t("analyticsRevenue.uploadError"), { icon: 2, time: 2000 });
   } finally {
     uploading.value = false;
     input.value = "";
@@ -89,9 +91,9 @@ async function handleExport() {
   try {
     const res = await fetchRevenueExportData(selectedMonth.value);
     await exportRevenueXlsx(res.data.data, selectedMonth.value);
-    layer.msg("Xuất file thành công", { icon: 1, time: 2000 });
+    layer.msg(t("analyticsRevenue.exportSuccess"), { icon: 1, time: 2000 });
   } catch {
-    layer.msg("Lỗi xuất file", { icon: 2, time: 2000 });
+    layer.msg(t("analyticsRevenue.exportError"), { icon: 2, time: 2000 });
   } finally {
     layer.close(loadingId);
     exporting.value = false;
@@ -109,21 +111,23 @@ async function handleExport() {
           v-model="selectedMonth"
           class="month-picker"
         />
-        <lay-button size="sm" @click="triggerUpload" :loading="uploading">
-          <i class="layui-icon layui-icon-upload"></i>
-          {{ t("analyticsRevenue.uploadCustomers") }}
-        </lay-button>
-        <input
-          ref="fileInputRef"
-          type="file"
-          accept=".xlsx,.xls"
-          style="display: none"
-          @change="handleFileUpload"
-        />
-        <lay-button type="primary" size="sm" @click="handleExport" :loading="exporting" :disabled="!data?.hasCustomerData">
-          <i class="layui-icon layui-icon-export"></i>
-          {{ t("analyticsRevenue.exportXlsx") }}
-        </lay-button>
+        <template v-if="canExport">
+          <lay-button size="sm" @click="triggerUpload" :loading="uploading">
+            <i class="layui-icon layui-icon-upload"></i>
+            {{ t("analyticsRevenue.uploadCustomers") }}
+          </lay-button>
+          <input
+            ref="fileInputRef"
+            type="file"
+            accept=".xlsx,.xls"
+            style="display: none"
+            @change="handleFileUpload"
+          />
+          <lay-button type="primary" size="sm" @click="handleExport" :loading="exporting" :disabled="!data?.hasCustomerData">
+            <i class="layui-icon layui-icon-export"></i>
+            {{ t("analyticsRevenue.exportXlsx") }}
+          </lay-button>
+        </template>
       </div>
     </div>
 

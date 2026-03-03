@@ -7,6 +7,7 @@ import { useAutoFitSelect } from "@/composables/useAutoFitSelect";
 import { useAgentFilter } from "@/composables/useAgentFilter";
 import { fetchReportThirdGame } from "@/api/services/proxy";
 import { createExportAllFn } from "@/composables/useExportAll";
+import { useToolbarPermission } from "@/composables/useToolbarPermission";
 import { layer } from "@layui/layui-vue";
 import CookieBadge from "@/components/CookieBadge.vue";
 
@@ -15,6 +16,7 @@ const { t } = useI18n();
 const { dateRange, dateQuickSelect, dateQuickOptions, dateQuickWidth, resetDateRange } = useDateRange("today");
 const { dataSource, loading, page, setLoading, bindLoadData, guardStale } = useListPage();
 const { selectedAgentId, agentOptions, agentWidth } = useAgentFilter();
+const { defaultToolbar, canExport } = useToolbarPermission();
 
 const searchForm = reactive({
   username: "",
@@ -22,7 +24,7 @@ const searchForm = reactive({
 });
 
 const platformOptions = [
-  { label: "Tất cả", value: "" },
+  { label: t("common.all"), value: "" },
   { label: "PA", value: "PA" },
   { label: "BBIN", value: "BBIN" },
   { label: "WM", value: "WM" },
@@ -188,9 +190,9 @@ function handleReset() {
           :resize="true"
           :columns="columns"
           :loading="loading"
-          :default-toolbar="true"
+          :default-toolbar="defaultToolbar"
           :data-source="dataSource"
-          :export-all-fn="exportAllFn"
+          :export-all-fn="canExport ? exportAllFn : undefined"
           @change="handlePageChange"
         >
           <template v-slot:toolbar>
@@ -200,7 +202,7 @@ function handleReset() {
             <lay-count-up :end-val="Number(row[column.key]) || 0" :duration="0" :decimal-places="String(row[column.key]).includes('.') ? 2 : 0" :use-grouping="false" />
           </template>
         </lay-table>
-        <lay-table :columns="summaryColumns" :data-source="summaryData" :default-toolbar="true">
+        <lay-table :columns="summaryColumns" :data-source="summaryData" :default-toolbar="defaultToolbar">
           <template v-slot:toolbar>
             <lay-button size="xs" type="normal"><b>{{ t("common.summaryData") }}</b></lay-button>
           </template>
