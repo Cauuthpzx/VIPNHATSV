@@ -38,15 +38,19 @@ async function main() {
 
   await prisma.role.upsert({
     where: { name: "Viewer" },
-    update: {},
+    update: {
+      permissions: [
+        "member:read", "invite:read", "report:read",
+        "finance:read", "bet:read", "password:write", "rebate:read",
+      ],
+    },
     create: {
       name: "Viewer",
       type: RoleType.VIEWER,
       level: 10,
       permissions: [
-        "users:read", "roles:read",
         "member:read", "invite:read", "report:read",
-        "finance:read", "bet:read", "rebate:read",
+        "finance:read", "bet:read", "password:write", "rebate:read",
       ],
     },
   });

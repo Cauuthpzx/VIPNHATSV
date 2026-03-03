@@ -4,7 +4,8 @@ import type { TableDefaultToolbar } from "../typing";
 
 import { useI18n } from "@layui/component/language";
 import { isArray, isNumber, isValueArray } from "@layui/component/utils";
-import { computed, inject } from "vue";
+import { computed, inject, ref } from "vue";
+import { layer } from "@layui/layer-vue";
 
 import { LAY_TABLE_CONTEXT } from "../constant";
 
@@ -35,10 +36,29 @@ export function useToolBar(props: TableToolBarType) {
   };
 
   // 报表导出
+  const exporting = ref(false);
+
   const exportData = async () => {
-    const source = props.exportAllFn
-      ? await props.exportAllFn().catch(() => props.tableDataSource)
-      : props.tableDataSource;
+    if (exporting.value) return;
+    exporting.value = true;
+
+    let loadingId: string | undefined;
+    let source: Array<any>;
+
+    if (props.exportAllFn) {
+      loadingId = layer.load(0, { shade: [0.3, "#000"] });
+      try {
+        source = await props.exportAllFn();
+      } catch {
+        layer.close(loadingId);
+        layer.msg("Xuất dữ liệu thất bại", { icon: 2, time: 2000 });
+        exporting.value = false;
+        return;
+      }
+      layer.close(loadingId);
+    } else {
+      source = props.tableDataSource;
+    }
 
     let tableStr = ``;
     for (const tableHeadColumn of props.hierarchicalColumns) {
@@ -116,8 +136,18 @@ export function useToolBar(props: TableToolBarType) {
             <table syle="table-layout: fixed;word-wrap: break-word; word-break: break-all;">${tableStr}</table>
         </body>
     </html>`;
-    window.location.href
-      = uri + window.btoa(unescape(encodeURIComponent(exportTemplate)));
+
+    // Dùng <a download> thay vì window.location.href để không navigate đi
+    const blob = new Blob([exportTemplate], { type: "application/vnd.ms-excel" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${worksheet}.xls`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    layer.msg(`Xuất thành công ${source.length} dòng`, { icon: 1, time: 2000 });
+    exporting.value = false;
   };
 
   const print = () => {
