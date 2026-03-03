@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { authorize } from "../../middlewares/authorize.js";
-import { PERMISSIONS } from "../../constants/permissions.js";
+import { PERMISSIONS, type Permission } from "../../constants/permissions.js";
 import { exportFromDb } from "./export.service.js";
 
 /**
@@ -11,7 +11,7 @@ export async function exportRoutes(app: FastifyInstance) {
   app.addHook("preHandler", app.authenticate);
 
   // Generic export handler factory
-  const makeHandler = (table: string, permission: string) => {
+  const makeHandler = (table: string, permission: Permission) => {
     return {
       preHandler: [authorize(permission)],
       handler: async (request: FastifyRequest, reply: FastifyReply) => {

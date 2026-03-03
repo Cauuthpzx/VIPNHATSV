@@ -32,11 +32,20 @@ function write(level: LogLevel, message: string, meta?: Record<string, unknown>)
   }
 }
 
+// Overloaded: supports both (msg, meta?) and pino-style (meta, msg)
+function log(level: LogLevel, a: string | Record<string, unknown>, b?: string | Record<string, unknown>) {
+  if (typeof a === "string") {
+    write(level, a, b as Record<string, unknown> | undefined);
+  } else {
+    write(level, (b as string) ?? "", a);
+  }
+}
+
 export const logger = {
-  fatal: (msg: string, meta?: Record<string, unknown>) => write("fatal", msg, meta),
-  error: (msg: string, meta?: Record<string, unknown>) => write("error", msg, meta),
-  warn: (msg: string, meta?: Record<string, unknown>) => write("warn", msg, meta),
-  info: (msg: string, meta?: Record<string, unknown>) => write("info", msg, meta),
-  debug: (msg: string, meta?: Record<string, unknown>) => write("debug", msg, meta),
-  trace: (msg: string, meta?: Record<string, unknown>) => write("trace", msg, meta),
+  fatal: (a: string | Record<string, unknown>, b?: string | Record<string, unknown>) => log("fatal", a, b),
+  error: (a: string | Record<string, unknown>, b?: string | Record<string, unknown>) => log("error", a, b),
+  warn:  (a: string | Record<string, unknown>, b?: string | Record<string, unknown>) => log("warn", a, b),
+  info:  (a: string | Record<string, unknown>, b?: string | Record<string, unknown>) => log("info", a, b),
+  debug: (a: string | Record<string, unknown>, b?: string | Record<string, unknown>) => log("debug", a, b),
+  trace: (a: string | Record<string, unknown>, b?: string | Record<string, unknown>) => log("trace", a, b),
 };

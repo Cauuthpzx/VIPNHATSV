@@ -86,12 +86,12 @@ export async function agentRoutes(app: FastifyInstance) {
 
   // Read
   app.get("/", listAgentsHandler);
-  app.get("/:id", getAgentHandler);
+  app.get<{ Params: { id: string } }>("/:id", getAgentHandler);
   app.get("/cookie-health", cookieHealthHandler);
 
   // Write (require sync:write)
   app.post("/", { preHandler: [authorize(PERMISSIONS.SYNC_WRITE)] }, createAgentHandler);
-  app.patch("/:id", { preHandler: [authorize(PERMISSIONS.SYNC_WRITE)] }, updateAgentHandler);
-  app.delete("/:id", { preHandler: [authorize(PERMISSIONS.SYNC_WRITE)] }, deleteAgentHandler);
-  app.put("/:id/cookie", { preHandler: [authorize(PERMISSIONS.SYNC_WRITE)] }, updateAgentCookieHandler);
+  app.patch<{ Params: { id: string } }>("/:id", { preHandler: [authorize(PERMISSIONS.SYNC_WRITE)] }, updateAgentHandler);
+  app.delete<{ Params: { id: string }; Querystring: { mode?: string } }>("/:id", { preHandler: [authorize(PERMISSIONS.SYNC_WRITE)] }, deleteAgentHandler);
+  app.put<{ Params: { id: string } }>("/:id/cookie", { preHandler: [authorize(PERMISSIONS.SYNC_WRITE)] }, updateAgentCookieHandler);
 }

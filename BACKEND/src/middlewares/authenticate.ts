@@ -3,8 +3,8 @@ import fp from "fastify-plugin";
 import { UnauthorizedError } from "../errors/UnauthorizedError.js";
 import { ERROR_CODES } from "../constants/error-codes.js";
 
-declare module "fastify" {
-  interface FastifyRequest {
+declare module "@fastify/jwt" {
+  interface FastifyJWT {
     user: {
       userId: string;
       roleId: string;

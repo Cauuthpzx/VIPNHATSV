@@ -21,7 +21,7 @@ export function sendSuccess<T>(
   data: T,
   statusCode: HttpStatus = HTTP_STATUS.OK,
 ): FastifyReply {
-  const requestId = (reply.request as Record<string, unknown>).requestId as string;
+  const requestId = (reply.request as any).requestId as string;
   const body: SuccessResponse<T> = { success: true, requestId, data };
   return reply.status(statusCode).send(body);
 }
@@ -32,7 +32,7 @@ export function sendError(
   code: ErrorCode,
   message: string,
 ): FastifyReply {
-  const requestId = (reply.request as Record<string, unknown>).requestId as string;
+  const requestId = (reply.request as any).requestId as string;
   const body: ErrorResponse = { success: false, requestId, code, message };
   return reply.status(statusCode).send(body);
 }

@@ -32,19 +32,19 @@ export async function errorHandler(app: FastifyInstance) {
     }
 
     // Fastify validation errors
-    if (error.validation) {
+    if ((error as any).validation) {
       return reply.status(HTTP_STATUS.BAD_REQUEST).send({
         success: false,
         requestId,
         code: ERROR_CODES.VALIDATION_ERROR,
-        message: error.message,
+        message: (error as Error).message,
       });
     }
 
     logger.error("Unhandled error", {
       requestId,
-      error: error.message,
-      stack: error.stack,
+      error: (error as Error).message,
+      stack: (error as Error).stack,
     });
 
     return reply.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({
