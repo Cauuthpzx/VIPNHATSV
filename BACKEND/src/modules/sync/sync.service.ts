@@ -12,6 +12,7 @@ import {
   type SyncEndpointConfig,
 } from "./sync.config.js";
 import { shouldRunEndpoint, markEndpointRan } from "./sync.scheduler.js";
+import { isEndpointLocked } from "./sync.demand.js";
 import { logger } from "../../utils/logger.js";
 import { wsManager } from "../../websocket/ws.manager.js";
 import { AppError } from "../../errors/AppError.js";
@@ -398,6 +399,10 @@ async function runAgentStream(
     if (caughtUp) {
       for (const endpoint of noDateEndpoints) {
         if (abortRequested) break;
+        if (isEndpointLocked(endpoint.table)) {
+          logger.debug(`[Sync] ${agent.name} → skip ${endpoint.table} (demand sync đang chạy)`);
+          continue;
+        }
 
         const upsertFn = UPSERT_REGISTRY[endpoint.table];
         if (!upsertFn) continue;
@@ -421,6 +426,10 @@ async function runAgentStream(
     if (!abortRequested && dateRangeEndpoints.length > 0) {
       const dateRangeTasks = dateRangeEndpoints.map(async (endpoint) => {
         if (abortRequested) return;
+        if (isEndpointLocked(endpoint.table)) {
+          logger.debug(`[Sync] ${agent.name} → skip ${endpoint.table} (demand sync đang chạy)`);
+          return;
+        }
 
         const upsertFn = UPSERT_REGISTRY[endpoint.table];
         if (!upsertFn) return;
@@ -466,7 +475,7 @@ async function runAgentStream(
 // Sync single agent + single endpoint (no date range)
 // ---------------------------------------------------------------------------
 
-async function syncAgentEndpoint(
+export async function syncAgentEndpoint(
   app: FastifyInstance,
   agent: Agent,
   cookie: string,
@@ -591,7 +600,7 @@ async function syncAgentDateRange(
  * Streaming mode: fetch page → upsert ngay → không tích luỹ trong memory.
  * Quan trọng cho betOrder/bet (400k+ items/ngày/agent).
  */
-async function syncAgentSingleDay(
+export async function syncAgentSingleDay(
   app: FastifyInstance,
   agent: Agent,
   cookie: string,

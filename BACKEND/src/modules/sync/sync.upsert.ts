@@ -353,6 +353,30 @@ async function upsertUsers(prisma: PrismaClient, agentId: string, items: Item[])
   return count;
 }
 
+/**
+ * Phiên bản đơn giản của upsertUsers — KHÔNG có change detection (new/lost member).
+ * Dùng cho write-through từ proxy.service khi search hit upstream.
+ * Tránh false positive "lost member" khi chỉ có 10-20 items từ 1 trang search.
+ */
+export async function upsertUsersSimple(prisma: PrismaClient, agentId: string, items: Item[]): Promise<number> {
+  if (items.length === 0) return 0;
+  const now = new Date().toISOString();
+  const rows: unknown[][] = [];
+  for (const item of items) {
+    const username = str(item.username);
+    if (!username) continue;
+    rows.push([
+      randomUUID(), agentId, username,
+      str(item.type_format), str(item.parent_user), dec(item.money),
+      int(item.deposit_count), int(item.withdrawal_count),
+      dec(item.deposit_amount), dec(item.withdrawal_amount),
+      str(item.login_time), str(item.register_time), str(item.status_format),
+      JSON.stringify(item), now,
+    ]);
+  }
+  return bulkUpsert(prisma, PROXY_USER_CONFIG, rows);
+}
+
 // ---------------------------------------------------------------------------
 // 2. ProxyInvite — (agentId, inviteCode) unique
 // ---------------------------------------------------------------------------

@@ -7,6 +7,9 @@ import { logger } from "../../utils/logger.js";
 import { AppError } from "../../errors/AppError.js";
 import { ERROR_CODES } from "../../constants/error-codes.js";
 import { tryDbFirst } from "./db-first.service.js";
+import { SYNC_ENDPOINTS } from "../sync/sync.config.js";
+import { UPSERT_REGISTRY, upsertUsersSimple } from "../sync/sync.upsert.js";
+import { signalDemandSync } from "../sync/sync.demand.js";
 
 // ---------------------------------------------------------------------------
 // Cache TTL (seconds)
@@ -326,6 +329,11 @@ async function fetchSingleAgent<T = unknown>(
   // 3. Store in Redis (fire-and-forget — don't await)
   app.redis.set(cacheKey, JSON.stringify(result), "EX", ttl).catch(() => {});
 
+  // 4. Write-through to DB (fire-and-forget)
+  if (Array.isArray(result.items)) {
+    writeThroughToDb(app, path, agentId, result.items as Record<string, unknown>[]).catch(() => {});
+  }
+
   return result;
 }
 
@@ -435,6 +443,8 @@ async function fetchMultiAgentWithPipeline<T = unknown>(
       results[idx] = result;
       if (cacheKey && result.items.length > 0) {
         pipeline.set(cacheKey, JSON.stringify(result), "EX", ttl);
+        // 5. Write-through to DB (fire-and-forget)
+        writeThroughToDb(app, path, agents[idx].id, result.items as Record<string, unknown>[]).catch(() => {});
       }
     }
     pipeline.exec().catch(() => {});
@@ -508,6 +518,12 @@ async function cachedProxyCall<T = unknown>(
     delete upstreamParams.start_date;
     delete upstreamParams.end_date;
     const result = await fetchSingleAgent<T>(app, path, upstreamParams, agentId, agentName, cookie, ttl, requestId);
+
+    // Signal demand sync (non-reference, non-explicitAgent)
+    if (!isReferenceRequest(path, input) && !explicitAgentId) {
+      signalDemandSync(app, path);
+    }
+
     return result;
   }
 
@@ -549,11 +565,54 @@ async function cachedProxyCall<T = unknown>(
   const start = (requestedPage - 1) * requestedLimit;
   const pageItems = allItems.slice(start, start + requestedLimit);
 
+  // Signal demand sync — upstream vừa được gọi
+  signalDemandSync(app, path);
+
   return {
     items: pageItems as T[] | T,
     total: mergedTotal,
     totalData: mergedTotalData,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Write-through: lưu upstream items vào DB ngay (fire-and-forget)
+// ---------------------------------------------------------------------------
+
+const PATH_TO_SYNC_TABLE: Record<string, string> = {};
+for (const ep of SYNC_ENDPOINTS) {
+  PATH_TO_SYNC_TABLE[ep.path] = ep.table;
+}
+
+/**
+ * Lưu items từ upstream vào DB ngay lập tức.
+ * Fire-and-forget — lỗi được log, không block response.
+ * Tái sử dụng upsert functions từ sync.upsert.ts.
+ */
+async function writeThroughToDb(
+  app: FastifyInstance,
+  path: string,
+  agentId: string,
+  items: Record<string, unknown>[],
+): Promise<void> {
+  if (items.length === 0) return;
+
+  const table = PATH_TO_SYNC_TABLE[path];
+  if (!table) return; // Reference/dropdown endpoints — không có DB table
+
+  // proxyUser: dùng upsertUsersSimple (bỏ qua change detection)
+  const upsertFn = table === "proxyUser" ? upsertUsersSimple : UPSERT_REGISTRY[table];
+  if (!upsertFn) return;
+
+  try {
+    const count = await upsertFn(app.prisma, agentId, items);
+    logger.debug("[WriteThrough] Saved to DB", { path, table, agentId, items: items.length, upserted: count });
+  } catch (err) {
+    logger.warn("[WriteThrough] Failed (non-blocking)", {
+      path, table, agentId,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
 }
 
 // ---------------------------------------------------------------------------

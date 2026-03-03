@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { runFullSync, getIsSyncing } from "./sync.service.js";
 import { SYNC_ENDPOINTS } from "./sync.config.js";
+import { getLastDemandAt } from "./sync.demand.js";
 import { logger } from "../../utils/logger.js";
 
 // ---------------------------------------------------------------------------
@@ -88,14 +89,17 @@ export function getEndpointInterval(table: string): number {
 
 /**
  * Check xem endpoint có nên chạy trong lần sync này không.
- * So sánh thời gian hiện tại với lastRunAt + intervalMs.
+ * So sánh thời gian hiện tại với max(lastRunAt, lastDemandAt) + intervalMs.
+ * Nếu demand sync vừa chạy → scheduler skip cho đến interval tiếp theo.
  */
 export function shouldRunEndpoint(table: string): boolean {
   const interval = endpointIntervals.get(table);
   if (!interval || interval <= 0) return false; // interval = 0 → disabled
 
-  const last = lastRunAt.get(table) ?? 0;
-  return Date.now() - last >= interval;
+  const lastRun = lastRunAt.get(table) ?? 0;
+  const lastDemand = getLastDemandAt(table);
+  const effectiveLastRun = Math.max(lastRun, lastDemand);
+  return Date.now() - effectiveLastRun >= interval;
 }
 
 /** Đánh dấu endpoint vừa chạy xong. */
