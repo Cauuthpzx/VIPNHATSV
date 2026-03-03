@@ -2,7 +2,13 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { sendSuccess, sendError } from "../../utils/response.js";
 import { HTTP_STATUS } from "../../constants/http.js";
 import { ERROR_CODES } from "../../constants/error-codes.js";
+import { ValidationError } from "../../errors/ValidationError.js";
 import * as notifService from "./notification.service.js";
+import {
+  listNotificationsSchema,
+  markAsReadSchema,
+  memberDetailParamsSchema,
+} from "./notification.schema.js";
 
 export async function notificationRoutes(app: FastifyInstance) {
   // All routes require authentication
@@ -20,15 +26,12 @@ export async function notificationRoutes(app: FastifyInstance) {
   // GET /notifications — list with optional filters
   app.get(
     "/",
-    async (
-      request: FastifyRequest<{
-        Querystring: { unread?: string; limit?: string; offset?: string };
-      }>,
-      reply: FastifyReply,
-    ) => {
-      const unreadOnly = request.query.unread === "true" || request.query.unread === "1";
-      const limit = Math.min(Number(request.query.limit) || 50, 200);
-      const offset = Math.max(Number(request.query.offset) || 0, 0);
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const parsed = listNotificationsSchema.safeParse(request.query);
+      if (!parsed.success) throw new ValidationError(parsed.error.errors[0].message);
+
+      const { unread, limit, offset } = parsed.data;
+      const unreadOnly = unread === "true" || unread === "1";
 
       const result = await notifService.listNotifications(app.prisma, {
         unreadOnly,
@@ -42,11 +45,11 @@ export async function notificationRoutes(app: FastifyInstance) {
   // POST /notifications/read — mark as read
   app.post(
     "/read",
-    async (
-      request: FastifyRequest<{ Body: { ids?: string[]; all?: boolean } }>,
-      reply: FastifyReply,
-    ) => {
-      const { ids, all } = request.body ?? {};
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const parsed = markAsReadSchema.safeParse(request.body);
+      if (!parsed.success) throw new ValidationError(parsed.error.errors[0].message);
+
+      const { ids, all } = parsed.data;
 
       let marked = 0;
       if (all) {
@@ -80,13 +83,11 @@ export async function notificationRoutes(app: FastifyInstance) {
   // GET /notifications/member/:agentId/:username — member detail for notification
   app.get(
     "/member/:agentId/:username",
-    async (
-      request: FastifyRequest<{
-        Params: { agentId: string; username: string };
-      }>,
-      reply: FastifyReply,
-    ) => {
-      const { agentId, username } = request.params;
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const parsed = memberDetailParamsSchema.safeParse(request.params);
+      if (!parsed.success) throw new ValidationError(parsed.error.errors[0].message);
+
+      const { agentId, username } = parsed.data;
       const member = await notifService.getMemberDetail(app.prisma, agentId, username);
 
       if (!member) {

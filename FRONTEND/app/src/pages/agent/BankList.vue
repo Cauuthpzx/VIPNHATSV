@@ -68,12 +68,12 @@ function handleAdd() {
   // TODO: open add bank account dialog
 }
 
-function handleEdit(row: any) {
-  console.log("Edit:", row);
+function handleEdit(_row: Record<string, unknown>) {
+  // TODO: open edit bank account dialog
 }
 
-function handleDelete(row: any) {
-  console.log("Delete:", row);
+function handleDelete(_row: Record<string, unknown>) {
+  // TODO: open delete confirmation dialog
 }
 </script>
 

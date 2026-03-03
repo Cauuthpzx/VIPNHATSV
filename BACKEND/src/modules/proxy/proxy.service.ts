@@ -327,11 +327,15 @@ async function fetchSingleAgent<T = unknown>(
   }
 
   // 3. Store in Redis (fire-and-forget — don't await)
-  app.redis.set(cacheKey, JSON.stringify(result), "EX", ttl).catch(() => {});
+  app.redis.set(cacheKey, JSON.stringify(result), "EX", ttl).catch((err) => {
+    logger.warn("Redis cache write failed", { cacheKey, error: (err as Error).message });
+  });
 
   // 4. Write-through to DB (fire-and-forget)
   if (Array.isArray(result.items)) {
-    writeThroughToDb(app, path, agentId, result.items as Record<string, unknown>[]).catch(() => {});
+    writeThroughToDb(app, path, agentId, result.items as Record<string, unknown>[]).catch((err) => {
+      logger.warn("Write-through to DB failed", { path, agentId, error: (err as Error).message });
+    });
   }
 
   return result;
@@ -444,10 +448,14 @@ async function fetchMultiAgentWithPipeline<T = unknown>(
       if (cacheKey && result.items.length > 0) {
         pipeline.set(cacheKey, JSON.stringify(result), "EX", ttl);
         // 5. Write-through to DB (fire-and-forget)
-        writeThroughToDb(app, path, agents[idx].id, result.items as Record<string, unknown>[]).catch(() => {});
+        writeThroughToDb(app, path, agents[idx].id, result.items as Record<string, unknown>[]).catch((err) => {
+          logger.warn("Write-through to DB failed", { path, agentId: agents[idx].id, error: (err as Error).message });
+        });
       }
     }
-    pipeline.exec().catch(() => {});
+    pipeline.exec().catch((err) => {
+      logger.warn("Redis pipeline exec failed", { path, error: (err as Error).message });
+    });
   }
 
   return results;

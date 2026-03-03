@@ -85,8 +85,8 @@ function handleReset() {
   loadData();
 }
 
-function handleDetail(row: any) {
-  console.log("Detail:", row);
+function handleDetail(_row: Record<string, unknown>) {
+  // TODO: open detail dialog
 }
 </script>
 

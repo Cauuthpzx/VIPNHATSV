@@ -2,6 +2,7 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { authorize } from "../../middlewares/authorize.js";
 import { PERMISSIONS } from "../../constants/permissions.js";
 import { sendSuccess } from "../../utils/response.js";
+import { ValidationError } from "../../errors/ValidationError.js";
 import {
   loginAgent,
   logoutAgent,
@@ -10,6 +11,11 @@ import {
   getSessionInfo,
   setCookieManual,
 } from "./login-engine.js";
+import {
+  agentIdParamsSchema,
+  setCookieBodySchema,
+  loginHistoryQuerySchema,
+} from "./ee88-auth.schema.js";
 
 export async function ee88AuthRoutes(app: FastifyInstance) {
   // All routes require authentication + sync:write permission
@@ -19,8 +25,10 @@ export async function ee88AuthRoutes(app: FastifyInstance) {
   app.post(
     "/:id/login",
     { preHandler: [authorize(PERMISSIONS.SYNC_WRITE)] },
-    async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
-      const { id } = request.params;
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const parsed = agentIdParamsSchema.safeParse(request.params);
+      if (!parsed.success) throw new ValidationError(parsed.error.errors[0].message);
+      const { id } = parsed.data;
       const ip = request.ip;
       const result = await loginAgent(app, id, "manual", ip);
       return sendSuccess(reply, result);
@@ -31,8 +39,10 @@ export async function ee88AuthRoutes(app: FastifyInstance) {
   app.post(
     "/:id/logout",
     { preHandler: [authorize(PERMISSIONS.SYNC_WRITE)] },
-    async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
-      const { id } = request.params;
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const parsed = agentIdParamsSchema.safeParse(request.params);
+      if (!parsed.success) throw new ValidationError(parsed.error.errors[0].message);
+      const { id } = parsed.data;
       await logoutAgent(app, id);
       return sendSuccess(reply, null);
     },
@@ -53,8 +63,10 @@ export async function ee88AuthRoutes(app: FastifyInstance) {
   app.post(
     "/:id/check",
     { preHandler: [authorize(PERMISSIONS.SYNC_READ)] },
-    async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
-      const { id } = request.params;
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const parsed = agentIdParamsSchema.safeParse(request.params);
+      if (!parsed.success) throw new ValidationError(parsed.error.errors[0].message);
+      const { id } = parsed.data;
       const result = await checkAgentSession(app, id);
       return sendSuccess(reply, result);
     },
@@ -64,8 +76,10 @@ export async function ee88AuthRoutes(app: FastifyInstance) {
   app.get(
     "/:id/session",
     { preHandler: [authorize(PERMISSIONS.SYNC_READ)] },
-    async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
-      const { id } = request.params;
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const parsed = agentIdParamsSchema.safeParse(request.params);
+      if (!parsed.success) throw new ValidationError(parsed.error.errors[0].message);
+      const { id } = parsed.data;
       const result = await getSessionInfo(app, id);
       return sendSuccess(reply, result);
     },
@@ -75,15 +89,14 @@ export async function ee88AuthRoutes(app: FastifyInstance) {
   app.patch(
     "/:id/cookie",
     { preHandler: [authorize(PERMISSIONS.SYNC_WRITE)] },
-    async (
-      request: FastifyRequest<{ Params: { id: string }; Body: { cookie: string } }>,
-      reply: FastifyReply,
-    ) => {
-      const { id } = request.params;
-      const { cookie } = request.body;
-      if (!cookie) {
-        return reply.status(400).send({ success: false, message: "Cookie is required" });
-      }
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const paramsParsed = agentIdParamsSchema.safeParse(request.params);
+      if (!paramsParsed.success) throw new ValidationError(paramsParsed.error.errors[0].message);
+      const bodyParsed = setCookieBodySchema.safeParse(request.body);
+      if (!bodyParsed.success) throw new ValidationError(bodyParsed.error.errors[0].message);
+
+      const { id } = paramsParsed.data;
+      const { cookie } = bodyParsed.data;
       await setCookieManual(app, id, cookie);
       return sendSuccess(reply, null);
     },
@@ -93,12 +106,14 @@ export async function ee88AuthRoutes(app: FastifyInstance) {
   app.get(
     "/login-history/:id",
     { preHandler: [authorize(PERMISSIONS.SYNC_READ)] },
-    async (
-      request: FastifyRequest<{ Params: { id: string }; Querystring: { limit?: string } }>,
-      reply: FastifyReply,
-    ) => {
-      const { id } = request.params;
-      const limit = Math.min(Number(request.query.limit) || 20, 100);
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      const paramsParsed = agentIdParamsSchema.safeParse(request.params);
+      if (!paramsParsed.success) throw new ValidationError(paramsParsed.error.errors[0].message);
+      const queryParsed = loginHistoryQuerySchema.safeParse(request.query);
+      if (!queryParsed.success) throw new ValidationError(queryParsed.error.errors[0].message);
+
+      const { id } = paramsParsed.data;
+      const { limit } = queryParsed.data;
       const history = await app.prisma.agentLoginHistory.findMany({
         where: { agentId: id },
         orderBy: { createdAt: "desc" },
