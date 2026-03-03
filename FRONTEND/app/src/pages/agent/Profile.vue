@@ -136,7 +136,7 @@ async function handleLogoutAll() {
           logoutAllLoading.value = false;
         }
       }},
-      { text: "Hủy" },
+      { text: "Hủy", callback: (id: string) => { layer.close(id); } },
     ],
   });
 }

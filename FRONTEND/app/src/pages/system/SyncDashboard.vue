@@ -181,7 +181,7 @@ function confirmDeleteAgent(agentId: string, agentName: string) {
       isHtmlContent: true,
       btn: [
         { text: "Vô hiệu hoá", callback: (id: string) => { layer.close(id); doDeleteAgent(agentId); } },
-        { text: "Hủy" },
+        { text: "Hủy", callback: (id: string) => { layer.close(id); } },
       ],
     },
   );
@@ -425,7 +425,7 @@ function confirmPurgeAll() {
       isHtmlContent: true,
       btn: [
         { text: "Xóa tất cả", callback: (id: string) => { layer.close(id); doPurgeAll(); } },
-        { text: "Hủy" },
+        { text: "Hủy", callback: (id: string) => { layer.close(id); } },
       ],
     },
   );
@@ -456,7 +456,7 @@ function confirmPurgeAgent(agentId: string, agentName: string) {
       isHtmlContent: true,
       btn: [
         { text: "Xóa", callback: (id: string) => { layer.close(id); doPurgeAgent(agentId); } },
-        { text: "Hủy" },
+        { text: "Hủy", callback: (id: string) => { layer.close(id); } },
       ],
     },
   );
