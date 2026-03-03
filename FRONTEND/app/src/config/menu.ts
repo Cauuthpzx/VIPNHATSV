@@ -2,14 +2,14 @@ import { PERMISSIONS } from "@/constants/permissions";
 
 export interface MenuChild {
   id: string;
-  title: string;
+  titleKey: string;
   path: string;
   permission?: string;
 }
 
 export interface MenuItem {
   id: string;
-  title: string;
+  titleKey: string;
   icon: string;
   permission?: string;
   path?: string; // menu đơn (không có sub)
@@ -19,82 +19,94 @@ export interface MenuItem {
 export const menuData: MenuItem[] = [
   {
     id: "home",
-    title: "Trang chủ",
+    titleKey: "menu.home",
     icon: "layui-icon-home",
     path: "/agent/welcome",
     children: [],
   },
   {
+    id: "analytics",
+    titleKey: "menu.analytics",
+    icon: "layui-icon-chart",
+    children: [
+      { id: "analyticsFinance", titleKey: "menu.analyticsFinance", path: "/analytics/finance", permission: PERMISSIONS.ANALYTICS_READ },
+      { id: "analyticsBetting", titleKey: "menu.analyticsBetting", path: "/analytics/betting", permission: PERMISSIONS.ANALYTICS_READ },
+      { id: "analyticsMembers", titleKey: "menu.analyticsMembers", path: "/analytics/members", permission: PERMISSIONS.ANALYTICS_READ },
+      { id: "analyticsAgents", titleKey: "menu.analyticsAgents", path: "/analytics/agents", permission: PERMISSIONS.ANALYTICS_READ },
+      { id: "analyticsRevenue", titleKey: "menu.analyticsRevenue", path: "/analytics/revenue", permission: PERMISSIONS.ANALYTICS_READ },
+    ],
+  },
+  {
     id: "member",
-    title: "Quản lí hội viên thuộc cấp",
+    titleKey: "menu.member",
     icon: "layui-icon-username",
     children: [
-      { id: "user", title: "Danh sách hội viên", path: "/agent/user", permission: PERMISSIONS.MEMBER_READ },
+      { id: "user", titleKey: "menu.userList", path: "/agent/user", permission: PERMISSIONS.MEMBER_READ },
     ],
   },
   {
     id: "invite",
-    title: "Mã giới thiệu",
+    titleKey: "menu.invite",
     icon: "layui-icon-vercode",
     children: [
-      { id: "inviteList", title: "Danh sách mã giới thiệu", path: "/agent/invite-list", permission: PERMISSIONS.INVITE_READ },
+      { id: "inviteList", titleKey: "menu.inviteList", path: "/agent/invite-list", permission: PERMISSIONS.INVITE_READ },
     ],
   },
   {
     id: "report",
-    title: "Báo cáo",
+    titleKey: "menu.report",
     icon: "layui-icon-tabs",
     children: [
-      { id: "reportLottery", title: "Báo cáo xổ số", path: "/agent/report-lottery", permission: PERMISSIONS.REPORT_READ },
-      { id: "reportFunds", title: "Sao kê giao dịch", path: "/agent/report-funds", permission: PERMISSIONS.REPORT_READ },
-      { id: "reportThirdGame", title: "Báo cáo nhà cung cấp", path: "/agent/report-third-game", permission: PERMISSIONS.REPORT_READ },
+      { id: "reportLottery", titleKey: "menu.reportLottery", path: "/agent/report-lottery", permission: PERMISSIONS.REPORT_READ },
+      { id: "reportFunds", titleKey: "menu.reportFunds", path: "/agent/report-funds", permission: PERMISSIONS.REPORT_READ },
+      { id: "reportThirdGame", titleKey: "menu.reportThirdGame", path: "/agent/report-third-game", permission: PERMISSIONS.REPORT_READ },
     ],
   },
   {
     id: "commission",
-    title: "Rút hoa hồng",
+    titleKey: "menu.commission",
     icon: "layui-icon-dollar",
     children: [
-      // { id: "bankList", title: "Danh sách thẻ ngân hàng", path: "/agent/bank-list", permission: PERMISSIONS.FINANCE_READ },
-      { id: "deposit", title: "Danh sách nạp tiền", path: "/agent/deposit", permission: PERMISSIONS.FINANCE_READ },
-      { id: "withdrawalsRecord", title: "Lịch sử rút tiền", path: "/agent/withdrawals-record", permission: PERMISSIONS.FINANCE_READ },
-      // { id: "withdraw", title: "Rút tiền", path: "/agent/withdraw", permission: PERMISSIONS.FINANCE_READ },
+      // { id: "bankList", titleKey: "menu.bankList", path: "/agent/bank-list", permission: PERMISSIONS.FINANCE_READ },
+      { id: "deposit", titleKey: "menu.deposit", path: "/agent/deposit", permission: PERMISSIONS.FINANCE_READ },
+      { id: "withdrawalsRecord", titleKey: "menu.withdrawalsRecord", path: "/agent/withdrawals-record", permission: PERMISSIONS.FINANCE_READ },
+      // { id: "withdraw", titleKey: "menu.withdraw", path: "/agent/withdraw", permission: PERMISSIONS.FINANCE_READ },
     ],
   },
   {
     id: "bet",
-    title: "Quản lí đơn cược",
+    titleKey: "menu.bet",
     icon: "layui-icon-chart-screen",
     children: [
-      { id: "betList", title: "Danh sách đơn cược", path: "/agent/bet", permission: PERMISSIONS.BET_READ },
-      { id: "betOrder", title: "Đơn cược bên thứ 3", path: "/agent/bet-order", permission: PERMISSIONS.BET_READ },
+      { id: "betList", titleKey: "menu.betList", path: "/agent/bet", permission: PERMISSIONS.BET_READ },
+      { id: "betOrder", titleKey: "menu.betOrder", path: "/agent/bet-order", permission: PERMISSIONS.BET_READ },
     ],
   },
   // {
   //   id: "customer",
-  //   title: "Thông tin khách hàng",
+  //   titleKey: "menu.customer",
   //   icon: "layui-icon-survey",
   //   children: [
-  //     { id: "editPassword", title: "Đổi mật khẩu đăng nhập", path: "/agent/edit-password", permission: PERMISSIONS.PASSWORD_WRITE },
-  //     { id: "editFundPassword", title: "Đổi mật khẩu giao dịch", path: "/agent/edit-fund-password", permission: PERMISSIONS.PASSWORD_WRITE },
+  //     { id: "editPassword", titleKey: "menu.editPassword", path: "/agent/edit-password", permission: PERMISSIONS.PASSWORD_WRITE },
+  //     { id: "editFundPassword", titleKey: "menu.editFundPassword", path: "/agent/edit-fund-password", permission: PERMISSIONS.PASSWORD_WRITE },
   //   ],
   // },
   // {
   //   id: "rebate",
-  //   title: "Quản lí tỉ lệ hoàn trả",
+  //   titleKey: "menu.rebate",
   //   icon: "layui-icon-list",
   //   children: [
-  //     { id: "rebateOdds", title: "Danh sách tỉ lệ hoàn trả", path: "/agent/rebate-odds", permission: PERMISSIONS.REBATE_READ },
+  //     { id: "rebateOdds", titleKey: "menu.rebateOdds", path: "/agent/rebate-odds", permission: PERMISSIONS.REBATE_READ },
   //   ],
   // },
   {
     id: "system",
-    title: "SYSTEM",
+    titleKey: "menu.system",
     icon: "layui-icon-set",
     children: [
-      { id: "systemUsers", title: "Quản lý người dùng", path: "/system/users", permission: PERMISSIONS.USERS_READ },
-      { id: "systemRoles", title: "Quản lý vai trò", path: "/system/roles", permission: PERMISSIONS.ROLES_READ },
-      { id: "syncDashboard", title: "Theo dõi đồng bộ", path: "/system/sync", permission: PERMISSIONS.SYNC_READ },
+      { id: "systemUsers", titleKey: "menu.systemUsers", path: "/system/users", permission: PERMISSIONS.USERS_READ },
+      { id: "systemRoles", titleKey: "menu.systemRoles", path: "/system/roles", permission: PERMISSIONS.ROLES_READ },
+      { id: "syncDashboard", titleKey: "menu.syncDashboard", path: "/system/sync", permission: PERMISSIONS.SYNC_READ },
     ],
   },
 ];

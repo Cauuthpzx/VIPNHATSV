@@ -8,4 +8,5 @@ export interface TableToolBarType {
   tableDataSource: TableProps["dataSource"];
   tableRef: HTMLDivElement | null;
   exportAllFn?: TableProps["exportAllFn"];
+  exportFileName?: string;
 }

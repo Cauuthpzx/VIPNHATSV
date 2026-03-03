@@ -1,8 +1,10 @@
 import { computed, onMounted } from "vue";
+import { useI18n } from "vue-i18n";
 import { useAgentStore } from "@/stores/agent";
 import { useAutoFitSelect } from "@/composables/useAutoFitSelect";
 
 export function useAgentFilter() {
+  const { t } = useI18n();
   const agentStore = useAgentStore();
 
   onMounted(() => {
@@ -16,7 +18,7 @@ export function useAgentFilter() {
   });
 
   const agentOptions = computed(() => [
-    { label: "Tất cả", value: "" },
+    { label: t("common.all"), value: "" },
     ...agentStore.activeAgents.map((a) => ({ label: a.name, value: a.id })),
   ]);
 

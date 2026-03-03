@@ -62,9 +62,6 @@ export function useTable(props: RequiredTableProps, emit: TableEmit) {
     (newValue) => {
       tableDataSource.splice(0, tableDataSource.length, ...newValue);
     },
-    {
-      deep: true,
-    },
   );
 
   const _columns = ref<TableColumn[]>([]);
@@ -79,7 +76,6 @@ export function useTable(props: RequiredTableProps, emit: TableEmit) {
     },
     {
       immediate: true,
-      deep: true,
     },
   );
 

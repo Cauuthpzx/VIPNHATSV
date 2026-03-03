@@ -10,6 +10,9 @@ export const userListSchema = paginationSchema.extend({
   username: z.string().optional(),
   user_type: z.string().optional(),
   status: z.string().optional(),
+  register_time: z.string().optional(),
+  sort_field: z.string().optional(),
+  sort_order: z.string().optional(),
 });
 
 export const inviteListSchema = paginationSchema.extend({

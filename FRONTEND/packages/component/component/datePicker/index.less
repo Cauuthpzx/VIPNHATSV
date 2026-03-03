@@ -557,6 +557,7 @@ html #layuicss-laydate {
   overflow: hidden;
   border-color: var(--input-border-color);
   border-radius: var(--input-border-radius);
+  background-color: #fff;
   &:hover {
     border-color: #d2d2d2;
   }
@@ -565,7 +566,7 @@ html #layuicss-laydate {
     left: 0;
     right: 0;
     text-align: center;
-    color: #aaa;
+    color: #999;
     font-size: 14px;
     pointer-events: none;
     white-space: nowrap;
@@ -575,12 +576,15 @@ html #layuicss-laydate {
   }
   .range-separator {
     margin: 0 5px;
-    color: var(--global-neutral-color-8);
+    color: #999;
     background-color: transparent;
+    flex-shrink: 0;
   }
   .layui-input-wrapper {
     border: none;
     box-sizing: border-box;
+    flex: 1;
+    min-width: 0;
     input {
       text-align: center;
       padding: 0;
@@ -588,6 +592,7 @@ html #layuicss-laydate {
   }
   .layui-input {
     border: none;
+    background-color: transparent;
   }
 }
 .layui-laydate-range {

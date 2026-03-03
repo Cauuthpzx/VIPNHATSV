@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { reactive, ref, watch, onMounted } from "vue";
+import { reactive, ref, computed, watch, onMounted } from "vue";
+import { useI18n } from "vue-i18n";
 import { useDateRange } from "@/composables/useDateRange";
 import { useListPage } from "@/composables/useListPage";
 import { useAutoFitSelect } from "@/composables/useAutoFitSelect";
@@ -8,6 +9,8 @@ import { fetchBetList, fetchLotteryDropdown } from "@/api/services/proxy";
 import { createExportAllFn } from "@/composables/useExportAll";
 import { layer } from "@layui/layui-vue";
 import CookieBadge from "@/components/CookieBadge.vue";
+
+const { t } = useI18n();
 
 const { dateRange, dateQuickSelect, dateQuickOptions, dateQuickWidth, resetDateRange } = useDateRange("today");
 const { dataSource, loading, page, setLoading, bindLoadData, guardStale } = useListPage();
@@ -34,17 +37,17 @@ const playOptions = ref([
   { label: "Tất cả", value: "" },
 ]);
 
-const statusOptions = [
-  { label: "Tất cả", value: "" },
-  { label: "Chưa thanh toán", value: "-9" },
-  { label: "Trúng", value: "1" },
-  { label: "Không trúng", value: "-1" },
-  { label: "Hòa", value: "2" },
-  { label: "Khách hủy đơn", value: "3" },
-  { label: "Hệ thống hủy đơn", value: "4" },
-  { label: "Đơn cược bất thường", value: "5" },
-  { label: "Chưa thanh toán (khôi phục thủ công)", value: "6" },
-];
+const statusOptions = computed(() => [
+  { label: t("betList.statusAll"), value: "" },
+  { label: t("betList.statusUnpaid"), value: "-9" },
+  { label: t("betList.statusWin"), value: "1" },
+  { label: t("betList.statusLose"), value: "-1" },
+  { label: t("betList.statusDraw"), value: "2" },
+  { label: t("betList.statusCancelUser"), value: "3" },
+  { label: t("betList.statusCancelSystem"), value: "4" },
+  { label: t("betList.statusAbnormal"), value: "5" },
+  { label: t("betList.statusUnpaidManual"), value: "6" },
+]);
 
 // Static lottery data extracted from upstream — used as fallback and for series_id lookup
 const STATIC_LOTTERY_DATA = [
@@ -179,27 +182,27 @@ watch(() => searchForm.playType, async (playTypeId) => {
   } catch {}
 });
 
-const columns = [
-  { title: "Nhân viên", key: "_agentName", ellipsisTooltip: true },
-  { title: "Mã giao dịch", key: "serial_no", ellipsisTooltip: true },
-  { title: "Tên người dùng", key: "username", ellipsisTooltip: true },
-  { title: "Thời gian cược", key: "create_time", ellipsisTooltip: true },
-  { title: "Trò chơi", key: "lottery_name", ellipsisTooltip: true },
-  { title: "Loại trò chơi", key: "play_type_name", ellipsisTooltip: true },
-  { title: "Cách chơi", key: "play_name", ellipsisTooltip: true },
-  { title: "Kỳ", key: "issue", ellipsisTooltip: true },
-  { title: "Thông tin cược", key: "content", ellipsisTooltip: true },
-  { title: "Tiền cược", key: "money", customSlot: "num", ellipsisTooltip: true },
-  { title: "Tiền hoàn trả", key: "rebate_amount", customSlot: "num", ellipsisTooltip: true },
-  { title: "Thắng thua", key: "result", customSlot: "num", ellipsisTooltip: true },
-  { title: "Trạng thái", key: "status_text", ellipsisTooltip: true },
-];
+const columns = computed(() => [
+  { title: t("common.agent"), key: "_agentName" },
+  { title: t("betList.serialNo"), key: "serial_no" },
+  { title: t("betList.userLabel"), key: "username" },
+  { title: t("betList.betTime"), key: "create_time" },
+  { title: t("betList.game"), key: "lottery_name" },
+  { title: t("betList.gameType"), key: "play_type_name" },
+  { title: t("betList.playType"), key: "play_name", ellipsisTooltip: true },
+  { title: t("betList.period"), key: "issue", ellipsisTooltip: true },
+  { title: t("betList.betInfo"), key: "content", ellipsisTooltip: true },
+  { title: t("betList.betAmount"), key: "money", customSlot: "num" },
+  { title: t("betList.rebateAmount"), key: "rebate_amount", customSlot: "num" },
+  { title: t("betList.winLose"), key: "result", customSlot: "num" },
+  { title: t("common.status"), key: "status_text" },
+]);
 
-const summaryColumns = [
-  { title: "Tiền cược", key: "total_money", customSlot: "sumNum", ellipsisTooltip: true },
-  { title: "Tiền hoàn trả", key: "total_rebate_amount", customSlot: "sumNum", ellipsisTooltip: true },
-  { title: "Thắng thua", key: "total_result", customSlot: "sumNum", ellipsisTooltip: true },
-];
+const summaryColumns = computed(() => [
+  { title: t("betList.betAmount"), key: "total_money", customSlot: "sumNum" },
+  { title: t("betList.rebateAmount"), key: "total_rebate_amount", customSlot: "sumNum" },
+  { title: t("betList.winLose"), key: "total_result", customSlot: "sumNum" },
+]);
 
 const summaryData = ref([
   {
@@ -238,7 +241,7 @@ async function loadData() {
       summaryData.value = [{ total_money: "0.0000", total_result: "0.0000", total_rebate_amount: "0.0000" }];
     }
   } catch {
-    if (!isStale()) layer.msg("Lỗi tải dữ liệu", { icon: 2 });
+    if (!isStale()) layer.msg(t("common.errorLoad"), { icon: 2 });
   } finally {
     if (!isStale()) setLoading(false);
   }
@@ -276,17 +279,17 @@ onMounted(() => loadDropdownData());
 <template>
   <div>
     <lay-card>
-      <lay-field title="Danh sách đơn cược">
+      <lay-field :title="t('betList.title')">
       <div class="search-form-wrap">
         <div class="layui-inline">
-          <span class="form-label">Nhân viên :</span>
+          <span class="form-label">{{ t("common.agentLabel") }}</span>
           <lay-select v-model="selectedAgentId" :style="{ width: agentWidth }">
             <lay-select-option v-for="opt in agentOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
           </lay-select>
         </div>
         <div class="layui-inline">
-          <span class="form-label">Thời gian :</span>
-          <lay-date-picker v-model="dateRange" range single-panel range-separator="-" :placeholder="['Ngày bắt đầu', 'Ngày kết thúc']" />
+          <span class="form-label">{{ t("common.timeLabel") }}</span>
+          <lay-date-picker v-model="dateRange" range single-panel range-separator="-" :placeholder="[t('common.dateStart'), t('common.dateEnd')]" />
         </div>
         <div class="layui-inline">
           <lay-select v-model="dateQuickSelect" :style="{ width: dateQuickWidth }">
@@ -294,43 +297,43 @@ onMounted(() => loadDropdownData());
           </lay-select>
         </div>
         <div class="layui-inline">
-          <span class="form-label">Tên người dùng :</span>
-          <lay-input v-model="searchForm.username" placeholder="Vui lòng nhập đầy đủ Tên người dùng" />
+          <span class="form-label">{{ t("betList.userLabel") }} :</span>
+          <lay-input v-model="searchForm.username" :placeholder="t('betList.usernamePlaceholder')" />
         </div>
         <div class="layui-inline">
-          <span class="form-label">Mã giao dịch :</span>
-          <lay-input v-model="searchForm.serialNo" placeholder="Nhập mã giao dịch" />
+          <span class="form-label">{{ t("betList.serialNoLabel") }}</span>
+          <lay-input v-model="searchForm.serialNo" :placeholder="t('betList.serialNoPlaceholder')" />
         </div>
         <div class="layui-inline">
-          <span class="form-label">Trò chơi :</span>
+          <span class="form-label">{{ t("betList.gameLabel") }}</span>
           <lay-select v-model="searchForm.lotteryType" :style="{ width: lotteryWidth }">
             <lay-select-option v-for="opt in lotteryOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
           </lay-select>
         </div>
         <div class="layui-inline">
-          <span class="form-label">Loại trò chơi :</span>
+          <span class="form-label">{{ t("betList.gameTypeLabel") }}</span>
           <lay-select v-model="searchForm.playType" :style="{ width: playTypeWidth }">
             <lay-select-option v-for="opt in playTypeOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
           </lay-select>
         </div>
         <div class="layui-inline">
-          <span class="form-label">Cách chơi :</span>
+          <span class="form-label">{{ t("betList.playTypeLabel") }}</span>
           <lay-select v-model="searchForm.play" :style="{ width: playWidth }">
             <lay-select-option v-for="opt in playOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
           </lay-select>
         </div>
         <div class="layui-inline">
-          <span class="form-label">Trạng thái :</span>
+          <span class="form-label">{{ t("betList.statusLabel") }}</span>
           <lay-select v-model="searchForm.status" :style="{ width: statusWidth }">
             <lay-select-option v-for="opt in statusOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
           </lay-select>
         </div>
         <div class="layui-inline">
           <lay-button type="normal" @click="handleSearch">
-            <i class="layui-icon layui-icon-search"></i> Tìm kiếm
+            <i class="layui-icon layui-icon-search"></i> {{ t("common.search") }}
           </lay-button>
           <lay-button type="primary" @click="handleReset">
-            <i class="layui-icon layui-icon-refresh"></i> Đặt lại
+            <i class="layui-icon layui-icon-refresh"></i> {{ t("common.reset") }}
           </lay-button>
         </div>
       </div>
@@ -351,15 +354,15 @@ onMounted(() => loadDropdownData());
             <CookieBadge />
           </template>
           <template #num="{ row, column }">
-            <lay-count-up :end-val="Number(row[column.key]) || 0" :duration="600" :decimal-places="String(row[column.key]).includes('.') ? 2 : 0" :use-grouping="false" />
+            <lay-count-up :end-val="Number(row[column.key]) || 0" :duration="0" :decimal-places="String(row[column.key]).includes('.') ? 2 : 0" :use-grouping="false" />
           </template>
         </lay-table>
         <lay-table :columns="summaryColumns" :data-source="summaryData" :default-toolbar="true">
           <template v-slot:toolbar>
-            <lay-button size="xs" type="normal"><b>DỮ LIỆU TỔNG HỢP</b></lay-button>
+            <lay-button size="xs" type="normal"><b>{{ t("common.summaryData") }}</b></lay-button>
           </template>
           <template #sumNum="{ row, column }">
-            <lay-count-up :end-val="Number(row[column.key]) || 0" :duration="600" :decimal-places="String(row[column.key]).includes('.') ? 4 : 0" :use-grouping="false" />
+            <lay-count-up :end-val="Number(row[column.key]) || 0" :duration="0" :decimal-places="String(row[column.key]).includes('.') ? 4 : 0" :use-grouping="false" />
           </template>
         </lay-table>
       </div>

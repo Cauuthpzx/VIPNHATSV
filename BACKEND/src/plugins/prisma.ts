@@ -10,7 +10,9 @@ declare module "fastify" {
 }
 
 async function prismaPlugin(app: FastifyInstance) {
-  const prisma = new PrismaClient();
+  const prisma = new PrismaClient({
+    log: process.env.NODE_ENV === "development" ? ["warn", "error"] : ["error"],
+  });
 
   await prisma.$connect();
   logger.info("Prisma connected");

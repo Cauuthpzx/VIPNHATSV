@@ -3,6 +3,9 @@ import { createPinia } from "pinia";
 import { createApp } from "vue";
 import App from "./App.vue";
 import { router } from "./router";
+// Import i18n side-effect: merges app translations into Layui's i18n instance.
+// Layui already calls app.use(i18n) internally, so we do NOT call app.use(i18n) again.
+import "./i18n";
 import "./styles/global.css";
 
 const app = createApp(App);

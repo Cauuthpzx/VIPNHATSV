@@ -1,6 +1,9 @@
 <script setup lang="ts">
+import { useI18n } from "vue-i18n";
 import AgentPasswordPage from "@/components/AgentPasswordPage.vue";
 import { editUpstreamPassword } from "@/api/services/proxy";
+
+const { t } = useI18n();
 
 async function handleSubmit(agentId: string, data: { oldPassword: string; newPassword: string }) {
   await editUpstreamPassword({
@@ -14,7 +17,7 @@ async function handleSubmit(agentId: string, data: { oldPassword: string; newPas
 
 <template>
   <AgentPasswordPage
-    title="Đổi mật khẩu đăng nhập (Agent)"
+    :title="t('editPassword.agentLogin')"
     :on-submit="handleSubmit"
   />
 </template>

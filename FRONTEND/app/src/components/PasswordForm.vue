@@ -1,7 +1,10 @@
 <script setup lang="ts">
-import { reactive, ref, toRef } from "vue";
+import { reactive, ref, toRef, computed } from "vue";
+import { useI18n } from "vue-i18n";
 import { layer } from "@layui/layui-vue";
 import { usePasswordStrength } from "@/composables/usePasswordStrength";
+
+const { t } = useI18n();
 
 const props = withDefaults(
   defineProps<{
@@ -17,15 +20,22 @@ const props = withDefaults(
   }>(),
   {
     title: "",
-    oldPasswordLabel: "Mật khẩu cũ",
-    oldPasswordPlaceholder: "Nhập mật khẩu cũ",
-    confirmLabel: "Xác nhận mật khẩu mới",
-    validationMsgOld: "Vui lòng nhập mật khẩu cũ",
-    successMsg: "Đổi mật khẩu thành công",
+    oldPasswordLabel: undefined,
+    oldPasswordPlaceholder: undefined,
+    confirmLabel: undefined,
+    validationMsgOld: undefined,
+    successMsg: undefined,
     requireOldPassword: true,
     inline: false,
   }
 );
+
+// Computed defaults with i18n
+const resolvedOldPasswordLabel = computed(() => props.oldPasswordLabel ?? t("password.oldPassword"));
+const resolvedOldPasswordPlaceholder = computed(() => props.oldPasswordPlaceholder ?? t("password.oldPasswordPlaceholder"));
+const resolvedConfirmLabel = computed(() => props.confirmLabel ?? t("password.confirmPassword"));
+const resolvedValidationMsgOld = computed(() => props.validationMsgOld ?? t("password.enterOld"));
+const resolvedSuccessMsg = computed(() => props.successMsg ?? t("password.changeSuccess"));
 
 const formData = reactive({
   oldPassword: "",
@@ -46,19 +56,19 @@ const {
 
 async function handleSubmit() {
   if (props.requireOldPassword && !formData.oldPassword) {
-    layer.msg(props.validationMsgOld, { icon: 2 });
+    layer.msg(resolvedValidationMsgOld.value, { icon: 2 });
     return;
   }
   if (!formData.newPassword) {
-    layer.msg("Vui lòng nhập mật khẩu mới", { icon: 2 });
+    layer.msg(t("password.enterNew"), { icon: 2 });
     return;
   }
   if (!allPassed.value) {
-    layer.msg("Mật khẩu chưa đủ mạnh", { icon: 2 });
+    layer.msg(t("password.notStrong"), { icon: 2 });
     return;
   }
   if (formData.newPassword !== formData.confirmPassword) {
-    layer.msg("Xác nhận mật khẩu không khớp", { icon: 2 });
+    layer.msg(t("password.mismatch"), { icon: 2 });
     return;
   }
 
@@ -70,10 +80,10 @@ async function handleSubmit() {
       oldPassword: formData.oldPassword,
       newPassword: formData.newPassword,
     });
-    layer.msg(props.successMsg, { icon: 1 });
+    layer.msg(resolvedSuccessMsg.value, { icon: 1 });
     Object.assign(formData, { oldPassword: "", newPassword: "", confirmPassword: "" });
   } catch (err: any) {
-    const msg = err?.response?.data?.message || "Thao tác thất bại, vui lòng thử lại";
+    const msg = err?.response?.data?.message || t("common.operationFailedRetry");
     layer.msg(msg, { icon: 2 });
   } finally {
     submitting.value = false;
@@ -86,15 +96,15 @@ async function handleSubmit() {
     <template #header>{{ title }}</template>
     <div class="pw-form-body">
       <div class="layui-form-item" v-if="requireOldPassword">
-        <label class="layui-form-label">{{ oldPasswordLabel }}</label>
+        <label class="layui-form-label">{{ resolvedOldPasswordLabel }}</label>
         <div class="layui-input-block">
-          <lay-input v-model="formData.oldPassword" type="password" :placeholder="oldPasswordPlaceholder" />
+          <lay-input v-model="formData.oldPassword" type="password" :placeholder="resolvedOldPasswordPlaceholder" />
         </div>
       </div>
       <div class="layui-form-item">
-        <label class="layui-form-label">Mật khẩu mới</label>
+        <label class="layui-form-label">{{ t('password.newPassword') }}</label>
         <div class="layui-input-block">
-          <lay-input v-model="formData.newPassword" type="password" placeholder="Nhập mật khẩu mới" />
+          <lay-input v-model="formData.newPassword" type="password" :placeholder="t('password.newPasswordPlaceholder')" />
         </div>
       </div>
       <div class="pw-strength" v-if="formData.newPassword">
@@ -109,29 +119,29 @@ async function handleSubmit() {
         </div>
       </div>
       <div class="layui-form-item">
-        <label class="layui-form-label">{{ confirmLabel }}</label>
+        <label class="layui-form-label">{{ resolvedConfirmLabel }}</label>
         <div class="layui-input-block">
-          <lay-input v-model="formData.confirmPassword" type="password" placeholder="Nhập lại mật khẩu mới" />
+          <lay-input v-model="formData.confirmPassword" type="password" :placeholder="t('password.confirmPasswordPlaceholder')" />
         </div>
       </div>
       <div class="layui-form-item">
         <div class="layui-input-block">
-          <lay-button type="normal" :loading="submitting" @click="handleSubmit">Xác nhận</lay-button>
+          <lay-button type="normal" :loading="submitting" @click="handleSubmit">{{ t('common.confirm') }}</lay-button>
         </div>
       </div>
     </div>
   </lay-card>
   <div v-else class="pw-form-body">
     <div class="layui-form-item" v-if="requireOldPassword">
-      <label class="layui-form-label">{{ oldPasswordLabel }}</label>
+      <label class="layui-form-label">{{ resolvedOldPasswordLabel }}</label>
       <div class="layui-input-block">
-        <lay-input v-model="formData.oldPassword" type="password" :placeholder="oldPasswordPlaceholder" />
+        <lay-input v-model="formData.oldPassword" type="password" :placeholder="resolvedOldPasswordPlaceholder" />
       </div>
     </div>
     <div class="layui-form-item">
-      <label class="layui-form-label">Mật khẩu mới</label>
+      <label class="layui-form-label">{{ t('password.newPassword') }}</label>
       <div class="layui-input-block">
-        <lay-input v-model="formData.newPassword" type="password" placeholder="Nhập mật khẩu mới" />
+        <lay-input v-model="formData.newPassword" type="password" :placeholder="t('password.newPasswordPlaceholder')" />
       </div>
     </div>
     <div class="pw-strength" v-if="formData.newPassword">
@@ -146,14 +156,14 @@ async function handleSubmit() {
       </div>
     </div>
     <div class="layui-form-item">
-      <label class="layui-form-label">{{ confirmLabel }}</label>
+      <label class="layui-form-label">{{ resolvedConfirmLabel }}</label>
       <div class="layui-input-block">
-        <lay-input v-model="formData.confirmPassword" type="password" placeholder="Nhập lại mật khẩu mới" />
+        <lay-input v-model="formData.confirmPassword" type="password" :placeholder="t('password.confirmPasswordPlaceholder')" />
       </div>
     </div>
     <div class="layui-form-item">
       <div class="layui-input-block">
-        <lay-button type="normal" :loading="submitting" @click="handleSubmit">Xác nhận</lay-button>
+        <lay-button type="normal" :loading="submitting" @click="handleSubmit">{{ t('common.confirm') }}</lay-button>
       </div>
     </div>
   </div>

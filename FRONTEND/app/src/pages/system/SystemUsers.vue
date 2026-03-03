@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { reactive, ref, onMounted } from "vue";
+import { reactive, ref, computed, onMounted } from "vue";
+import { useI18n } from "vue-i18n";
 import { layer } from "@layui/layui-vue";
 import { useListPage } from "@/composables/useListPage";
 import { useAuthStore } from "@/stores/auth";
@@ -14,6 +15,7 @@ import {
   type SystemRole,
 } from "@/api/services/system";
 
+const { t } = useI18n();
 const authStore = useAuthStore();
 const canWrite = authStore.hasPermission(PERMISSIONS.USERS_WRITE);
 const canDelete = authStore.hasPermission(PERMISSIONS.USERS_DELETE);
@@ -22,14 +24,14 @@ const { dataSource, loading, page, setLoading, bindLoadData } = useListPage<Syst
 
 const searchKeyword = ref("");
 
-const columns = [
+const columns = computed(() => [
   { title: "Email", key: "email", ellipsisTooltip: true },
-  { title: "Tên", key: "name", ellipsisTooltip: true },
-  { title: "Vai trò", key: "role", customSlot: "role", width: "150px" },
-  { title: "Trạng thái", key: "isActive", customSlot: "status", width: "120px" },
-  { title: "Ngày tạo", key: "createdAt", customSlot: "date", width: "180px" },
-  { title: "Thao tác", key: "action", customSlot: "action", width: "220px", fixed: "right" },
-];
+  { title: t("systemUsers.name"), key: "name", ellipsisTooltip: true },
+  { title: t("systemUsers.role"), key: "role", customSlot: "role", width: "150px" },
+  { title: t("common.status"), key: "isActive", customSlot: "status", width: "120px" },
+  { title: t("systemUsers.createdAt"), key: "createdAt", customSlot: "date", width: "180px" },
+  { title: t("common.actions"), key: "action", customSlot: "action", width: "220px", fixed: "right" },
+]);
 
 // Roles list for select dropdown
 const roles = ref<SystemRole[]>([]);
@@ -55,7 +57,7 @@ async function loadData() {
     dataSource.value = data.users;
     page.total = data.total;
   } catch {
-    layer.msg("Lỗi tải dữ liệu", { icon: 2 });
+    layer.msg(t("common.errorLoad"), { icon: 2 });
   } finally {
     setLoading(false);
   }
@@ -111,23 +113,23 @@ function openEdit(row: SystemUser) {
 
 async function handleSubmit() {
   if (!formData.email) {
-    layer.msg("Vui lòng nhập email", { icon: 2 });
+    layer.msg(t("systemUsers.enterEmail"), { icon: 2 });
     return;
   }
   if (!isEdit.value && !formData.password) {
-    layer.msg("Vui lòng nhập mật khẩu", { icon: 2 });
+    layer.msg(t("systemUsers.enterPassword"), { icon: 2 });
     return;
   }
   if (!isEdit.value && formData.password.length < 6) {
-    layer.msg("Mật khẩu phải có ít nhất 6 ký tự", { icon: 2 });
+    layer.msg(t("systemUsers.passwordMinLength"), { icon: 2 });
     return;
   }
   if (!formData.name) {
-    layer.msg("Vui lòng nhập tên", { icon: 2 });
+    layer.msg(t("systemUsers.enterName"), { icon: 2 });
     return;
   }
   if (!formData.roleId) {
-    layer.msg("Vui lòng chọn vai trò", { icon: 2 });
+    layer.msg(t("systemUsers.selectRoleRequired"), { icon: 2 });
     return;
   }
 
@@ -140,7 +142,7 @@ async function handleSubmit() {
         roleId: formData.roleId,
         isActive: formData.isActive,
       });
-      layer.msg("Cập nhật thành công", { icon: 1 });
+      layer.msg(t("systemUsers.updateSuccess"), { icon: 1 });
     } else {
       await createUser({
         email: formData.email,
@@ -148,12 +150,12 @@ async function handleSubmit() {
         name: formData.name,
         roleId: formData.roleId,
       });
-      layer.msg("Tạo thành công", { icon: 1 });
+      layer.msg(t("systemUsers.createSuccess"), { icon: 1 });
     }
     showModal.value = false;
     loadData();
   } catch (err: any) {
-    const msg = err?.response?.data?.message || "Thao tác thất bại";
+    const msg = err?.response?.data?.message || t("common.operationFailed");
     layer.msg(msg, { icon: 2 });
   } finally {
     submitting.value = false;
@@ -164,10 +166,10 @@ async function handleSubmit() {
 async function toggleActive(row: SystemUser) {
   try {
     await updateUser(row.id, { isActive: !row.isActive });
-    layer.msg(row.isActive ? "Đã khóa tài khoản" : "Đã mở khóa tài khoản", { icon: 1 });
+    layer.msg(row.isActive ? t("systemUsers.lockedSuccess") : t("systemUsers.unlockedSuccess"), { icon: 1 });
     loadData();
   } catch {
-    layer.msg("Thao tác thất bại", { icon: 2 });
+    layer.msg(t("common.operationFailed"), { icon: 2 });
   }
 }
 
@@ -175,10 +177,10 @@ async function toggleActive(row: SystemUser) {
 async function handleDelete(row: SystemUser) {
   try {
     await deleteUser(row.id);
-    layer.msg("Xóa thành công", { icon: 1 });
+    layer.msg(t("systemUsers.deleteSuccess"), { icon: 1 });
     loadData();
   } catch (err: any) {
-    const msg = err?.response?.data?.message || "Xóa thất bại";
+    const msg = err?.response?.data?.message || t("systemUsers.deleteFailed");
     layer.msg(msg, { icon: 2 });
   }
 }
@@ -207,22 +209,22 @@ onMounted(() => {
 <template>
   <div>
     <lay-card>
-      <lay-field title="Quản lý người dùng">
+      <lay-field :title="t('systemUsers.title')">
         <div class="search-form-wrap">
           <div class="layui-inline">
-            <span class="form-label">Tìm kiếm:</span>
+            <span class="form-label">{{ t('common.search') }}:</span>
             <lay-input
               v-model="searchKeyword"
-              placeholder="Email hoặc tên"
+              :placeholder="t('systemUsers.searchPlaceholder')"
               @keyup.enter="handleSearch"
             />
           </div>
           <div class="layui-inline">
             <lay-button type="normal" @click="handleSearch">
-              <i class="layui-icon layui-icon-search"></i> Tìm kiếm
+              <i class="layui-icon layui-icon-search"></i> {{ t('common.search') }}
             </lay-button>
             <lay-button type="primary" @click="handleReset">
-              <i class="layui-icon layui-icon-refresh"></i> Đặt lại
+              <i class="layui-icon layui-icon-refresh"></i> {{ t('common.reset') }}
             </lay-button>
           </div>
         </div>
@@ -240,7 +242,7 @@ onMounted(() => {
         >
           <template v-slot:toolbar>
             <lay-button v-if="canWrite" type="normal" size="xs" @click="openCreate">
-              <i class="layui-icon layui-icon-addition"></i> Thêm mới
+              <i class="layui-icon layui-icon-addition"></i> {{ t('systemUsers.addNew') }}
             </lay-button>
           </template>
 
@@ -262,7 +264,7 @@ onMounted(() => {
               size="sm"
               bordered
             >
-              {{ row.isActive ? "Hoạt động" : "Đã khóa" }}
+              {{ row.isActive ? t('systemUsers.active') : t('systemUsers.locked') }}
             </lay-tag>
           </template>
 
@@ -278,7 +280,7 @@ onMounted(() => {
                 type="normal"
                 @click="openEdit(row)"
               >
-                Sửa
+                {{ t('common.edit') }}
               </lay-button>
               <lay-button
                 v-if="canWrite"
@@ -286,14 +288,14 @@ onMounted(() => {
                 :type="row.isActive ? 'warm' : 'normal'"
                 @click="toggleActive(row)"
               >
-                {{ row.isActive ? "Khóa" : "Mở khóa" }}
+                {{ row.isActive ? t('systemUsers.lock') : t('systemUsers.unlock') }}
               </lay-button>
               <lay-popconfirm
                 v-if="canDelete"
-                content="Bạn có chắc muốn xóa người dùng này?"
+                :content="t('systemUsers.confirmDelete')"
                 @confirm="handleDelete(row)"
               >
-                <lay-button size="xs" type="danger">Xóa</lay-button>
+                <lay-button size="xs" type="danger">{{ t('common.delete') }}</lay-button>
               </lay-popconfirm>
             </div>
           </template>
@@ -304,7 +306,7 @@ onMounted(() => {
     <!-- Create/Edit Modal -->
     <lay-layer
       v-model="showModal"
-      :title="isEdit ? 'Sửa người dùng' : 'Thêm người dùng'"
+      :title="isEdit ? t('systemUsers.editUser') : t('systemUsers.addUser')"
       :area="['500px', 'auto']"
       :shade-close="false"
       :move="true"
@@ -315,37 +317,37 @@ onMounted(() => {
           <div class="layui-input-block">
             <lay-input
               v-model="formData.email"
-              placeholder="Nhập email"
+              :placeholder="t('systemUsers.emailPlaceholder')"
               :disabled="isEdit"
             />
           </div>
         </div>
 
         <div v-if="!isEdit" class="layui-form-item">
-          <label class="layui-form-label">Mật khẩu</label>
+          <label class="layui-form-label">{{ t('auth.password') }}</label>
           <div class="layui-input-block">
             <lay-input
               v-model="formData.password"
               type="password"
-              placeholder="Nhập mật khẩu (tối thiểu 6 ký tự)"
+              :placeholder="t('systemUsers.passwordPlaceholder')"
             />
           </div>
         </div>
 
         <div class="layui-form-item">
-          <label class="layui-form-label">Tên</label>
+          <label class="layui-form-label">{{ t('systemUsers.name') }}</label>
           <div class="layui-input-block">
             <lay-input
               v-model="formData.name"
-              placeholder="Nhập tên người dùng"
+              :placeholder="t('systemUsers.namePlaceholder')"
             />
           </div>
         </div>
 
         <div class="layui-form-item">
-          <label class="layui-form-label">Vai trò</label>
+          <label class="layui-form-label">{{ t('systemUsers.role') }}</label>
           <div class="layui-input-block">
-            <lay-select v-model="formData.roleId" placeholder="Chọn vai trò">
+            <lay-select v-model="formData.roleId" :placeholder="t('systemUsers.selectRole')">
               <lay-select-option
                 v-for="r in roles"
                 :key="r.id"
@@ -357,20 +359,20 @@ onMounted(() => {
         </div>
 
         <div v-if="isEdit" class="layui-form-item">
-          <label class="layui-form-label">Trạng thái</label>
+          <label class="layui-form-label">{{ t('common.status') }}</label>
           <div class="layui-input-block" style="display: flex; align-items: center; min-height: 38px;">
             <lay-switch
               v-model="formData.isActive"
-              onswitch-text="Hoạt động"
-              unswitch-text="Đã khóa"
+              :onswitch-text="t('systemUsers.active')"
+              :unswitch-text="t('systemUsers.locked')"
             />
           </div>
         </div>
 
         <div class="layui-form-item" style="text-align: right; margin-bottom: 0;">
-          <lay-button @click="showModal = false">Hủy</lay-button>
+          <lay-button @click="showModal = false">{{ t('common.cancel') }}</lay-button>
           <lay-button type="normal" :loading="submitting" @click="handleSubmit">
-            {{ isEdit ? "Cập nhật" : "Tạo mới" }}
+            {{ isEdit ? t('common.update') : t('common.create') }}
           </lay-button>
         </div>
       </div>

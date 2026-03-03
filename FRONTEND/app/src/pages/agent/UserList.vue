@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { reactive } from "vue";
+import { reactive, computed } from "vue";
+import { useI18n } from "vue-i18n";
 import { useListPage } from "@/composables/useListPage";
 import { useAutoFitSelect } from "@/composables/useAutoFitSelect";
 import { useAgentFilter } from "@/composables/useAgentFilter";
@@ -9,6 +10,8 @@ import { fetchUserList } from "@/api/services/proxy";
 import { createExportAllFn } from "@/composables/useExportAll";
 import { layer } from "@layui/layui-vue";
 import CookieBadge from "@/components/CookieBadge.vue";
+
+const { t } = useI18n();
 
 const authStore = useAuthStore();
 const canWrite = authStore.hasPermission(PERMISSIONS.MEMBER_WRITE);
@@ -24,39 +27,39 @@ const searchForm = reactive({
   sortOrder: "",
 });
 
-const columns = [
-  { title: "Nhân viên", key: "_agentName", ellipsisTooltip: true },
-  { title: "Hội viên", key: "username", ellipsisTooltip: true },
-  { title: "Loại hình hội viên", key: "type_format", ellipsisTooltip: true },
-  { title: "Tài khoản đại lý", key: "parent_user", ellipsisTooltip: true },
-  { title: "Số dư", key: "money", customSlot: "num", ellipsisTooltip: true },
-  { title: "Lần nạp", key: "deposit_count", customSlot: "num", ellipsisTooltip: true },
-  { title: "Lần rút", key: "withdrawal_count", customSlot: "num", ellipsisTooltip: true },
-  { title: "Tổng tiền nạp", key: "deposit_amount", customSlot: "num", ellipsisTooltip: true },
-  { title: "Tổng tiền rút", key: "withdrawal_amount", customSlot: "num", ellipsisTooltip: true },
-  { title: "Thời gian đăng nhập cuối", key: "login_time", ellipsisTooltip: true },
-  { title: "Thời gian đăng ký", key: "register_time", ellipsisTooltip: true },
-  { title: "Trạng thái", key: "status_format", ellipsisTooltip: true },
-  { title: "Thao tác", key: "action", customSlot: "action" },
-];
+const columns = computed(() => [
+  { title: t("common.agent"), key: "_agentName" },
+  { title: t("userList.member"), key: "username" },
+  { title: t("userList.memberType"), key: "type_format" },
+  { title: t("userList.agentAccount"), key: "parent_user" },
+  { title: t("userList.balance"), key: "money", customSlot: "num" },
+  { title: t("userList.depositCount"), key: "deposit_count", customSlot: "num" },
+  { title: t("userList.withdrawCount"), key: "withdrawal_count", customSlot: "num" },
+  { title: t("userList.totalDeposit"), key: "deposit_amount", customSlot: "num" },
+  { title: t("userList.totalWithdraw"), key: "withdrawal_amount", customSlot: "num" },
+  { title: t("userList.lastLogin"), key: "login_time", ellipsisTooltip: true },
+  { title: t("userList.registerTime"), key: "register_time", ellipsisTooltip: true },
+  { title: t("common.status"), key: "status_format" },
+  { title: t("common.actions"), key: "action", customSlot: "action" },
+]);
 
-const statusOptions = [
-  { label: "Chọn", value: "" },
-  { label: "Bình thường", value: "1" },
-  { label: "Đã khóa", value: "0" },
-];
+const statusOptions = computed(() => [
+  { label: t("common.select"), value: "" },
+  { label: t("userList.statusNormal"), value: "1" },
+  { label: t("userList.statusLocked"), value: "0" },
+]);
 
-const sortFieldOptions = [
-  { label: "Chọn", value: "" },
-  { label: "Số dư", value: "balance" },
-  { label: "Thời gian đăng ký", value: "registerTime" },
-];
+const sortFieldOptions = computed(() => [
+  { label: t("common.select"), value: "" },
+  { label: t("userList.sortFieldBalance"), value: "balance" },
+  { label: t("userList.sortFieldRegisterTime"), value: "registerTime" },
+]);
 
-const sortOrderOptions = [
-  { label: "Chọn", value: "" },
-  { label: "Từ lớn đến bé", value: "desc" },
-  { label: "Từ bé đến lớn", value: "asc" },
-];
+const sortOrderOptions = computed(() => [
+  { label: t("common.select"), value: "" },
+  { label: t("userList.sortDesc"), value: "desc" },
+  { label: t("userList.sortAsc"), value: "asc" },
+]);
 
 const { selectWidth: statusWidth } = useAutoFitSelect(statusOptions);
 const { selectWidth: sortFieldWidth } = useAutoFitSelect(sortFieldOptions);
@@ -78,7 +81,7 @@ async function loadData() {
     dataSource.value = res.data.data.items;
     page.total = res.data.data.total;
   } catch {
-    if (!isStale()) layer.msg("Lỗi tải dữ liệu", { icon: 2 });
+    if (!isStale()) layer.msg(t("common.errorLoad"), { icon: 2 });
   } finally {
     if (!isStale()) setLoading(false);
   }
@@ -110,46 +113,46 @@ function handleReset() {
 <template>
   <div>
     <lay-card>
-      <lay-field title="Danh sách hội viên">
+      <lay-field :title="t('userList.title')">
       <div class="search-form-wrap">
         <div class="layui-inline">
-          <span class="form-label">Nhân viên :</span>
+          <span class="form-label">{{ t("common.agentLabel") }}</span>
           <lay-select v-model="selectedAgentId" :style="{ width: agentWidth }">
             <lay-select-option v-for="opt in agentOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
           </lay-select>
         </div>
         <div class="layui-inline">
-          <span class="form-label">Tên tài khoản:</span>
-          <lay-input v-model="searchForm.username" placeholder="Nhập tên tài khoản" />
+          <span class="form-label">{{ t("userList.accountLabel") }}</span>
+          <lay-input v-model="searchForm.username" :placeholder="t('userList.accountPlaceholder')" />
         </div>
         <div class="layui-inline">
-          <span class="form-label">Thời gian nạp đầu:</span>
-          <lay-date-picker v-model="searchForm.dateRange" range single-panel range-separator="-" :placeholder="['Ngày bắt đầu', 'Ngày kết thúc']" :allow-clear="true" />
+          <span class="form-label">{{ t("userList.registerTimeLabel") }}</span>
+          <lay-date-picker v-model="searchForm.dateRange" range single-panel range-separator="-" :placeholder="[t('common.dateStart'), t('common.dateEnd')]" :allow-clear="true" />
         </div>
         <div class="layui-inline">
-          <span class="form-label">Trạng thái:</span>
+          <span class="form-label">{{ t("userList.statusLabel") }}</span>
           <lay-select v-model="searchForm.status" :style="{ width: statusWidth }">
             <lay-select-option v-for="opt in statusOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
           </lay-select>
         </div>
         <div class="layui-inline">
-          <span class="form-label">Sắp xếp theo trường:</span>
+          <span class="form-label">{{ t("userList.sortFieldLabel") }}</span>
           <lay-select v-model="searchForm.sortField" :style="{ width: sortFieldWidth }">
             <lay-select-option v-for="opt in sortFieldOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
           </lay-select>
         </div>
         <div class="layui-inline">
-          <span class="form-label">Sắp xếp theo hướng:</span>
+          <span class="form-label">{{ t("userList.sortOrderLabel") }}</span>
           <lay-select v-model="searchForm.sortOrder" :style="{ width: sortOrderWidth }">
             <lay-select-option v-for="opt in sortOrderOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
           </lay-select>
         </div>
         <div class="layui-inline">
           <lay-button type="normal" @click="handleSearch">
-            <i class="layui-icon layui-icon-search"></i> Tìm kiếm
+            <i class="layui-icon layui-icon-search"></i> {{ t("common.search") }}
           </lay-button>
           <lay-button type="primary" @click="handleReset">
-            <i class="layui-icon layui-icon-refresh"></i> Đặt lại
+            <i class="layui-icon layui-icon-refresh"></i> {{ t("common.reset") }}
           </lay-button>
         </div>
       </div>
@@ -169,16 +172,16 @@ function handleReset() {
           <template v-slot:toolbar>
             <CookieBadge />
             <template v-if="canWrite">
-              <lay-button type="normal" size="xs">+ Thêm hội viên</lay-button>
-              <lay-button type="normal" size="xs">+ Đại lý mới thêm</lay-button>
-              <lay-button type="normal" size="xs">Cài đặt hoàn trả</lay-button>
+              <lay-button type="normal" size="xs">{{ t("userList.addMember") }}</lay-button>
+              <lay-button type="normal" size="xs">{{ t("userList.addAgent") }}</lay-button>
+              <lay-button type="normal" size="xs">{{ t("userList.rebateSettings") }}</lay-button>
             </template>
           </template>
           <template #num="{ row, column }">
-            <lay-count-up :end-val="Number(row[column.key]) || 0" :duration="600" :decimal-places="String(row[column.key]).includes('.') ? 2 : 0" :use-grouping="false" />
+            <lay-count-up :end-val="Number(row[column.key]) || 0" :duration="0" :decimal-places="String(row[column.key]).includes('.') ? 2 : 0" :use-grouping="false" />
           </template>
           <template v-slot:action>
-            <lay-button v-if="canWrite" size="xs" type="normal">Cài đặt hoàn trả</lay-button>
+            <lay-button v-if="canWrite" size="xs" type="normal">{{ t("userList.rebateSettings") }}</lay-button>
           </template>
         </lay-table>
       </div>

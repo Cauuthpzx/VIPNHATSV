@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { ref, watch, onMounted } from "vue";
+import { useI18n } from "vue-i18n";
 import { fetchLotteryDropdown, fetchRebateOdds } from "@/api/services/proxy";
 import { layer } from "@layui/layui-vue";
 import { useAutoFitSelect } from "@/composables/useAutoFitSelect";
 import { useAgentFilter } from "@/composables/useAgentFilter";
 import CookieBadge from "@/components/CookieBadge.vue";
+
+const { t } = useI18n();
 
 const selectedSeries = ref("");
 const selectedLottery = ref("");
@@ -16,7 +19,7 @@ const { selectWidth: seriesWidth } = useAutoFitSelect(seriesOptions);
 const { selectWidth: lotteryWidth } = useAutoFitSelect(lotteryOptions);
 const { selectedAgentId, agentOptions, agentWidth } = useAgentFilter();
 
-const agentColumn = { title: "Nhân viên", key: "_agentName" };
+const agentColumn = { title: t("common.agent"), key: "_agentName" };
 const columns = ref<{ title: string; key: string }[]>([]);
 const dataSource = ref<Record<string, any>[]>([]);
 
@@ -34,7 +37,7 @@ async function fetchInit() {
       selectedSeries.value = seriesOptions.value[0].value;
     }
   } catch {
-    layer.msg("Lỗi tải danh sách xổ số", { icon: 2 });
+    layer.msg(t("rebateOdds.errorLoadLottery"), { icon: 2 });
   }
 }
 
@@ -55,7 +58,7 @@ async function fetchLotteryTypes(seriesId: string) {
       selectedLottery.value = lotteryOptions.value[0].value;
     }
   } catch {
-    layer.msg("Lỗi tải loại xổ số", { icon: 2 });
+    layer.msg(t("rebateOdds.errorLoadType"), { icon: 2 });
   }
 }
 
@@ -93,17 +96,17 @@ async function fetchRebateData() {
 function buildFallbackData() {
   columns.value = [
     agentColumn,
-    { title: "Kiểu chơi", key: "playType" },
-    { title: "Hoàn trả 10", key: "rebate10" },
-    { title: "Hoàn trả 9", key: "rebate9" },
-    { title: "Hoàn trả 8", key: "rebate8" },
-    { title: "Hoàn trả 7", key: "rebate7" },
-    { title: "Hoàn trả 6", key: "rebate6" },
-    { title: "Hoàn trả 5", key: "rebate5" },
-    { title: "Hoàn trả 4", key: "rebate4" },
-    { title: "Hoàn trả 3", key: "rebate3" },
-    { title: "Hoàn trả 2", key: "rebate2" },
-    { title: "Hoàn trả 1", key: "rebate1" },
+    { title: t("rebateOdds.playType"), key: "playType" },
+    { title: `${t("rebateOdds.rebate")} 10`, key: "rebate10" },
+    { title: `${t("rebateOdds.rebate")} 9`, key: "rebate9" },
+    { title: `${t("rebateOdds.rebate")} 8`, key: "rebate8" },
+    { title: `${t("rebateOdds.rebate")} 7`, key: "rebate7" },
+    { title: `${t("rebateOdds.rebate")} 6`, key: "rebate6" },
+    { title: `${t("rebateOdds.rebate")} 5`, key: "rebate5" },
+    { title: `${t("rebateOdds.rebate")} 4`, key: "rebate4" },
+    { title: `${t("rebateOdds.rebate")} 3`, key: "rebate3" },
+    { title: `${t("rebateOdds.rebate")} 2`, key: "rebate2" },
+    { title: `${t("rebateOdds.rebate")} 1`, key: "rebate1" },
   ];
 
   const generateRow = (playType: string, base: number, step: number) => ({
@@ -121,28 +124,28 @@ function buildFallbackData() {
   });
 
   dataSource.value = [
-    generateRow("Lô 2 Số", 99.5, 0.099),
-    generateRow("Lô 2 Số 1K", 5.5, 0.005),
-    generateRow("Lô 3 Số", 980, 0.98),
-    generateRow("Lô 4 Số", 8880, 8.88),
-    generateRow("Xiên 2", 28, 0.028),
-    generateRow("Xiên 3", 150, 0.15),
-    generateRow("Xiên 4", 750, 0.75),
-    generateRow("Đề đầu", 99.5, 0.099),
-    generateRow("Đề đặc biệt", 99.5, 0.099),
-    generateRow("Đề đầu đuôi", 99.5, 0.099),
-    generateRow("Đầu", 9.95, 0.01),
-    generateRow("Đuôi", 9.95, 0.01),
-    generateRow("3 Càng đầu", 980, 0.98),
-    generateRow("3 Càng đặc biệt", 980, 0.98),
-    generateRow("3 Càng đầu đuôi", 980, 0.98),
-    generateRow("4 Càng đặc biệt", 8880, 8.88),
-    generateRow("Trượt xiên 4", 2, 0.002),
-    generateRow("Trượt xiên 8", 3.3, 0.003),
-    generateRow("Trượt xiên 10", 5.6, 0.006),
-    generateRow("Kéo đôi", 1.995, 0.002),
-    generateRow("Tổng 0", 70, 0.07),
-    generateRow("Tổng 1", 36, 0.036),
+    generateRow(t("playType.lo2so"), 99.5, 0.099),
+    generateRow(t("playType.lo2so1k"), 5.5, 0.005),
+    generateRow(t("playType.lo3so"), 980, 0.98),
+    generateRow(t("playType.lo4so"), 8880, 8.88),
+    generateRow(t("playType.xien2"), 28, 0.028),
+    generateRow(t("playType.xien3"), 150, 0.15),
+    generateRow(t("playType.xien4"), 750, 0.75),
+    generateRow(t("playType.deDau"), 99.5, 0.099),
+    generateRow(t("playType.deDacBiet"), 99.5, 0.099),
+    generateRow(t("playType.deDauDuoi"), 99.5, 0.099),
+    generateRow(t("playType.dau"), 9.95, 0.01),
+    generateRow(t("playType.duoi"), 9.95, 0.01),
+    generateRow(t("playType.cang3Dau"), 980, 0.98),
+    generateRow(t("playType.cang3DacBiet"), 980, 0.98),
+    generateRow(t("playType.cang3DauDuoi"), 980, 0.98),
+    generateRow(t("playType.cang4DacBiet"), 8880, 8.88),
+    generateRow(t("playType.truotXien4"), 2, 0.002),
+    generateRow(t("playType.truotXien8"), 3.3, 0.003),
+    generateRow(t("playType.truotXien10"), 5.6, 0.006),
+    generateRow(t("playType.keoDoi"), 1.995, 0.002),
+    generateRow(t("playType.tong0"), 70, 0.07),
+    generateRow(t("playType.tong1"), 36, 0.036),
   ];
 }
 
@@ -171,16 +174,16 @@ onMounted(() => {
 <template>
   <div>
     <lay-card>
-      <lay-field title="Danh sách tỉ lệ hoàn trả">
+      <lay-field :title="t('rebateOdds.title')">
       <div class="search-form-wrap">
         <div class="layui-inline">
-          <span class="form-label">Nhân viên :</span>
+          <span class="form-label">{{ t('common.agentLabel') }}</span>
           <lay-select v-model="selectedAgentId" :style="{ width: agentWidth }">
             <lay-select-option v-for="opt in agentOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
           </lay-select>
         </div>
         <div class="layui-inline">
-          <span class="form-label">Chọn loại xổ :</span>
+          <span class="form-label">{{ t('rebateOdds.lotteryLabel') }}</span>
           <lay-select v-model="selectedSeries" :style="{ width: seriesWidth }">
             <lay-select-option
               v-for="opt in seriesOptions"

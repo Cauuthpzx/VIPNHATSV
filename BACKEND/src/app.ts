@@ -13,6 +13,7 @@ import swaggerPlugin from "./plugins/swagger.js";
 import sentryPlugin from "./plugins/sentry.js";
 import compressPlugin from "./plugins/compress.js";
 import cookiePlugin from "./plugins/cookie.js";
+import multipartPlugin from "@fastify/multipart";
 
 // Middlewares
 import { requestIdHook } from "./middlewares/requestId.js";
@@ -24,6 +25,10 @@ import { authenticate } from "./middlewares/authenticate.js";
 import { healthRoutes } from "./health/index.js";
 import { v1Routes } from "./routes/v1/index.js";
 import { wsRoutes } from "./websocket/ws.handler.js";
+
+// L1 cache cleanup
+import { destroyProxyL1Cache } from "./modules/proxy/proxy.service.js";
+import { destroyDashboardL1Cache } from "./modules/dashboard/dashboard.service.js";
 
 export async function buildApp() {
   const app = Fastify({
@@ -47,6 +52,9 @@ export async function buildApp() {
   await app.register(swaggerPlugin);
   await app.register(helmetPlugin);
   await app.register(compressPlugin);
+  await app.register(multipartPlugin, {
+    limits: { fileSize: 10 * 1024 * 1024, files: 1 },
+  });
   await app.register(rateLimitPlugin);
   await app.register(jwtPlugin);
   await app.register(websocketPlugin);
@@ -58,6 +66,12 @@ export async function buildApp() {
   await app.register(healthRoutes);
   await app.register(v1Routes, { prefix: "/api/v1" });
   await app.register(wsRoutes);
+
+  // Cleanup L1 cache timers on graceful shutdown
+  app.addHook("onClose", async () => {
+    destroyProxyL1Cache();
+    destroyDashboardL1Cache();
+  });
 
   return app;
 }

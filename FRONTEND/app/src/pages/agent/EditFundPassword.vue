@@ -1,6 +1,9 @@
 <script setup lang="ts">
+import { useI18n } from "vue-i18n";
 import AgentPasswordPage from "@/components/AgentPasswordPage.vue";
 import { editUpstreamFundPassword } from "@/api/services/proxy";
+
+const { t } = useI18n();
 
 async function handleSubmit(agentId: string, data: { oldPassword: string; newPassword: string }) {
   await editUpstreamFundPassword({
@@ -14,12 +17,12 @@ async function handleSubmit(agentId: string, data: { oldPassword: string; newPas
 
 <template>
   <AgentPasswordPage
-    title="Đổi mật khẩu giao dịch (Agent)"
-    old-password-label="Mật khẩu giao dịch cũ"
-    old-password-placeholder="Bạn vẫn chưa cài đặt mật khẩu giao dịch"
-    confirm-label="Xác nhận"
-    validation-msg-old="Vui lòng nhập mật khẩu giao dịch cũ"
-    success-msg="Đổi mật khẩu giao dịch thành công"
+    :title="t('editPassword.agentFund')"
+    :old-password-label="t('editPassword.fundOldLabel')"
+    :old-password-placeholder="t('editPassword.fundOldPlaceholder')"
+    :confirm-label="t('editPassword.fundConfirmLabel')"
+    :validation-msg-old="t('editPassword.fundOldValidation')"
+    :success-msg="t('editPassword.fundSuccess')"
     :on-submit="handleSubmit"
   />
 </template>

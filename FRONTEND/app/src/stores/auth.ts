@@ -42,7 +42,7 @@ export const useAuthStore = defineStore("auth", () => {
     const res = await api.post("/auth/login", { username, password });
     const data = res.data;
     if (!data.success) {
-      throw new Error(data.message || "Đăng nhập thất bại");
+      throw new Error(data.message || "Login failed");
     }
     accessToken.value = data.data.accessToken;
     // Refresh token is set via httpOnly cookie by the server

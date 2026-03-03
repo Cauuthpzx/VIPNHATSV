@@ -31,6 +31,9 @@ export const PERMISSIONS = {
   // --- AGENT: Hoàn trả ---
   REBATE_READ: "rebate:read",
 
+  // --- Thống kê & Phân tích ---
+  ANALYTICS_READ: "analytics:read",
+
   // --- SYNC ---
   SYNC_READ: "sync:read",
   SYNC_WRITE: "sync:write",

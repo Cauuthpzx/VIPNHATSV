@@ -55,8 +55,8 @@
         <!-- Left: Branding -->
         <div class="login-brand">
           <div class="brand-text">
-            <h1>Max HUB Admin – Trung tâm Điều hành Thông minh</h1>
-            <p>Công cụ quản trị hiện đại dành riêng cho Admin, tích hợp các tính năng thông minh giúp theo dõi, phân tích và tối ưu hóa trải nghiệm người dùng trên hệ sinh thái Max HUB.</p>
+            <h1>{{ t("auth.pageTitle") }}</h1>
+            <p>{{ t("auth.pageDesc") }}</p>
           </div>
           <img :src="loginBgUrl" alt="" class="brand-illustration" />
         </div>
@@ -65,8 +65,8 @@
         <div class="login-form-panel">
           <!-- Tab Header -->
           <div class="auth-tabs">
-            <span :class="{ active: activeTab === 'login' }" @click="activeTab = 'login'">ĐĂNG NHẬP</span>
-            <span :class="{ active: activeTab === 'register' }" @click="activeTab = 'register'">ĐĂNG KÝ</span>
+            <span :class="{ active: activeTab === 'login' }" @click="activeTab = 'login'">{{ t("auth.tabLogin") }}</span>
+            <span :class="{ active: activeTab === 'register' }" @click="activeTab = 'register'">{{ t("auth.tabRegister") }}</span>
           </div>
 
           <!-- Login Form -->
@@ -74,32 +74,32 @@
             <form @submit.prevent="handleLogin">
               <div class="input-group">
                 <i class="icon layui-icon">&#xe770;</i>
-                <input v-model="loginForm.username" type="text" class="login-input" placeholder="Tài khoản" autocomplete="off" />
+                <input v-model="loginForm.username" type="text" class="login-input" :placeholder="t('auth.account')" autocomplete="off" />
               </div>
               <div class="input-group">
                 <i class="icon layui-icon">&#xe673;</i>
-                <input v-model="loginForm.password" :type="showPassword ? 'text' : 'password'" class="login-input" placeholder="Mật khẩu" autocomplete="off" @keyup.enter="handleLogin" />
+                <input v-model="loginForm.password" :type="showPassword ? 'text' : 'password'" class="login-input" :placeholder="t('auth.password')" autocomplete="off" @keyup.enter="handleLogin" />
                 <i class="icon-suffix layui-icon" @click="showPassword = !showPassword">{{ showPassword ? '\ue696' : '\ue695' }}</i>
               </div>
               <div v-if="captchaRequired" class="captcha-row">
                 <div class="input-group captcha-input-wrap">
                   <i class="icon layui-icon">&#xe672;</i>
-                  <input v-model="loginForm.captchaAnswer" type="text" class="login-input" placeholder="Mã xác nhận" autocomplete="off" />
+                  <input v-model="loginForm.captchaAnswer" type="text" class="login-input" :placeholder="t('auth.captchaPlaceholder')" autocomplete="off" />
                 </div>
                 <div class="captcha-img" @click="loadCaptcha">
                   <div v-if="captchaSvg" v-html="captchaSvg"></div>
-                  <span v-else class="captcha-placeholder">Tải...</span>
+                  <span v-else class="captcha-placeholder">{{ t("auth.captchaLoading") }}</span>
                 </div>
               </div>
               <label class="remember-row">
-                <input v-model="loginForm.remember" type="checkbox" /> <span>Ghi nhớ mật khẩu</span>
+                <input v-model="loginForm.remember" type="checkbox" /> <span>{{ t("auth.rememberPassword") }}</span>
               </label>
               <button type="submit" class="login-btn" :disabled="loginLoading">
                 <span v-if="loginLoading" class="btn-spinner"></span>
-                {{ loginLoading ? 'Đang đăng nhập...' : 'Đăng nhập' }}
+                {{ loginLoading ? t('auth.loginLoading') : t('auth.loginBtn') }}
               </button>
             </form>
-            <div class="switch-tab-link" @click="activeTab = 'register'">Chưa có tài khoản? <b>Đăng ký</b></div>
+            <div class="switch-tab-link" @click="activeTab = 'register'">{{ t("auth.noAccount") }} <b>{{ t("auth.register") }}</b></div>
           </div>
 
           <!-- Register Form -->
@@ -107,19 +107,19 @@
             <form @submit.prevent="handleRegister">
               <div class="input-group">
                 <i class="icon layui-icon">&#xe770;</i>
-                <input v-model="registerForm.username" type="text" class="login-input" placeholder="Tài khoản (chữ cái, số, _)" autocomplete="off" />
+                <input v-model="registerForm.username" type="text" class="login-input" :placeholder="t('auth.accountPlaceholder')" autocomplete="off" />
               </div>
               <div class="input-group">
                 <i class="icon layui-icon">&#xe66f;</i>
-                <input v-model="registerForm.name" type="text" class="login-input" placeholder="Họ tên" autocomplete="off" />
+                <input v-model="registerForm.name" type="text" class="login-input" :placeholder="t('auth.name')" autocomplete="off" />
               </div>
               <div class="input-group">
                 <i class="icon layui-icon">&#xe618;</i>
-                <input v-model="registerForm.email" type="text" class="login-input" placeholder="Email (tùy chọn)" autocomplete="off" />
+                <input v-model="registerForm.email" type="text" class="login-input" :placeholder="t('auth.emailOptional')" autocomplete="off" />
               </div>
               <div class="input-group">
                 <i class="icon layui-icon">&#xe673;</i>
-                <input v-model="registerForm.password" :type="showRegPassword ? 'text' : 'password'" class="login-input" placeholder="Mật khẩu" autocomplete="off" />
+                <input v-model="registerForm.password" :type="showRegPassword ? 'text' : 'password'" class="login-input" :placeholder="t('auth.password')" autocomplete="off" />
                 <i class="icon-suffix layui-icon" @click="showRegPassword = !showRegPassword">{{ showRegPassword ? '\ue696' : '\ue695' }}</i>
               </div>
 
@@ -138,17 +138,17 @@
 
               <div class="input-group">
                 <i class="icon layui-icon">&#xe673;</i>
-                <input v-model="registerForm.confirmPassword" type="password" class="login-input" placeholder="Xác nhận mật khẩu" autocomplete="off" @keyup.enter="handleRegister" />
+                <input v-model="registerForm.confirmPassword" type="password" class="login-input" :placeholder="t('auth.confirmPasswordPlaceholder')" autocomplete="off" @keyup.enter="handleRegister" />
               </div>
               <button type="submit" class="login-btn" :disabled="registerLoading">
                 <span v-if="registerLoading" class="btn-spinner"></span>
-                {{ registerLoading ? 'Đang đăng ký...' : 'Đăng ký' }}
+                {{ registerLoading ? t('auth.registerLoading') : t('auth.registerBtn') }}
               </button>
             </form>
-            <div class="switch-tab-link" @click="activeTab = 'login'">Đã có tài khoản? <b>Đăng nhập</b></div>
+            <div class="switch-tab-link" @click="activeTab = 'login'">{{ t("auth.hasAccount") }} <b>{{ t("auth.login") }}</b></div>
           </div>
 
-          <div class="login-divider"><span>Đăng nhập bằng</span></div>
+          <div class="login-divider"><span>{{ t("auth.loginWith") }}</span></div>
           <div class="social-row">
             <div class="social-item">
               <img :src="iconZalo" alt="Zalo" />
@@ -176,12 +176,15 @@
 
 <script setup lang="ts">
 import { ref, reactive, toRef } from "vue";
+import { useI18n } from "vue-i18n";
 import { useRouter } from "vue-router";
 import { layer } from "@layui/layui-vue";
 import { useAuthStore } from "@/stores/auth";
 import { registerAccount } from "@/api/services/proxy";
 import { api } from "@/api/client";
 import { usePasswordStrength } from "@/composables/usePasswordStrength";
+
+const { t } = useI18n();
 import loginBgUrl from "@/assets/login/login-bg.svg";
 import iconZalo from "@/assets/login/social/icon-zalo.svg";
 import iconFacebook from "@/assets/login/social/icon-facebook.png";
@@ -222,11 +225,11 @@ async function loadCaptcha() {
 
 async function handleLogin() {
   if (!loginForm.username || !loginForm.password) {
-    layer.msg("Vui lòng nhập tài khoản và mật khẩu", { icon: 2, time: 2000 });
+    layer.msg(t("auth.enterAccountPassword"), { icon: 2, time: 2000 });
     return;
   }
   if (captchaRequired.value && !loginForm.captchaAnswer) {
-    layer.msg("Vui lòng nhập mã xác nhận", { icon: 2, time: 2000 });
+    layer.msg(t("auth.enterCaptcha"), { icon: 2, time: 2000 });
     return;
   }
 
@@ -234,7 +237,7 @@ async function handleLogin() {
 
   try {
     await authStore.login(loginForm.username, loginForm.password);
-    layer.msg("Đăng nhập thành công!", { icon: 1, time: 1500 });
+    layer.msg(t("auth.loginSuccess"), { icon: 1, time: 1500 });
     setTimeout(() => router.push("/agent/welcome"), 500);
   } catch (err: any) {
     const data = err.response?.data;
@@ -243,7 +246,7 @@ async function handleLogin() {
       loginForm.captchaAnswer = "";
       loadCaptcha();
     }
-    const msg = data?.message || data?.msg || err.message || "Đăng nhập thất bại";
+    const msg = data?.message || data?.msg || err.message || t("auth.loginFailed");
     layer.msg(msg, { icon: 2, time: 3000 });
   } finally {
     loginLoading.value = false;
@@ -273,31 +276,31 @@ const {
 
 async function handleRegister() {
   if (!registerForm.username) {
-    layer.msg("Vui lòng nhập tài khoản", { icon: 2, time: 2000 });
+    layer.msg(t("auth.enterAccount"), { icon: 2, time: 2000 });
     return;
   }
   if (!/^[a-zA-Z0-9_]+$/.test(registerForm.username)) {
-    layer.msg("Tài khoản chỉ được chứa chữ cái, số và _", { icon: 2, time: 2000 });
+    layer.msg(t("auth.accountAlphanumeric"), { icon: 2, time: 2000 });
     return;
   }
   if (registerForm.username.length < 4) {
-    layer.msg("Tài khoản phải có ít nhất 4 ký tự", { icon: 2, time: 2000 });
+    layer.msg(t("auth.accountMinLength"), { icon: 2, time: 2000 });
     return;
   }
   if (!registerForm.name) {
-    layer.msg("Vui lòng nhập họ tên", { icon: 2, time: 2000 });
+    layer.msg(t("auth.enterName"), { icon: 2, time: 2000 });
     return;
   }
   if (!registerForm.password) {
-    layer.msg("Vui lòng nhập mật khẩu", { icon: 2, time: 2000 });
+    layer.msg(t("auth.enterPassword"), { icon: 2, time: 2000 });
     return;
   }
   if (!allPassed.value) {
-    layer.msg("Mật khẩu chưa đủ mạnh", { icon: 2, time: 2000 });
+    layer.msg(t("password.notStrong"), { icon: 2, time: 2000 });
     return;
   }
   if (registerForm.password !== registerForm.confirmPassword) {
-    layer.msg("Xác nhận mật khẩu không khớp", { icon: 2, time: 2000 });
+    layer.msg(t("password.mismatch"), { icon: 2, time: 2000 });
     return;
   }
 
@@ -315,12 +318,12 @@ async function handleRegister() {
       // Auto-login: backend returns accessToken, refreshToken via httpOnly cookie
       authStore.accessToken = data.data.accessToken;
       await authStore.fetchMe();
-      layer.msg("Đăng ký thành công!", { icon: 1, time: 1500 });
+      layer.msg(t("auth.registerSuccess"), { icon: 1, time: 1500 });
       setTimeout(() => router.push("/agent/welcome"), 500);
     }
   } catch (err: any) {
     const data = err.response?.data;
-    const msg = data?.message || data?.msg || err.message || "Đăng ký thất bại";
+    const msg = data?.message || data?.msg || err.message || t("auth.registerFailed");
     layer.msg(msg, { icon: 2, time: 3000 });
   } finally {
     registerLoading.value = false;

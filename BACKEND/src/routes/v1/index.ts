@@ -6,6 +6,9 @@ import { proxyRoutes, agentRoutes } from "../../modules/proxy/proxy.route.js";
 import { syncRoutes } from "../../modules/sync/sync.route.js";
 import { ee88AuthRoutes } from "../../modules/ee88-auth/ee88-auth.route.js";
 import { notificationRoutes } from "../../modules/notification/notification.route.js";
+import { dashboardRoutes } from "../../modules/dashboard/dashboard.route.js";
+import { analyticsRoutes } from "../../modules/dashboard/analytics.route.js";
+import { exportRoutes } from "../../modules/export/export.route.js";
 
 export async function v1Routes(app: FastifyInstance) {
   app.register(authRoutes, { prefix: "/auth" });
@@ -16,4 +19,7 @@ export async function v1Routes(app: FastifyInstance) {
   app.register(syncRoutes, { prefix: "/sync" });
   app.register(ee88AuthRoutes, { prefix: "/ee88-auth" });
   app.register(notificationRoutes, { prefix: "/notifications" });
+  app.register(dashboardRoutes, { prefix: "/dashboard" });
+  app.register(analyticsRoutes, { prefix: "/analytics" });
+  app.register(exportRoutes, { prefix: "/export" });
 }

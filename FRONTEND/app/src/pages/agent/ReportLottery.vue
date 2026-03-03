@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { reactive, ref, onMounted } from "vue";
+import { reactive, ref, computed, onMounted } from "vue";
+import { useI18n } from "vue-i18n";
 import { useDateRange } from "@/composables/useDateRange";
 import { useListPage } from "@/composables/useListPage";
 import { useAutoFitSelect } from "@/composables/useAutoFitSelect";
@@ -8,6 +9,8 @@ import { fetchReportLottery, fetchLotteryDropdown } from "@/api/services/proxy";
 import { createExportAllFn } from "@/composables/useExportAll";
 import { layer } from "@layui/layui-vue";
 import CookieBadge from "@/components/CookieBadge.vue";
+
+const { t } = useI18n();
 
 const { dateRange, dateQuickSelect, dateQuickOptions, dateQuickWidth, resetDateRange } = useDateRange("today");
 const { dataSource, loading, page, setLoading, bindLoadData, guardStale } = useListPage();
@@ -37,30 +40,30 @@ async function loadLotteryOptions() {
   } catch {}
 }
 
-const columns = [
-  { title: "Nhân viên", key: "_agentName", ellipsisTooltip: true },
-  { title: "Tên tài khoản", key: "username", ellipsisTooltip: true },
-  { title: "Thuộc đại lý", key: "user_parent_format", ellipsisTooltip: true },
-  { title: "Số lần cược", key: "bet_count", customSlot: "num", ellipsisTooltip: true },
-  { title: "Tiền cược", key: "bet_amount", customSlot: "num", ellipsisTooltip: true },
-  { title: "Tiền cược hợp lệ (trừ cược hoà)", key: "valid_amount", customSlot: "num", ellipsisTooltip: true },
-  { title: "Hoàn trả", key: "rebate_amount", customSlot: "num", ellipsisTooltip: true },
-  { title: "Thắng thua", key: "result", customSlot: "num", ellipsisTooltip: true },
-  { title: "Kết quả thắng thua (không gồm hoàn trả)", key: "win_lose", customSlot: "num", ellipsisTooltip: true },
-  { title: "Tiền trúng", key: "prize", customSlot: "num", ellipsisTooltip: true },
-  { title: "Tên loại xổ", key: "lottery_name", ellipsisTooltip: true },
-];
+const columns = computed(() => [
+  { title: t("common.agent"), key: "_agentName" },
+  { title: t("reportLottery.account"), key: "username" },
+  { title: t("reportLottery.agentBelong"), key: "user_parent_format" },
+  { title: t("reportLottery.betCount"), key: "bet_count", customSlot: "num" },
+  { title: t("reportLottery.betAmount"), key: "bet_amount", customSlot: "num" },
+  { title: t("reportLottery.validBet"), key: "valid_amount", customSlot: "num" },
+  { title: t("reportLottery.rebate"), key: "rebate_amount", customSlot: "num" },
+  { title: t("reportLottery.winLose"), key: "result", customSlot: "num" },
+  { title: t("reportLottery.winLoseNoRebate"), key: "win_lose", customSlot: "num" },
+  { title: t("reportLottery.prizeAmount"), key: "prize", customSlot: "num" },
+  { title: t("reportLottery.lotteryName"), key: "lottery_name", ellipsisTooltip: true },
+]);
 
-const summaryColumns = [
-  { title: "Số khách đặt cược", key: "total_bet_number", customSlot: "sumNum", ellipsisTooltip: true },
-  { title: "Số lần cược", key: "total_bet_count", customSlot: "sumNum", ellipsisTooltip: true },
-  { title: "Tiền cược", key: "total_bet_amount", customSlot: "sumNum", ellipsisTooltip: true },
-  { title: "Tiền cược hợp lệ (trừ cược hoà)", key: "total_valid_amount", customSlot: "sumNum", ellipsisTooltip: true },
-  { title: "Hoàn trả", key: "total_rebate_amount", customSlot: "sumNum", ellipsisTooltip: true },
-  { title: "Thắng thua", key: "total_result", customSlot: "sumNum", ellipsisTooltip: true },
-  { title: "Kết quả thắng thua (không gồm hoàn trả)", key: "total_win_lose", customSlot: "sumNum", ellipsisTooltip: true },
-  { title: "Tiền trúng", key: "total_prize", customSlot: "sumNum", ellipsisTooltip: true },
-];
+const summaryColumns = computed(() => [
+  { title: t("reportLottery.bettorsCount"), key: "total_bet_number", customSlot: "sumNum" },
+  { title: t("reportLottery.betCount"), key: "total_bet_count", customSlot: "sumNum" },
+  { title: t("reportLottery.betAmount"), key: "total_bet_amount", customSlot: "sumNum" },
+  { title: t("reportLottery.validBet"), key: "total_valid_amount", customSlot: "sumNum" },
+  { title: t("reportLottery.rebate"), key: "total_rebate_amount", customSlot: "sumNum" },
+  { title: t("reportLottery.winLose"), key: "total_result", customSlot: "sumNum" },
+  { title: t("reportLottery.winLoseNoRebate"), key: "total_win_lose", customSlot: "sumNum" },
+  { title: t("reportLottery.prizeAmount"), key: "total_prize", customSlot: "sumNum" },
+]);
 
 const summaryData = ref([
   {
@@ -95,7 +98,7 @@ async function loadData() {
       summaryData.value = [{ total_bet_number: 0, total_bet_count: 0, total_bet_amount: "0.0000", total_valid_amount: "0.0000", total_rebate_amount: "0.0000", total_result: "0.0000", total_win_lose: "0.0000", total_prize: "0.0000" }];
     }
   } catch {
-    if (!isStale()) layer.msg("Lỗi tải dữ liệu", { icon: 2 });
+    if (!isStale()) layer.msg(t("common.errorLoad"), { icon: 2 });
   } finally {
     if (!isStale()) setLoading(false);
   }
@@ -124,17 +127,17 @@ onMounted(() => loadLotteryOptions());
 <template>
   <div>
     <lay-card>
-      <lay-field title="Báo cáo xổ số">
+      <lay-field :title="t('reportLottery.title')">
       <div class="search-form-wrap">
         <div class="layui-inline">
-          <span class="form-label">Nhân viên :</span>
+          <span class="form-label">{{ t("common.agentLabel") }}</span>
           <lay-select v-model="selectedAgentId" :style="{ width: agentWidth }">
             <lay-select-option v-for="opt in agentOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
           </lay-select>
         </div>
         <div class="layui-inline">
-          <span class="form-label">Thời gian :</span>
-          <lay-date-picker v-model="dateRange" range single-panel range-separator="-" :placeholder="['Ngày bắt đầu', 'Ngày kết thúc']" />
+          <span class="form-label">{{ t("common.timeLabel") }}</span>
+          <lay-date-picker v-model="dateRange" range single-panel range-separator="-" :placeholder="[t('common.dateStart'), t('common.dateEnd')]" />
         </div>
         <div class="layui-inline">
           <lay-select v-model="dateQuickSelect" :style="{ width: dateQuickWidth }">
@@ -142,21 +145,21 @@ onMounted(() => loadLotteryOptions());
           </lay-select>
         </div>
         <div class="layui-inline">
-          <span class="form-label">Tên loại xổ :</span>
+          <span class="form-label">{{ t("reportLottery.lotteryNameLabel") }}</span>
           <lay-select v-model="searchForm.lotteryType" :style="{ width: lotteryWidth }">
             <lay-select-option v-for="opt in lotteryOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
           </lay-select>
         </div>
         <div class="layui-inline">
-          <span class="form-label">Tên tài khoản :</span>
-          <lay-input v-model="searchForm.username" placeholder="Nhập tên tài khoản" />
+          <span class="form-label">{{ t("reportLottery.accountLabel") }}</span>
+          <lay-input v-model="searchForm.username" :placeholder="t('reportLottery.accountPlaceholder')" />
         </div>
         <div class="layui-inline">
           <lay-button type="normal" @click="handleSearch">
-            <i class="layui-icon layui-icon-search"></i> Tìm kiếm
+            <i class="layui-icon layui-icon-search"></i> {{ t("common.search") }}
           </lay-button>
           <lay-button type="primary" @click="handleReset">
-            <i class="layui-icon layui-icon-refresh"></i> Đặt lại
+            <i class="layui-icon layui-icon-refresh"></i> {{ t("common.reset") }}
           </lay-button>
         </div>
       </div>
@@ -177,15 +180,15 @@ onMounted(() => loadLotteryOptions());
             <CookieBadge />
           </template>
           <template #num="{ row, column }">
-            <lay-count-up :end-val="Number(row[column.key]) || 0" :duration="600" :decimal-places="String(row[column.key]).includes('.') ? 2 : 0" :use-grouping="false" />
+            <lay-count-up :end-val="Number(row[column.key]) || 0" :duration="0" :decimal-places="String(row[column.key]).includes('.') ? 2 : 0" :use-grouping="false" />
           </template>
         </lay-table>
         <lay-table :columns="summaryColumns" :data-source="summaryData" :default-toolbar="true">
           <template v-slot:toolbar>
-            <lay-button size="xs" type="normal"><b>DỮ LIỆU TỔNG HỢP</b></lay-button>
+            <lay-button size="xs" type="normal"><b>{{ t("common.summaryData") }}</b></lay-button>
           </template>
           <template #sumNum="{ row, column }">
-            <lay-count-up :end-val="Number(row[column.key]) || 0" :duration="600" :decimal-places="String(row[column.key]).includes('.') ? 4 : 0" :use-grouping="false" />
+            <lay-count-up :end-val="Number(row[column.key]) || 0" :duration="0" :decimal-places="String(row[column.key]).includes('.') ? 4 : 0" :use-grouping="false" />
           </template>
         </lay-table>
       </div>

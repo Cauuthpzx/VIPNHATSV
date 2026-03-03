@@ -10,6 +10,33 @@ import { tryDbFirst } from "./db-first.service.js";
 import { SYNC_ENDPOINTS } from "../sync/sync.config.js";
 import { UPSERT_REGISTRY, upsertUsersSimple } from "../sync/sync.upsert.js";
 import { signalDemandSync } from "../sync/sync.demand.js";
+import { LRUCache, dedup } from "../../utils/lruCache.js";
+
+// ---------------------------------------------------------------------------
+// L1: In-memory LRU cache (fastest layer, ~0ms)
+// ---------------------------------------------------------------------------
+const l1Cache = new LRUCache<string>(1000, 5); // 1000 entries, 5s TTL
+
+/** Cleanup L1 cache timers on shutdown */
+export function destroyProxyL1Cache(): void {
+  l1Cache.destroy();
+}
+
+/** L1 TTL per endpoint — hot data gets shorter TTL */
+const L1_TTL: Record<string, number> = {
+  "/agent/user.html": 3,
+  "/agent/depositAndWithdrawal.html": 3,
+  "/agent/withdrawalsRecord.html": 3,
+  "/agent/bet.html": 3,
+  "/agent/betOrder.html": 3,
+  "/agent/inviteList.html": 10,
+  "/agent/reportLottery.html": 10,
+  "/agent/reportFunds.html": 10,
+  "/agent/reportThirdGame.html": 10,
+  "/agent/bankList.html": 30,
+  "/agent/getRebateOddsPanel.html": 60,
+  "/agent/getLottery": 60,
+};
 
 // ---------------------------------------------------------------------------
 // Cache TTL (seconds)
@@ -138,13 +165,17 @@ function sortMergedItems<T>(items: T[], path: string): T[] {
   const sortKey = NATURAL_SORT_KEY[path];
   if (!sortKey || items.length === 0) return items;
 
+  // Use simple string comparison (>) instead of localeCompare — 10-50x faster
+  // Works correctly for ISO date strings and numeric-like strings (DESC order)
   return items.sort((a: any, b: any) => {
     const va = a[sortKey];
     const vb = b[sortKey];
     if (va == null && vb == null) return 0;
     if (va == null) return 1;
     if (vb == null) return -1;
-    return String(vb).localeCompare(String(va));
+    const sa = String(va);
+    const sb = String(vb);
+    return sa > sb ? -1 : sa < sb ? 1 : 0;
   });
 }
 
@@ -279,66 +310,79 @@ async function fetchSingleAgent<T = unknown>(
   requestId?: string,
 ): Promise<SingleResult<T>> {
   const cacheKey = buildCacheKey(path, params, agentId);
+  const l1Ttl = L1_TTL[path] ?? 5;
 
-  // 1. Check Redis cache
-  try {
-    const cached = await app.redis.get(cacheKey);
-    if (cached) {
-      return JSON.parse(cached);
-    }
-  } catch {
-    // Redis error — continue without cache
+  // 0. L1: Check in-memory cache (instant, ~0ms)
+  const l1Hit = l1Cache.get(cacheKey);
+  if (l1Hit) {
+    return JSON.parse(l1Hit);
   }
 
-  // 2. Fetch from upstream (with auto re-login on session expired)
-  let activeCookie = cookie;
-  let upstream;
-  try {
-    upstream = await fetchUpstream<T>({ path, cookie: activeCookie, params, requestId });
-  } catch (err) {
-    if (err instanceof AppError && err.code === ERROR_CODES.AGENT_SESSION_EXPIRED) {
-      const newCookie = await agentService.attemptAutoRelogin(app, agentId);
-      if (newCookie) {
-        activeCookie = newCookie;
-        upstream = await fetchUpstream<T>({ path, cookie: activeCookie, params, requestId });
+  // Use request deduplication — concurrent identical requests share 1 fetch
+  return dedup<SingleResult<T>>(cacheKey, async () => {
+    // 1. L2: Check Redis cache
+    try {
+      const cached = await app.redis.get(cacheKey);
+      if (cached) {
+        l1Cache.set(cacheKey, cached, l1Ttl); // Promote to L1
+        return JSON.parse(cached);
+      }
+    } catch {
+      // Redis error — continue without cache
+    }
+
+    // 2. L3: Fetch from upstream (with auto re-login on session expired)
+    let activeCookie = cookie;
+    let upstream;
+    try {
+      upstream = await fetchUpstream<T>({ path, cookie: activeCookie, params, requestId });
+    } catch (err) {
+      if (err instanceof AppError && err.code === ERROR_CODES.AGENT_SESSION_EXPIRED) {
+        const newCookie = await agentService.attemptAutoRelogin(app, agentId);
+        if (newCookie) {
+          activeCookie = newCookie;
+          upstream = await fetchUpstream<T>({ path, cookie: activeCookie, params, requestId });
+        } else {
+          throw err;
+        }
       } else {
         throw err;
       }
-    } else {
-      throw err;
     }
-  }
 
-  let result: SingleResult<T>;
+    let result: SingleResult<T>;
 
-  if (Array.isArray(upstream.data)) {
-    const items = upstream.data.map((item: any) => ({ _agentName: agentName, ...item }));
-    result = {
-      items: items as T[],
-      total: upstream.count ?? 0,
-      totalData: upstream.total_data,
-    };
-  } else {
-    result = {
-      items: upstream.data as T[],
-      total: upstream.count ?? 0,
-      totalData: upstream.total_data,
-    };
-  }
+    if (Array.isArray(upstream.data)) {
+      const items = upstream.data.map((item: any) => ({ _agentName: agentName, ...item }));
+      result = {
+        items: items as T[],
+        total: upstream.count ?? 0,
+        totalData: upstream.total_data,
+      };
+    } else {
+      result = {
+        items: upstream.data as T[],
+        total: upstream.count ?? 0,
+        totalData: upstream.total_data,
+      };
+    }
 
-  // 3. Store in Redis (fire-and-forget — don't await)
-  app.redis.set(cacheKey, JSON.stringify(result), "EX", ttl).catch((err) => {
-    logger.warn("Redis cache write failed", { cacheKey, error: (err as Error).message });
-  });
-
-  // 4. Write-through to DB (fire-and-forget)
-  if (Array.isArray(result.items)) {
-    writeThroughToDb(app, path, agentId, result.items as Record<string, unknown>[]).catch((err) => {
-      logger.warn("Write-through to DB failed", { path, agentId, error: (err as Error).message });
+    // 3. Store in L1 + L2 (fire-and-forget for Redis)
+    const serialized = JSON.stringify(result);
+    l1Cache.set(cacheKey, serialized, l1Ttl);
+    app.redis.set(cacheKey, serialized, "EX", ttl).catch((err) => {
+      logger.warn("Redis cache write failed", { cacheKey, error: (err as Error).message });
     });
-  }
 
-  return result;
+    // 4. Write-through to DB (fire-and-forget)
+    if (Array.isArray(result.items)) {
+      writeThroughToDb(app, path, agentId, result.items as Record<string, unknown>[]).catch((err) => {
+        logger.warn("Write-through to DB failed", { path, agentId, error: (err as Error).message });
+      });
+    }
+
+    return result;
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -353,6 +397,8 @@ async function fetchMultiAgentWithPipeline<T = unknown>(
   ttl: number,
   requestId?: string,
 ): Promise<SingleResult<T>[]> {
+  const l1Ttl = L1_TTL[path] ?? 5;
+
   // Pre-compute cache keys and decrypt cookies BEFORE any I/O
   const agentMeta = agents.map((agent) => ({
     agent,
@@ -360,22 +406,42 @@ async function fetchMultiAgentWithPipeline<T = unknown>(
     cookie: decryptSessionCookie(agent.sessionCookie),
   }));
 
-  // 1. Batch cache check with MGET (single Redis round-trip)
+  // 0. L1: Check in-memory cache first (instant)
+  const results: SingleResult<T>[] = new Array(agents.length);
+  const needL2Check: number[] = [];
+
+  for (let i = 0; i < agentMeta.length; i++) {
+    const l1Hit = l1Cache.get(agentMeta[i].cacheKey);
+    if (l1Hit) {
+      try {
+        results[i] = JSON.parse(l1Hit);
+        continue;
+      } catch { /* corrupt — fall through */ }
+    }
+    needL2Check.push(i);
+  }
+
+  // If all served from L1, return immediately
+  if (needL2Check.length === 0) return results;
+
+  // 1. L2: Batch cache check with MGET (single Redis round-trip) — only for L1 misses
   let cached: (string | null)[] = [];
   try {
-    cached = await app.redis.mget(...agentMeta.map((m) => m.cacheKey));
+    cached = await app.redis.mget(...needL2Check.map((i) => agentMeta[i].cacheKey));
   } catch {
-    cached = new Array(agents.length).fill(null);
+    cached = new Array(needL2Check.length).fill(null);
   }
 
   // 2. Determine which agents need upstream fetch
-  const results: SingleResult<T>[] = new Array(agents.length);
   const toFetch: Array<{ idx: number; meta: (typeof agentMeta)[0] }> = [];
 
-  for (let i = 0; i < agentMeta.length; i++) {
-    if (cached[i]) {
+  for (let j = 0; j < needL2Check.length; j++) {
+    const i = needL2Check[j];
+    if (cached[j]) {
       try {
-        results[i] = JSON.parse(cached[i]!);
+        results[i] = JSON.parse(cached[j]!);
+        // Promote to L1
+        l1Cache.set(agentMeta[i].cacheKey, cached[j]!, l1Ttl);
         continue;
       } catch {
         // Corrupt cache — re-fetch
@@ -441,12 +507,14 @@ async function fetchMultiAgentWithPipeline<T = unknown>(
       },
     );
 
-    // 4. Batch cache write via pipeline (single Redis round-trip)
+    // 4. Batch cache write: L1 (instant) + L2 Redis pipeline (single round-trip)
     const pipeline = app.redis.pipeline();
     for (const { idx, result, cacheKey } of fetched) {
       results[idx] = result;
       if (cacheKey && result.items.length > 0) {
-        pipeline.set(cacheKey, JSON.stringify(result), "EX", ttl);
+        const serialized = JSON.stringify(result);
+        l1Cache.set(cacheKey, serialized, l1Ttl); // L1
+        pipeline.set(cacheKey, serialized, "EX", ttl); // L2
         // 5. Write-through to DB (fire-and-forget)
         writeThroughToDb(app, path, agents[idx].id, result.items as Record<string, unknown>[]).catch((err) => {
           logger.warn("Write-through to DB failed", { path, agentId: agents[idx].id, error: (err as Error).message });
@@ -473,7 +541,31 @@ async function cachedProxyCall<T = unknown>(
   const requestId = input._requestId as string | undefined;
   const params = buildUpstreamParams(input, path);
   const ttl = CACHE_TTL[path] ?? 60;
+  const l1Ttl = L1_TTL[path] ?? 5;
   const explicitAgentId = input.agentId as string | undefined;
+
+  // L1 cache for the full merged dataset (pre-pagination) — avoids re-fetch for page 2, 3, etc.
+  // Key excludes page/limit so all pages share the same cached merged array.
+  // Uses sorted params for deterministic key (consistent with buildCacheKey).
+  const mergedParamsForKey = { ...params };
+  delete mergedParamsForKey.page;
+  delete mergedParamsForKey.limit;
+  const sortedParts = Object.keys(mergedParamsForKey).sort()
+    .filter(k => mergedParamsForKey[k] !== "" && mergedParamsForKey[k] !== undefined)
+    .map(k => `${k}=${mergedParamsForKey[k]}`).join("&");
+  const mergedCacheKey = `merged:${path}:${sortedParts}:${explicitAgentId || "all"}`;
+  const l1MergedHit = l1Cache.get(mergedCacheKey);
+  if (l1MergedHit) {
+    const cached = JSON.parse(l1MergedHit) as { allItems: unknown[]; totalData?: Record<string, unknown> };
+    const rPage = Math.max(1, Number(input.page) || 1);
+    const rLimit = Math.max(1, Number(input.limit) || 10);
+    const s = (rPage - 1) * rLimit;
+    return {
+      items: cached.allItems.slice(s, s + rLimit) as T[] | T,
+      total: cached.allItems.length,
+      totalData: cached.totalData,
+    };
+  }
 
   // -----------------------------------------------------------------------
   // DB-first: serve locked past dates from DB, skip upstream entirely
@@ -575,6 +667,9 @@ async function cachedProxyCall<T = unknown>(
 
   // Signal demand sync — upstream vừa được gọi
   signalDemandSync(app, path);
+
+  // Store full merged dataset (pre-pagination) in L1 — all pages reuse this
+  l1Cache.set(mergedCacheKey, JSON.stringify({ allItems, totalData: mergedTotalData }), l1Ttl);
 
   return {
     items: pageItems as T[] | T,

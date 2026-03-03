@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { useRouter } from "vue-router";
+import { useI18n } from "vue-i18n";
 import { useAppStore } from "@/stores/app";
 import { useAuthStore } from "@/stores/auth";
 import { layer } from "@layui/layui-vue";
 
+const { t } = useI18n();
 const router = useRouter();
 const store = useAppStore();
 const authStore = useAuthStore();
@@ -12,7 +14,7 @@ async function onAction(action: string) {
   if (action === "profile") {
     router.push("/agent/profile");
   } else if (action === "settings") {
-    layer.msg("Tính năng đang phát triển", { icon: 0 });
+    layer.msg(t("nav.settingsWip"), { icon: 0 });
   } else if (action === "logout") {
     store.closeAllTabs();
     await authStore.logout();
@@ -32,16 +34,16 @@ async function onAction(action: string) {
       <div class="header-account-panel">
         <div class="header-account-item" @click="onAction('profile')">
           <i class="layui-icon layui-icon-username"></i>
-          <span>Thông Tin</span>
+          <span>{{ t('nav.profile') }}</span>
         </div>
         <div class="header-account-item" @click="onAction('settings')">
           <i class="layui-icon layui-icon-set"></i>
-          <span>Cài Đặt</span>
+          <span>{{ t('nav.settings') }}</span>
         </div>
         <div class="header-account-divider"></div>
         <div class="header-account-item" @click="onAction('logout')">
           <i class="layui-icon layui-icon-logout"></i>
-          <span>Đăng xuất</span>
+          <span>{{ t('nav.logout') }}</span>
         </div>
       </div>
     </template>

@@ -1,7 +1,10 @@
 <script setup lang="ts">
+import { useI18n } from "vue-i18n";
 import { layer } from "@layui/layui-vue";
 import PasswordForm from "@/components/PasswordForm.vue";
 import { useAgentFilter } from "@/composables/useAgentFilter";
+
+const { t } = useI18n();
 
 const { selectedAgentId, agentOptions, agentWidth } = useAgentFilter();
 
@@ -20,7 +23,7 @@ const props = withDefaults(
 
 async function handleSubmit(data: { oldPassword: string; newPassword: string }) {
   if (!selectedAgentId.value) {
-    layer.msg("Vui lòng chọn agent", { icon: 2 });
+    layer.msg(t("editPassword.selectAgent"), { icon: 2 });
     return;
   }
   await props.onSubmit(selectedAgentId.value, data);
@@ -30,7 +33,7 @@ async function handleSubmit(data: { oldPassword: string; newPassword: string }) 
 <template>
   <div>
     <div class="agent-select-bar">
-      <label class="agent-select-label">Agent:</label>
+      <label class="agent-select-label">{{ t('common.agentLabel') }}</label>
       <lay-select
         v-model="selectedAgentId"
         :style="{ width: agentWidth }"

@@ -290,10 +290,33 @@ async function upsertUsers(prisma: PrismaClient, agentId: string, items: Item[])
   const safeLostMembers = lostRatio > 0.5 ? [] : lostMembers;
   if (lostRatio > 0.5 && lostMembers.length > 0) {
     logger.warn(
-      `[Sync] Suspicious member loss: ${lostMembers.length}/${existingCount} (${(lostRatio * 100).toFixed(0)}%) for agent ${agentId} — skipping lost notifications`,
+      `[Sync] Suspicious member loss: ${lostMembers.length}/${existingCount} (${(lostRatio * 100).toFixed(0)}%) for agent ${agentId} — skipping lost deletion & notifications`,
     );
   }
 
+  // 6. Delete lost members from proxy_users — upstream không còn thì DB cũng xoá
+  if (safeLostMembers.length > 0) {
+    const lostUsernames = safeLostMembers.map((m) => m.username);
+    try {
+      const deleted = await prisma.proxyUser.deleteMany({
+        where: {
+          agentId,
+          username: { in: lostUsernames },
+        },
+      });
+      logger.info(
+        `[Sync] Deleted ${deleted.count} lost members from proxy_users (agent: ${agentId})`,
+      );
+    } catch (err) {
+      logger.error("[Sync] Failed to delete lost members", {
+        agentId,
+        count: lostUsernames.length,
+        error: (err as Error).message,
+      });
+    }
+  }
+
+  // 7. Notifications for new + lost members
   if (newMembers.length > 0 || safeLostMembers.length > 0) {
     const cutoff24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const allUsernames = [

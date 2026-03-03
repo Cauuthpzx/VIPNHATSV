@@ -15,8 +15,12 @@
   "dependencies": {
     "@layui/layui-vue": "workspace:*",
     "axios": "^1.6.0",
+    "echarts": "^6.0.0",
+    "exceljs": "^4.4.0",
     "pinia": "^2.1.7",
     "vue": "3.3.13",
+    "vue-echarts": "^8.0.1",
+    "vue-i18n": "9",
     "vue-router": "^4.2.5"
   },
   "devDependencies": {

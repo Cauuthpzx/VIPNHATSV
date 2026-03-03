@@ -9,7 +9,7 @@ import { logger } from "../../utils/logger.js";
 import type { CreateAgentInput, UpdateAgentInput } from "./proxy.schema.js";
 
 const ACTIVE_AGENTS_CACHE_KEY = "cache:active_agents";
-const ACTIVE_AGENTS_CACHE_TTL = 30; // 30 seconds
+const ACTIVE_AGENTS_CACHE_TTL = 300; // 5 minutes — agent data rarely changes
 
 const RELOGIN_COOLDOWN_SECONDS = 120; // Don't re-login same agent within 2 min
 function reloginCooldownKey(agentId: string): string {

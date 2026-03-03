@@ -1,10 +1,14 @@
 <script setup lang="ts">
 import { computed, onMounted, onBeforeUnmount, ref, nextTick } from "vue";
 import { useRouter, useRoute } from "vue-router";
+import { useI18n } from "vue-i18n";
 import { useAppStore } from "@/stores/app";
 import { useAuthStore } from "@/stores/auth";
+
+const { t } = useI18n();
 import HubNav from "@/components/HubNav.vue";
 import HubNotification from "@/components/HubNotification.vue";
+import LanguageSwitcher from "@/components/LanguageSwitcher.vue";
 import { useNotificationStore } from "@/stores/notification";
 import { useWsBus } from "@/composables/useWsBus";
 import LayoutSidebar from "./LayoutSidebar.vue";
@@ -89,14 +93,15 @@ onBeforeUnmount(() => {
     <!-- ===== HEADER ===== -->
     <lay-header class="admin-header" :style="{ left: sideWidth + 'px' }">
       <div class="admin-header-left">
-        <a href="javascript:;" @click="store.toggleCollapse()" :title="store.collapsed ? 'Mở rộng' : 'Kéo sang bên'">
+        <a href="javascript:;" @click="store.toggleCollapse()" :title="store.collapsed ? t('nav.expand') : t('nav.collapse')">
           <i class="layui-icon" :class="store.collapsed ? 'layui-icon-spread-left' : 'layui-icon-shrink-right'"></i>
         </a>
-        <a href="javascript:;" @click="handleRefresh" title="Làm mới trang">
+        <a href="javascript:;" @click="handleRefresh" :title="t('nav.refresh')">
           <i class="layui-icon layui-icon-refresh-3"></i>
         </a>
       </div>
       <div class="admin-header-right">
+        <LanguageSwitcher />
         <HubNotification />
         <HubNav />
       </div>

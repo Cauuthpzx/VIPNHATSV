@@ -17,6 +17,7 @@ export function fetchUserList(params: {
   limit: number;
   username?: string;
   status?: string;
+  register_time?: string;
   sort_field?: string;
   sort_order?: string;
 }) {

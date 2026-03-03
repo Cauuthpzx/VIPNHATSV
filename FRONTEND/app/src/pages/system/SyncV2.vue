@@ -1,8 +1,11 @@
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { ref, onMounted, computed } from "vue";
+import { useI18n } from "vue-i18n";
 import { layer } from "@layui/layui-vue";
 import { api } from "@/api/client";
 import { stopSync } from "@/api/services/sync";
+
+const { t } = useI18n();
 
 interface AgentRow {
   id: string;
@@ -14,9 +17,9 @@ const loading = ref(false);
 const stopping = ref(false);
 const agents = ref<AgentRow[]>([]);
 
-const columns = [
-  { title: "Nhân viên - Đại lý", key: "display", ellipsisTooltip: true },
-];
+const columns = computed(() => [
+  { title: t("syncV2.agentCol"), key: "display", ellipsisTooltip: true },
+]);
 
 async function loadAgents() {
   loading.value = true;
@@ -29,7 +32,7 @@ async function loadAgents() {
       display: `${a.name} - ${a.extUsername}`,
     }));
   } catch {
-    layer.msg("Lỗi tải danh sách đại lý", { icon: 2 });
+    layer.msg(t("syncV2.errorLoadAgents"), { icon: 2 });
   } finally {
     loading.value = false;
   }
@@ -40,12 +43,12 @@ async function handleStopSync() {
   try {
     const res = await stopSync();
     if (res.data.success) {
-      layer.msg("Đã yêu cầu dừng đồng bộ", { icon: 1 });
+      layer.msg(t("syncV2.stopRequested"), { icon: 1 });
     } else {
-      layer.msg(res.data.message || "Không có sync đang chạy", { icon: 0 });
+      layer.msg(res.data.message || t("syncV2.noSyncRunning"), { icon: 0 });
     }
   } catch {
-    layer.msg("Lỗi khi dừng đồng bộ", { icon: 2 });
+    layer.msg(t("syncV2.stopError"), { icon: 2 });
   } finally {
     stopping.value = false;
   }
@@ -57,7 +60,7 @@ onMounted(() => loadAgents());
 <template>
   <div>
     <lay-card>
-      <lay-field title="Sync V2" />
+      <lay-field :title="t('syncV2.title')" />
 
       <div class="table-container">
           <lay-table
@@ -73,7 +76,7 @@ onMounted(() => loadAgents());
                 :loading="stopping"
                 @click="handleStopSync"
               >
-                <i class="layui-icon layui-icon-pause"></i> Dừng Sync
+                <i class="layui-icon layui-icon-pause"></i> {{ t('syncV2.stopSync') }}
               </lay-button>
             </template>
           </lay-table>

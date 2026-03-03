@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { reactive } from "vue";
+import { reactive, computed } from "vue";
+import { useI18n } from "vue-i18n";
 import { useDateRange } from "@/composables/useDateRange";
 import { useListPage } from "@/composables/useListPage";
 import { useAutoFitSelect } from "@/composables/useAutoFitSelect";
@@ -8,6 +9,8 @@ import { fetchWithdrawalsRecord } from "@/api/services/proxy";
 import { createExportAllFn } from "@/composables/useExportAll";
 import { layer } from "@layui/layui-vue";
 import CookieBadge from "@/components/CookieBadge.vue";
+
+const { t } = useI18n();
 
 const { dateRange, dateQuickSelect, dateQuickOptions, dateQuickWidth, resetDateRange } = useDateRange("today");
 const { dataSource, loading, page, setLoading, bindLoadData, guardStale } = useListPage();
@@ -19,28 +22,28 @@ const searchForm = reactive({
   status: "",
 });
 
-const statusOptions = [
-  { label: "Chọn", value: "" },
-  { label: "Chờ xử lý", value: "pending" },
-  { label: "Thành công", value: "success" },
-  { label: "Thất bại", value: "failed" },
-  { label: "Đã hủy", value: "cancelled" },
-];
+const statusOptions = computed(() => [
+  { label: t("common.select"), value: "" },
+  { label: t("withdrawals.statusPending"), value: "pending" },
+  { label: t("withdrawals.statusSuccess"), value: "success" },
+  { label: t("withdrawals.statusFailed"), value: "failed" },
+  { label: t("withdrawals.statusCancelled"), value: "cancelled" },
+]);
 
 const { selectWidth: statusWidth } = useAutoFitSelect(statusOptions);
 
-const columns = [
-  { title: "Nhân viên", key: "_agentName", ellipsisTooltip: true },
-  { title: "Mã giao dịch", key: "serial_no", ellipsisTooltip: true },
-  { title: "Thời gian tạo đơn", key: "create_time", ellipsisTooltip: true },
-  { title: "Tên tài khoản", key: "username", ellipsisTooltip: true },
-  { title: "Thuộc đại lý", key: "user_parent_format", ellipsisTooltip: true },
-  { title: "Số tiền yêu cầu", key: "amount", customSlot: "num", ellipsisTooltip: true },
-  { title: "Phí rút", key: "user_fee", customSlot: "num", ellipsisTooltip: true },
-  { title: "Số tiền thực nhận", key: "true_amount", customSlot: "num", ellipsisTooltip: true },
-  { title: "Trạng thái", key: "status_format", ellipsisTooltip: true },
-  { title: "Thao tác", key: "operation", customSlot: "operation" },
-];
+const columns = computed(() => [
+  { title: t("common.agent"), key: "_agentName" },
+  { title: t("withdrawals.serialNo"), key: "serial_no", ellipsisTooltip: true },
+  { title: t("withdrawals.createdTime"), key: "create_time", ellipsisTooltip: true },
+  { title: t("withdrawals.account"), key: "username" },
+  { title: t("withdrawals.agentBelong"), key: "user_parent_format" },
+  { title: t("withdrawals.requestAmount"), key: "amount", customSlot: "num" },
+  { title: t("withdrawals.fee"), key: "user_fee", customSlot: "num" },
+  { title: t("withdrawals.actualAmount"), key: "true_amount", customSlot: "num" },
+  { title: t("common.status"), key: "status_format" },
+  { title: t("common.actions"), key: "operation", customSlot: "operation" },
+]);
 
 async function loadData() {
   const isStale = guardStale();
@@ -58,7 +61,7 @@ async function loadData() {
     dataSource.value = res.data.data.items;
     page.total = res.data.data.total;
   } catch {
-    if (!isStale()) layer.msg("Lỗi tải dữ liệu", { icon: 2 });
+    if (!isStale()) layer.msg(t("common.errorLoad"), { icon: 2 });
   } finally {
     if (!isStale()) setLoading(false);
   }
@@ -93,17 +96,17 @@ function handleDetail(_row: Record<string, unknown>) {
 <template>
   <div>
     <lay-card>
-      <lay-field title="Lịch sử rút tiền">
+      <lay-field :title="t('withdrawals.title')">
       <div class="search-form-wrap">
         <div class="layui-inline">
-          <span class="form-label">Nhân viên :</span>
+          <span class="form-label">{{ t("common.agentLabel") }}</span>
           <lay-select v-model="selectedAgentId" :style="{ width: agentWidth }">
             <lay-select-option v-for="opt in agentOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
           </lay-select>
         </div>
         <div class="layui-inline">
-          <span class="form-label">Thời gian :</span>
-          <lay-date-picker v-model="dateRange" range single-panel range-separator="-" :placeholder="['Ngày bắt đầu', 'Ngày kết thúc']" />
+          <span class="form-label">{{ t("common.timeLabel") }}</span>
+          <lay-date-picker v-model="dateRange" range single-panel range-separator="-" :placeholder="[t('common.dateStart'), t('common.dateEnd')]" />
         </div>
         <div class="layui-inline">
           <lay-select v-model="dateQuickSelect" :style="{ width: dateQuickWidth }">
@@ -111,25 +114,25 @@ function handleDetail(_row: Record<string, unknown>) {
           </lay-select>
         </div>
         <div class="layui-inline">
-          <span class="form-label">Tên tài khoản:</span>
-          <lay-input v-model="searchForm.username" placeholder="Tên tài khoản" />
+          <span class="form-label">{{ t("withdrawals.accountLabel") }}</span>
+          <lay-input v-model="searchForm.username" :placeholder="t('withdrawals.accountPlaceholder')" />
         </div>
         <div class="layui-inline">
-          <span class="form-label">Mã giao dịch:</span>
-          <lay-input v-model="searchForm.serialNumber" placeholder="Mã giao dịch" />
+          <span class="form-label">{{ t("withdrawals.serialNoLabel") }}</span>
+          <lay-input v-model="searchForm.serialNumber" :placeholder="t('withdrawals.serialNoPlaceholder')" />
         </div>
         <div class="layui-inline">
-          <span class="form-label">Trạng thái:</span>
+          <span class="form-label">{{ t("withdrawals.statusLabel") }}</span>
           <lay-select v-model="searchForm.status" :style="{ width: statusWidth }">
             <lay-select-option v-for="opt in statusOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
           </lay-select>
         </div>
         <div class="layui-inline">
           <lay-button type="normal" @click="handleSearch">
-            <i class="layui-icon layui-icon-search"></i> Tìm kiếm
+            <i class="layui-icon layui-icon-search"></i> {{ t("common.search") }}
           </lay-button>
           <lay-button type="primary" @click="handleReset">
-            <i class="layui-icon layui-icon-refresh"></i> Đặt lại
+            <i class="layui-icon layui-icon-refresh"></i> {{ t("common.reset") }}
           </lay-button>
         </div>
       </div>
@@ -150,10 +153,10 @@ function handleDetail(_row: Record<string, unknown>) {
             <CookieBadge />
           </template>
           <template #num="{ row, column }">
-            <lay-count-up :end-val="Number(row[column.key]) || 0" :duration="600" :decimal-places="String(row[column.key]).includes('.') ? 2 : 0" :use-grouping="false" />
+            <lay-count-up :end-val="Number(row[column.key]) || 0" :duration="0" :decimal-places="String(row[column.key]).includes('.') ? 2 : 0" :use-grouping="false" />
           </template>
           <template #operation="{ row }">
-            <lay-button size="xs" type="primary" @click="handleDetail(row)">Chi tiết</lay-button>
+            <lay-button size="xs" type="primary" @click="handleDetail(row)">{{ t("common.detail") }}</lay-button>
           </template>
         </lay-table>
       </div>

@@ -21,9 +21,9 @@ export interface Notification {
 
 export type NotifType = "member_new" | "member_lost";
 
-export const NOTIF_TYPE_CONFIG: { type: NotifType; label: string; color: string; icon: string }[] = [
-  { type: "member_new", label: "Hội viên mới", color: "#16baaa", icon: "+" },
-  { type: "member_lost", label: "Mất hội viên", color: "#ff5722", icon: "−" },
+export const NOTIF_TYPE_CONFIG: { type: NotifType; labelKey: string; color: string; icon: string }[] = [
+  { type: "member_new", labelKey: "notification.memberNew", color: "#16baaa", icon: "+" },
+  { type: "member_lost", labelKey: "notification.memberLost", color: "#ff5722", icon: "−" },
 ];
 
 const SETTINGS_KEY = "hub_notif_settings";

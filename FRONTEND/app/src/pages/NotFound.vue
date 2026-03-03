@@ -1,10 +1,16 @@
+<script setup lang="ts">
+import { useI18n } from "vue-i18n";
+
+const { t } = useI18n();
+</script>
+
 <template>
   <div class="not-found-page">
     <div class="not-found-content">
       <h1 class="not-found-code">404</h1>
-      <p class="not-found-text">Trang không tồn tại</p>
+      <p class="not-found-text">{{ t('notFound.title') }}</p>
       <lay-button type="primary" @click="$router.push('/agent/welcome')">
-        Về trang chủ
+        {{ t('notFound.backHome') }}
       </lay-button>
     </div>
   </div>

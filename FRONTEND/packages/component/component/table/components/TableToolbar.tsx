@@ -142,6 +142,11 @@ const TableToolbar = defineComponent({
       type: Function as PropType<TableToolBarType["exportAllFn"]>,
       default: undefined,
     },
+
+    exportFileName: {
+      type: String as PropType<string>,
+      default: undefined,
+    },
   },
 
   setup(props) {

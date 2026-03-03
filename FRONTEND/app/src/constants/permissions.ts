@@ -31,6 +31,9 @@ export const PERMISSIONS = {
   // --- AGENT: Hoàn trả ---
   REBATE_READ: "rebate:read",
 
+  // --- Thống kê & Phân tích ---
+  ANALYTICS_READ: "analytics:read",
+
   // --- SYNC ---
   SYNC_READ: "sync:read",
   SYNC_WRITE: "sync:write",
@@ -40,66 +43,39 @@ export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
 
 export const ALL_PERMISSIONS = "*";
 
-/** Nhóm permissions cho UI phân quyền */
-export const PERMISSION_GROUPS = [
-  {
-    label: "Hội viên",
-    permissions: ["member:read", "member:write"],
-  },
-  {
-    label: "Mã giới thiệu",
-    permissions: ["invite:read", "invite:write"],
-  },
-  {
-    label: "Báo cáo",
-    permissions: ["report:read"],
-  },
-  {
-    label: "Tài chính",
-    permissions: ["finance:read", "finance:write"],
-  },
-  {
-    label: "Đơn cược",
-    permissions: ["bet:read"],
-  },
-  {
-    label: "Mật khẩu",
-    permissions: ["password:write"],
-  },
-  {
-    label: "Hoàn trả",
-    permissions: ["rebate:read"],
-  },
-  {
-    label: "Đồng bộ",
-    permissions: ["sync:read", "sync:write"],
-  },
-  {
-    label: "Hệ thống",
-    permissions: ["users:read", "users:write", "users:delete", "roles:read", "roles:write", "roles:delete"],
-  },
+/** i18n keys for permission group labels */
+export const PERMISSION_GROUP_KEYS: { labelKey: string; permissions: string[] }[] = [
+  { labelKey: "permissions.groupMember", permissions: ["member:read", "member:write"] },
+  { labelKey: "permissions.groupInvite", permissions: ["invite:read", "invite:write"] },
+  { labelKey: "permissions.groupReport", permissions: ["report:read"] },
+  { labelKey: "permissions.groupFinance", permissions: ["finance:read", "finance:write"] },
+  { labelKey: "permissions.groupBet", permissions: ["bet:read"] },
+  { labelKey: "permissions.groupPassword", permissions: ["password:write"] },
+  { labelKey: "permissions.groupRebate", permissions: ["rebate:read"] },
+  { labelKey: "permissions.groupAnalytics", permissions: ["analytics:read"] },
+  { labelKey: "permissions.groupSync", permissions: ["sync:read", "sync:write"] },
+  { labelKey: "permissions.groupSystem", permissions: ["users:read", "users:write", "users:delete", "roles:read", "roles:write", "roles:delete"] },
 ];
 
-export const PERMISSION_LABELS: Record<string, string> = {
-  // SYSTEM
-  "users:read": "Xem người dùng",
-  "users:write": "Tạo/sửa người dùng",
-  "users:delete": "Xóa người dùng",
-  "roles:read": "Xem vai trò",
-  "roles:write": "Tạo/sửa vai trò",
-  "roles:delete": "Xóa vai trò",
-  // AGENT
-  "member:read": "Xem hội viên",
-  "member:write": "Thêm/sửa hội viên",
-  "invite:read": "Xem mã giới thiệu",
-  "invite:write": "Quản lý mã giới thiệu",
-  "report:read": "Xem báo cáo",
-  "finance:read": "Xem tài chính",
-  "finance:write": "Quản lý ngân hàng",
-  "bet:read": "Xem đơn cược",
-  "password:write": "Đổi mật khẩu",
-  "rebate:read": "Xem hoàn trả",
-  // SYNC
-  "sync:read": "Xem đồng bộ",
-  "sync:write": "Quản lý đồng bộ",
+/** i18n keys for individual permission labels */
+export const PERMISSION_LABEL_KEYS: Record<string, string> = {
+  "users:read": "permissions.usersRead",
+  "users:write": "permissions.usersWrite",
+  "users:delete": "permissions.usersDelete",
+  "roles:read": "permissions.rolesRead",
+  "roles:write": "permissions.rolesWrite",
+  "roles:delete": "permissions.rolesDelete",
+  "member:read": "permissions.memberRead",
+  "member:write": "permissions.memberWrite",
+  "invite:read": "permissions.inviteRead",
+  "invite:write": "permissions.inviteWrite",
+  "report:read": "permissions.reportRead",
+  "finance:read": "permissions.financeRead",
+  "finance:write": "permissions.financeWrite",
+  "bet:read": "permissions.betRead",
+  "password:write": "permissions.passwordWrite",
+  "rebate:read": "permissions.rebateRead",
+  "analytics:read": "permissions.analyticsRead",
+  "sync:read": "permissions.syncRead",
+  "sync:write": "permissions.syncWrite",
 };

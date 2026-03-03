@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, reactive, computed, watch, onMounted, onUnmounted } from "vue";
+import { useI18n } from "vue-i18n";
 import { fetchSyncStatus, triggerSync, triggerAgentSync, triggerAgentEndpointSync, stopSync, setSyncIntervals, purgeAllData, purgeAgentData } from "@/api/services/sync";
 import {
   loginAgentEE88, logoutAgentEE88, loginAllAgentsEE88,
@@ -12,6 +13,7 @@ import { useWsBus } from "@/composables/useWsBus";
 import { PERMISSIONS } from "@/constants/permissions";
 import { layer } from "@layui/layui-vue";
 
+const { t } = useI18n();
 const authStore = useAuthStore();
 const agentStore = useAgentStore();
 const canWrite = computed(() => authStore.hasPermission(PERMISSIONS.SYNC_WRITE));
@@ -36,22 +38,22 @@ const intervals = ref<Record<string, number>>({});
 const tables = ref<any[]>([]);
 const agents = ref<any[]>([]);
 
-// Map endpoint table → label tiếng Việt
-const ENDPOINT_LABELS: Record<string, string> = {
-  proxyUser: "Hội viên",
-  proxyDeposit: "Nạp tiền",
-  proxyWithdrawal: "Rút tiền",
-  proxyBet: "Đơn cược xổ số",
-  proxyBetOrder: "Đơn cược bên thứ 3",
-  proxyReportLottery: "Báo cáo xổ số",
-  proxyReportFunds: "Sao kê giao dịch",
-  proxyReportThirdGame: "Báo cáo NCC",
-};
+// Map endpoint table → label i18n
+const ENDPOINT_LABELS = computed<Record<string, string>>(() => ({
+  proxyUser: t("sync.endpointUsers"),
+  proxyDeposit: t("sync.endpointDeposit"),
+  proxyWithdrawal: t("sync.endpointWithdraw"),
+  proxyBet: t("sync.endpointBetLottery"),
+  proxyBetOrder: t("sync.endpointBetThird"),
+  proxyReportLottery: t("sync.endpointReportLottery"),
+  proxyReportFunds: t("sync.endpointReportFunds"),
+  proxyReportThirdGame: t("sync.endpointReportThird"),
+}));
 const expandKeys = ref<string[]>([]);
 
 // --- Agent CRUD modal ---
 const agentModalVisible = ref(false);
-const agentModalTitle = ref("Thêm đại lý");
+const agentModalTitle = ref("");
 const agentSaving = ref(false);
 const editingAgentId = ref<string | null>(null);
 const agentForm = reactive({
@@ -63,7 +65,7 @@ const agentForm = reactive({
 
 function openCreateAgent() {
   editingAgentId.value = null;
-  agentModalTitle.value = "Thêm đại lý";
+  agentModalTitle.value = t("sync.addAgentTitle");
   agentForm.name = "";
   agentForm.extUsername = "";
   agentForm.extPassword = "";
@@ -73,7 +75,7 @@ function openCreateAgent() {
 
 function openEditAgent(row: any) {
   editingAgentId.value = row.id;
-  agentModalTitle.value = `Sửa đại lý: ${row.name}`;
+  agentModalTitle.value = t("sync.editAgentTitle", { name: row.name });
   agentForm.name = row.name || "";
   agentForm.extUsername = row.extUsername || "";
   agentForm.extPassword = "";
@@ -83,7 +85,7 @@ function openEditAgent(row: any) {
 
 async function saveAgent() {
   if (!agentForm.name.trim()) {
-    layer.msg("Vui lòng nhập tên đại lý", { icon: 0 });
+    layer.msg(t("sync.enterAgentName"), { icon: 0 });
     return;
   }
   agentSaving.value = true;
@@ -95,11 +97,11 @@ async function saveAgent() {
       if (agentForm.baseUrl) data.baseUrl = agentForm.baseUrl;
       else data.baseUrl = null;
       await updateAgent(editingAgentId.value, data);
-      layer.msg("Đã cập nhật đại lý", { icon: 1 });
+      layer.msg(t("sync.agentUpdated"), { icon: 1 });
     } else {
       // Create
       if (!agentForm.extUsername.trim() || !agentForm.extPassword.trim()) {
-        layer.msg("Username và Password ee88 là bắt buộc", { icon: 0 });
+        layer.msg(t("sync.usernamePasswordRequired"), { icon: 0 });
         agentSaving.value = false;
         return;
       }
@@ -109,13 +111,13 @@ async function saveAgent() {
         extPassword: agentForm.extPassword,
         baseUrl: agentForm.baseUrl || undefined,
       });
-      layer.msg("Đã tạo đại lý mới", { icon: 1 });
+      layer.msg(t("sync.agentCreated"), { icon: 1 });
     }
     agentModalVisible.value = false;
     await loadStatus();
     await agentStore.loadAgents();
   } catch (err: any) {
-    const msg = err?.response?.data?.message || "Lỗi lưu đại lý";
+    const msg = err?.response?.data?.message || t("sync.agentSaveError");
     layer.msg(msg, { icon: 2 });
   } finally {
     agentSaving.value = false;
@@ -144,15 +146,15 @@ function openChangePassword(row: any) {
 
 async function submitChangePassword() {
   if (!pwForm.old_password) {
-    layer.msg("Vui lòng nhập mật khẩu cũ", { icon: 0 });
+    layer.msg(t("sync.enterOldPassword"), { icon: 0 });
     return;
   }
   if (!pwForm.new_password || pwForm.new_password.length < 6) {
-    layer.msg("Mật khẩu mới tối thiểu 6 ký tự", { icon: 0 });
+    layer.msg(t("sync.passwordMinLength"), { icon: 0 });
     return;
   }
   if (pwForm.new_password !== pwForm.confirm_password) {
-    layer.msg("Xác nhận mật khẩu không khớp", { icon: 0 });
+    layer.msg(t("sync.passwordMismatch"), { icon: 0 });
     return;
   }
   pwSaving.value = true;
@@ -163,10 +165,10 @@ async function submitChangePassword() {
       new_password: pwForm.new_password,
       confirm_password: pwForm.confirm_password,
     });
-    layer.msg("Đổi mật khẩu thành công", { icon: 1 });
+    layer.msg(t("sync.passwordChangeSuccess"), { icon: 1 });
     pwModalVisible.value = false;
   } catch (err: any) {
-    const msg = err?.response?.data?.message || "Lỗi đổi mật khẩu";
+    const msg = err?.response?.data?.message || t("sync.passwordChangeError");
     layer.msg(msg, { icon: 2 });
   } finally {
     pwSaving.value = false;
@@ -175,13 +177,13 @@ async function submitChangePassword() {
 
 function confirmDeleteAgent(agentId: string, agentName: string) {
   layer.confirm(
-    `Bạn có chắc muốn <b style='color:#ff4d4f'>vô hiệu hoá</b> đại lý <b>${agentName}</b>?`,
+    t("sync.confirmDisable", { name: agentName }),
     {
-      title: "Xác nhận vô hiệu hoá",
+      title: t("sync.confirmDisableTitle"),
 
       btn: [
-        { text: "Vô hiệu hoá", callback: (id: string) => { layer.close(id); doDeleteAgent(agentId); } },
-        { text: "Hủy", callback: (id: string) => { layer.close(id); } },
+        { text: t("sync.confirmDisableBtn"), callback: (id: string) => { layer.close(id); doDeleteAgent(agentId); } },
+        { text: t("common.cancel"), callback: (id: string) => { layer.close(id); } },
       ],
     },
   );
@@ -190,31 +192,31 @@ function confirmDeleteAgent(agentId: string, agentName: string) {
 async function doDeleteAgent(agentId: string) {
   try {
     await deleteAgent(agentId, "deactivate");
-    layer.msg("Đã vô hiệu hoá đại lý", { icon: 1 });
+    layer.msg(t("sync.disabledSuccess"), { icon: 1 });
     await loadStatus();
     await agentStore.loadAgents();
   } catch (err: any) {
-    const msg = err?.response?.data?.message || "Lỗi xóa đại lý";
+    const msg = err?.response?.data?.message || t("sync.disabledError");
     layer.msg(msg, { icon: 2 });
   }
 }
 
 const agentColumns = computed(() => [
-  { title: "Đại lý / Dữ liệu", key: "name", customSlot: "agentName", width: "180px" },
-  { title: "Tài khoản", key: "extUsername", ellipsisTooltip: true, width: "120px" },
-  { title: "Trạng thái", key: "_status", customSlot: "agentStatus", width: "120px" },
-  { title: "Bản ghi", key: "totalRows", customSlot: "num", width: "80px" },
-  { title: "Sync cuối", key: "lastSyncedAt", customSlot: "syncTime", width: "130px" },
-  ...(canWrite.value ? [{ title: "Thao tác", key: "_actions", customSlot: "actions", width: "140px", align: "center" }] : []),
+  { title: t("sync.colAgentData"), key: "name", customSlot: "agentName", width: "180px" },
+  { title: t("sync.colAccount"), key: "extUsername", ellipsisTooltip: true, width: "120px" },
+  { title: t("sync.overviewStatus"), key: "_status", customSlot: "agentStatus", width: "120px" },
+  { title: t("sync.colRecords"), key: "totalRows", customSlot: "num", width: "80px" },
+  { title: t("sync.colLastSync"), key: "lastSyncedAt", customSlot: "syncTime", width: "130px" },
+  ...(canWrite.value ? [{ title: t("common.actions"), key: "_actions", customSlot: "actions", width: "140px", align: "center" }] : []),
 ]);
 
-const statusMap: Record<string, { color: string; label: string }> = {
-  active: { color: "#16baaa", label: "Hoạt động" },
-  online: { color: "#16baaa", label: "Hoạt động" },
-  logging_in: { color: "#ffb800", label: "Đang login..." },
-  offline: { color: "#999", label: "Offline" },
-  error: { color: "#ff4d4f", label: "Lỗi" },
-};
+const statusMap = computed<Record<string, { color: string; label: string }>>(() => ({
+  active: { color: "#16baaa", label: t("sync.statusActive") },
+  online: { color: "#16baaa", label: t("sync.statusActive") },
+  logging_in: { color: "#ffb800", label: t("sync.statusLogging") },
+  offline: { color: "#999", label: t("sync.statusOffline") },
+  error: { color: "#ff4d4f", label: t("sync.statusError") },
+}));
 
 function getAgentStatusColor(row: any): string {
   if (!row.isActive) return "#999";
@@ -223,18 +225,18 @@ function getAgentStatusColor(row: any): string {
     const alive = agentStore.cookieHealthMap[row.id];
     if (alive === false) return "#ff4d4f";
   }
-  return statusMap[row.status]?.color || "#999";
+  return statusMap.value[row.status]?.color || "#999";
 }
 
 function getAgentStatusLabel(row: any): string {
-  if (!row.isActive) return "Tắt";
+  if (!row.isActive) return t("sync.statusDisabled");
   // Gộp cookie health vào status
   if (row.status === "active" || row.status === "online") {
     const alive = agentStore.cookieHealthMap[row.id];
-    if (alive === false) return "Cookie hết hạn";
-    if (alive === undefined) return "Kiểm tra...";
+    if (alive === false) return t("sync.statusExpired");
+    if (alive === undefined) return t("sync.statusChecking");
   }
-  return statusMap[row.status]?.label || row.status;
+  return statusMap.value[row.status]?.label || row.status;
 }
 
 // Accordion: chỉ cho expand 1 agent tại 1 thời điểm
@@ -308,13 +310,13 @@ async function handleSyncAll() {
   try {
     const res = await triggerSync();
     if (res.data.success) {
-      layer.msg("Đã kích hoạt đồng bộ tất cả", { icon: 1 });
+      layer.msg(t("sync.syncAllTriggered"), { icon: 1 });
       isSyncing.value = true;
     } else {
-      layer.msg(res.data.message || "Lỗi", { icon: 2 });
+      layer.msg(res.data.message || t("common.errorLoad"), { icon: 2 });
     }
   } catch {
-    layer.msg("Lỗi khi kích hoạt đồng bộ", { icon: 2 });
+    layer.msg(t("sync.syncAllError"), { icon: 2 });
   } finally {
     triggering.value = false;
   }
@@ -325,12 +327,12 @@ async function handleStopSync() {
   try {
     const res = await stopSync();
     if (res.data.success) {
-      layer.msg("Đã yêu cầu dừng đồng bộ", { icon: 1 });
+      layer.msg(t("sync.syncStopRequested"), { icon: 1 });
     } else {
-      layer.msg(res.data.message || "Lỗi", { icon: 2 });
+      layer.msg(res.data.message || t("sync.statusError"), { icon: 2 });
     }
   } catch {
-    layer.msg("Lỗi khi dừng đồng bộ", { icon: 2 });
+    layer.msg(t("sync.syncStopError"), { icon: 2 });
   } finally {
     stopping.value = false;
   }
@@ -357,8 +359,8 @@ async function saveIntervals() {
   for (const [table, minutes] of Object.entries(intervalInputs.value)) {
     const ms = minutes * 60000;
     if (ms < 30000) {
-      const label = ENDPOINT_LABELS[table] || table;
-      layer.msg(`${label}: tối thiểu 1 phút`, { icon: 0 });
+      const label = ENDPOINT_LABELS.value[table] || table;
+      layer.msg(t("sync.intervalMin", { label }), { icon: 0 });
       return;
     }
     payload[table] = ms;
@@ -370,13 +372,13 @@ async function saveIntervals() {
       if (res.data.data?.intervals) {
         intervals.value = res.data.data.intervals;
       }
-      layer.msg("Đã cập nhật chu kỳ đồng bộ", { icon: 1 });
+      layer.msg(t("sync.intervalUpdated"), { icon: 1 });
       intervalEditing.value = false;
     } else {
-      layer.msg(res.data.message || "Lỗi", { icon: 2 });
+      layer.msg(res.data.message || t("common.errorLoad"), { icon: 2 });
     }
   } catch {
-    layer.msg("Lỗi cập nhật chu kỳ đồng bộ", { icon: 2 });
+    layer.msg(t("sync.intervalUpdateError"), { icon: 2 });
   } finally {
     intervalSaving.value = false;
   }
@@ -387,13 +389,13 @@ async function handleSyncAgent(agentId: string) {
   try {
     const res = await triggerAgentSync(agentId);
     if (res.data.success) {
-      layer.msg("Đã kích hoạt đồng bộ đại lý", { icon: 1 });
+      layer.msg(t("sync.syncAgentTriggered"), { icon: 1 });
       isSyncing.value = true;
     } else {
-      layer.msg(res.data.message || "Lỗi", { icon: 2 });
+      layer.msg(res.data.message || t("common.errorLoad"), { icon: 2 });
     }
   } catch {
-    layer.msg("Lỗi khi kích hoạt đồng bộ đại lý", { icon: 2 });
+    layer.msg(t("sync.syncAgentError"), { icon: 2 });
   } finally {
     syncingAgentId.value = null;
   }
@@ -405,13 +407,13 @@ async function handleSyncAgentEndpoint(agentId: string, table: string, label: st
   try {
     const res = await triggerAgentEndpointSync(agentId, table);
     if (res.data.success) {
-      layer.msg(`Đã kích hoạt đồng bộ ${label}`, { icon: 1 });
+      layer.msg(t("sync.syncEndpointTriggered", { label }), { icon: 1 });
       isSyncing.value = true;
     } else {
-      layer.msg(res.data.message || "Lỗi", { icon: 2 });
+      layer.msg(res.data.message || t("common.errorLoad"), { icon: 2 });
     }
   } catch {
-    layer.msg("Lỗi khi kích hoạt đồng bộ", { icon: 2 });
+    layer.msg(t("sync.syncEndpointError"), { icon: 2 });
   } finally {
     syncingEndpointKey.value = null;
   }
@@ -419,13 +421,13 @@ async function handleSyncAgentEndpoint(agentId: string, table: string, label: st
 
 function confirmPurgeAll() {
   layer.confirm(
-    "Bạn có chắc muốn <b style='color:#ff4d4f'>xóa TẤT CẢ</b> dữ liệu đồng bộ?<br>Hành động này không thể hoàn tác.",
+    t("sync.confirmDeleteAll"),
     {
-      title: "Xác nhận xóa tất cả",
+      title: t("sync.confirmDeleteAllTitle"),
 
       btn: [
-        { text: "Xóa tất cả", callback: (id: string) => { layer.close(id); doPurgeAll(); } },
-        { text: "Hủy", callback: (id: string) => { layer.close(id); } },
+        { text: t("sync.confirmDeleteAllBtn"), callback: (id: string) => { layer.close(id); doPurgeAll(); } },
+        { text: t("common.cancel"), callback: (id: string) => { layer.close(id); } },
       ],
     },
   );
@@ -436,13 +438,13 @@ async function doPurgeAll() {
   try {
     const res = await purgeAllData();
     if (res.data.success) {
-      layer.msg("Đã xóa tất cả dữ liệu", { icon: 1 });
+      layer.msg(t("sync.deleteAllSuccess"), { icon: 1 });
       await loadStatus();
     } else {
-      layer.msg(res.data.message || "Lỗi", { icon: 2 });
+      layer.msg(res.data.message || t("common.errorLoad"), { icon: 2 });
     }
   } catch {
-    layer.msg("Lỗi khi xóa dữ liệu", { icon: 2 });
+    layer.msg(t("sync.deleteAllError"), { icon: 2 });
   } finally {
     purgingAll.value = false;
   }
@@ -450,13 +452,13 @@ async function doPurgeAll() {
 
 function confirmPurgeAgent(agentId: string, agentName: string) {
   layer.confirm(
-    `Bạn có chắc muốn <b style='color:#ff4d4f'>xóa dữ liệu</b> của đại lý <b>${agentName}</b>?<br>Hành động này không thể hoàn tác.`,
+    t("sync.confirmDeleteAgent", { name: agentName }),
     {
-      title: "Xác nhận xóa dữ liệu đại lý",
+      title: t("sync.confirmDeleteAgentTitle"),
 
       btn: [
-        { text: "Xóa", callback: (id: string) => { layer.close(id); doPurgeAgent(agentId); } },
-        { text: "Hủy", callback: (id: string) => { layer.close(id); } },
+        { text: t("common.delete"), callback: (id: string) => { layer.close(id); doPurgeAgent(agentId); } },
+        { text: t("common.cancel"), callback: (id: string) => { layer.close(id); } },
       ],
     },
   );
@@ -467,13 +469,13 @@ async function doPurgeAgent(agentId: string) {
   try {
     const res = await purgeAgentData(agentId);
     if (res.data.success) {
-      layer.msg("Đã xóa dữ liệu đại lý", { icon: 1 });
+      layer.msg(t("sync.deleteAgentSuccess"), { icon: 1 });
       await loadStatus();
     } else {
-      layer.msg(res.data.message || "Lỗi", { icon: 2 });
+      layer.msg(res.data.message || t("common.errorLoad"), { icon: 2 });
     }
   } catch {
-    layer.msg("Lỗi khi xóa dữ liệu đại lý", { icon: 2 });
+    layer.msg(t("sync.deleteAgentError"), { icon: 2 });
   } finally {
     purgingAgentId.value = null;
   }
@@ -486,13 +488,13 @@ async function handleLoginAgent(agentId: string) {
   try {
     const res = await loginAgentEE88(agentId);
     if (res.data.success) {
-      layer.msg("Đăng nhập thành công", { icon: 1 });
+      layer.msg(t("sync.loginSuccess"), { icon: 1 });
       await loadStatus();
     } else {
-      layer.msg(res.data.message || "Lỗi đăng nhập", { icon: 2 });
+      layer.msg(res.data.message || t("sync.loginError"), { icon: 2 });
     }
   } catch (err: any) {
-    const msg = err?.response?.data?.message || "Lỗi đăng nhập agent";
+    const msg = err?.response?.data?.message || t("sync.loginAgentError");
     layer.msg(msg, { icon: 2 });
   } finally {
     loggingInAgentId.value = null;
@@ -504,13 +506,13 @@ async function handleLogoutAgent(agentId: string) {
   try {
     const res = await logoutAgentEE88(agentId);
     if (res.data.success) {
-      layer.msg("Đã logout agent", { icon: 1 });
+      layer.msg(t("sync.logoutSuccess"), { icon: 1 });
       await loadStatus();
     } else {
-      layer.msg(res.data.message || "Lỗi logout", { icon: 2 });
+      layer.msg(res.data.message || t("sync.logoutError"), { icon: 2 });
     }
   } catch (err: any) {
-    const msg = err?.response?.data?.message || "Lỗi logout agent";
+    const msg = err?.response?.data?.message || t("sync.logoutAgentError");
     layer.msg(msg, { icon: 2 });
   } finally {
     loggingOutAgentId.value = null;
@@ -523,13 +525,13 @@ async function handleLoginAll() {
     const res = await loginAllAgentsEE88();
     if (res.data.success) {
       const d = res.data.data;
-      layer.msg(`Đã login ${d.success}/${d.total} agents`, { icon: 1 });
+      layer.msg(t("sync.loginAllResult", { success: d.success, total: d.total }), { icon: 1 });
       await loadStatus();
     } else {
-      layer.msg(res.data.message || "Lỗi", { icon: 2 });
+      layer.msg(res.data.message || t("common.errorLoad"), { icon: 2 });
     }
   } catch (err: any) {
-    const msg = err?.response?.data?.message || "Lỗi login tất cả";
+    const msg = err?.response?.data?.message || t("sync.loginAllError");
     layer.msg(msg, { icon: 2 });
   } finally {
     loggingInAll.value = false;
@@ -588,10 +590,10 @@ onUnmounted(() => {
             <i class="layui-icon" :class="isSyncing ? 'layui-icon-loading-1 spin' : 'layui-icon-ok-circle'"></i>
           </div>
           <div class="overview-text">
-            <div class="overview-label">Trạng thái</div>
+            <div class="overview-label">{{ t('sync.overviewStatus') }}</div>
             <div class="overview-value">
               <lay-tag :color="isSyncing ? '#ffb800' : '#16baaa'" variant="light" size="sm" bordered>
-                {{ isSyncing ? "Đang đồng bộ..." : "Sẵn sàng" }}
+                {{ isSyncing ? t('sync.syncing') : t('sync.ready') }}
               </lay-tag>
             </div>
           </div>
@@ -602,7 +604,7 @@ onUnmounted(() => {
             <i class="layui-icon layui-icon-chart-screen"></i>
           </div>
           <div class="overview-text">
-            <div class="overview-label">Tổng bản ghi</div>
+            <div class="overview-label">{{ t('sync.totalRecords') }}</div>
             <div class="overview-value">
               <lay-count-up :end-val="totalRows" :duration="800" :use-grouping="true" />
             </div>
@@ -614,7 +616,7 @@ onUnmounted(() => {
             <i class="layui-icon layui-icon-group"></i>
           </div>
           <div class="overview-text">
-            <div class="overview-label">Agent hoạt động</div>
+            <div class="overview-label">{{ t('sync.activeAgents') }}</div>
             <div class="overview-value">{{ activeAgents }}<span class="overview-sub">/{{ totalAgents }}</span></div>
           </div>
         </div>
@@ -624,9 +626,9 @@ onUnmounted(() => {
             <svg xmlns="http://www.w3.org/2000/svg" height="20" viewBox="0 -960 960 960" width="20" fill="#fff"><path d="M360-860v-60h240v60H360Zm90 447h60v-230h-60v230ZM340.5-109.5Q275-138 226-187t-77.5-114.5Q120-367 120-441t28.5-139.5Q177-646 226-695t114.5-77.5Q406-801 480-801q67 0 126 22.5T711-716l51-51 42 42-51 51q36 40 61.5 97T840-441q0 74-28.5 139.5T734-187q-49 49-114.5 77.5T480-81q-74 0-139.5-28.5Zm352-119Q780-316 780-441t-87.5-212.5Q605-741 480-741t-212.5 87.5Q180-566 180-441t87.5 212.5Q355-141 480-141t212.5-87.5ZM480-440Z"/></svg>
           </div>
           <div class="overview-text">
-            <div class="overview-label">Chu kỳ đồng bộ<template v-if="canWrite"> <i class="layui-icon layui-icon-edit" style="font-size: 11px; cursor: pointer; color: #999"></i></template></div>
+            <div class="overview-label">{{ t('sync.syncCycle') }}<template v-if="canWrite"> <i class="layui-icon layui-icon-edit" style="font-size: 11px; cursor: pointer; color: #999"></i></template></div>
             <div class="overview-value">
-              <lay-tag color="#ffb800" variant="light" size="sm" bordered>Tuỳ chỉnh</lay-tag>
+              <lay-tag color="#ffb800" variant="light" size="sm" bordered>{{ t('sync.customize') }}</lay-tag>
             </div>
           </div>
         </div>
@@ -635,7 +637,7 @@ onUnmounted(() => {
 
     <!-- ===== AGENT TABLE ===== -->
     <lay-card style="margin-top: 12px">
-      <lay-field title="Trạng thái đại lý">
+      <lay-field :title="t('sync.agentStatus')">
         <div class="table-container">
           <lay-table
             :columns="agentColumns"
@@ -653,14 +655,14 @@ onUnmounted(() => {
                   type="primary"
                   @click="openCreateAgent"
                 >
-                  <i class="layui-icon layui-icon-add-1"></i> Thêm đại lý
+                  <i class="layui-icon layui-icon-add-1"></i> {{ t('sync.addAgent') }}
                 </lay-button>
                 <lay-button
                   size="sm"
                   :loading="loggingInAll"
                   @click="handleLoginAll"
                 >
-                  <i class="layui-icon layui-icon-key"></i> Login tất cả
+                  <i class="layui-icon layui-icon-key"></i> {{ t('sync.loginAll') }}
                 </lay-button>
                 <lay-button
                   v-if="!isSyncing"
@@ -669,7 +671,7 @@ onUnmounted(() => {
                   :loading="triggering"
                   @click="handleSyncAll"
                 >
-                  <i class="layui-icon layui-icon-play"></i> Đồng bộ
+                  <i class="layui-icon layui-icon-play"></i> {{ t('sync.syncAll') }}
                 </lay-button>
                 <lay-button
                   v-else
@@ -678,7 +680,7 @@ onUnmounted(() => {
                   :loading="stopping"
                   @click="handleStopSync"
                 >
-                  <i class="layui-icon layui-icon-pause"></i> Dừng
+                  <i class="layui-icon layui-icon-pause"></i> {{ t('sync.stopSync') }}
                 </lay-button>
               </template>
             </template>
@@ -764,32 +766,32 @@ onUnmounted(() => {
                     <template #content>
                       <lay-dropdown-menu>
                         <lay-dropdown-menu-item @click="openEditAgent(row)">
-                          <i class="layui-icon layui-icon-edit" style="margin-right: 6px"></i>Sửa thông tin
+                          <i class="layui-icon layui-icon-edit" style="margin-right: 6px"></i>{{ t('sync.editInfo') }}
                         </lay-dropdown-menu-item>
                         <lay-dropdown-menu-item
                           @click="loggingInAgentId !== row.id && handleLoginAgent(row.id)"
                           :disabled="loggingInAgentId === row.id"
                         >
-                          <i class="layui-icon layui-icon-key" style="margin-right: 6px"></i>{{ loggingInAgentId === row.id ? 'Đang login...' : 'Login EE88' }}
+                          <i class="layui-icon layui-icon-key" style="margin-right: 6px"></i>{{ loggingInAgentId === row.id ? t('sync.loggingIn') : t('sync.loginEE88') }}
                         </lay-dropdown-menu-item>
                         <lay-dropdown-menu-item
                           @click="loggingOutAgentId !== row.id && handleLogoutAgent(row.id)"
                           :disabled="loggingOutAgentId === row.id"
                         >
-                          <i class="layui-icon layui-icon-release" style="margin-right: 6px"></i>{{ loggingOutAgentId === row.id ? 'Đang logout...' : 'Logout EE88' }}
+                          <i class="layui-icon layui-icon-release" style="margin-right: 6px"></i>{{ loggingOutAgentId === row.id ? t('sync.loggingOut') : t('sync.logoutEE88') }}
                         </lay-dropdown-menu-item>
                         <lay-dropdown-menu-item @click="openChangePassword(row)">
-                          <i class="layui-icon layui-icon-password" style="margin-right: 6px"></i>Đổi mật khẩu
+                          <i class="layui-icon layui-icon-password" style="margin-right: 6px"></i>{{ t('sync.changePassword') }}
                         </lay-dropdown-menu-item>
                         <li style="border-top: 1px solid #eee; margin: 4px 0"></li>
                         <lay-dropdown-menu-item
                           @click="!isSyncing && purgingAgentId !== row.id && confirmPurgeAgent(row.id, row.name)"
                           :disabled="isSyncing || purgingAgentId === row.id"
                         >
-                          <span style="color: #ff9900"><i class="layui-icon layui-icon-delete" style="margin-right: 6px"></i>Xóa dữ liệu</span>
+                          <span style="color: #ff9900"><i class="layui-icon layui-icon-delete" style="margin-right: 6px"></i>{{ t('sync.deleteData') }}</span>
                         </lay-dropdown-menu-item>
                         <lay-dropdown-menu-item @click="confirmDeleteAgent(row.id, row.name)">
-                          <span style="color: #ff4d4f"><i class="layui-icon layui-icon-close" style="margin-right: 6px"></i>Vô hiệu hoá</span>
+                          <span style="color: #ff4d4f"><i class="layui-icon layui-icon-close" style="margin-right: 6px"></i>{{ t('sync.disable') }}</span>
                         </lay-dropdown-menu-item>
                       </lay-dropdown-menu>
                     </template>
@@ -810,31 +812,31 @@ onUnmounted(() => {
       :area="['460px', 'auto']"
       :shade-close="false"
       :btn="[
-        { text: 'Lưu', callback: () => saveAgent() },
-        { text: 'Hủy', callback: (id: string) => { agentModalVisible = false; } },
+        { text: t('common.save'), callback: () => saveAgent() },
+        { text: t('common.cancel'), callback: (id: string) => { agentModalVisible = false; } },
       ]"
     >
       <div style="padding: 16px 20px">
         <lay-form :model="agentForm" label-width="130">
-          <lay-form-item label="Tên đại lý" required>
-            <lay-input v-model="agentForm.name" placeholder="VD: Agent 01" />
+          <lay-form-item :label="t('sync.agentName')" required>
+            <lay-input v-model="agentForm.name" :placeholder="t('sync.agentNamePlaceholder')" />
           </lay-form-item>
-          <lay-form-item label="Username EE88" :required="!editingAgentId">
+          <lay-form-item :label="t('sync.usernameEE88')" :required="!editingAgentId">
             <lay-input
               v-model="agentForm.extUsername"
-              placeholder="Tài khoản ee88"
+              :placeholder="t('sync.usernameEE88Placeholder')"
               :disabled="!!editingAgentId"
             />
           </lay-form-item>
-          <lay-form-item :label="editingAgentId ? 'Mật khẩu mới' : 'Mật khẩu EE88'" :required="!editingAgentId">
+          <lay-form-item :label="editingAgentId ? t('sync.passwordNew') : t('sync.passwordEE88')" :required="!editingAgentId">
             <lay-input
               v-model="agentForm.extPassword"
               type="password"
-              :placeholder="editingAgentId ? 'Để trống nếu không đổi' : 'Mật khẩu ee88'"
+              :placeholder="editingAgentId ? t('sync.passwordNewPlaceholder') : t('sync.passwordEE88Placeholder')"
             />
           </lay-form-item>
-          <lay-form-item label="Base URL">
-            <lay-input v-model="agentForm.baseUrl" placeholder="Mặc định nếu để trống" />
+          <lay-form-item :label="t('sync.baseUrl')">
+            <lay-input v-model="agentForm.baseUrl" :placeholder="t('sync.baseUrlPlaceholder')" />
           </lay-form-item>
         </lay-form>
       </div>
@@ -842,41 +844,41 @@ onUnmounted(() => {
     <!-- ===== MODAL ĐỔI MẬT KHẨU ===== -->
     <lay-layer
       v-model="pwModalVisible"
-      :title="`Đổi mật khẩu: ${pwModalAgentName}`"
+      :title="t('sync.changePasswordTitle', { name: pwModalAgentName })"
       :area="['420px', 'auto']"
       :shade-close="false"
       :btn="[
-        { text: pwSaving ? 'Đang lưu...' : 'Đổi mật khẩu', callback: () => submitChangePassword() },
-        { text: 'Hủy', callback: () => { pwModalVisible = false; } },
+        { text: pwSaving ? t('sync.changingPassword') : t('sync.changePassword'), callback: () => submitChangePassword() },
+        { text: t('common.cancel'), callback: () => { pwModalVisible = false; } },
       ]"
     >
       <div style="padding: 16px 20px; display: flex; flex-direction: column; gap: 10px">
-        <lay-input v-model="pwForm.old_password" type="password" placeholder="Nhập mật khẩu cũ đại lý EE88" prefix-icon="layui-icon-password" />
-        <lay-input v-model="pwForm.new_password" type="password" placeholder="Mật khẩu mới (tối thiểu 6 ký tự)" prefix-icon="layui-icon-key" />
-        <lay-input v-model="pwForm.confirm_password" type="password" placeholder="Xác nhận mật khẩu mới" prefix-icon="layui-icon-key" />
+        <lay-input v-model="pwForm.old_password" type="password" :placeholder="t('sync.oldPasswordPlaceholder')" prefix-icon="layui-icon-password" />
+        <lay-input v-model="pwForm.new_password" type="password" :placeholder="t('sync.newPasswordPlaceholder')" prefix-icon="layui-icon-key" />
+        <lay-input v-model="pwForm.confirm_password" type="password" :placeholder="t('sync.confirmPasswordPlaceholder')" prefix-icon="layui-icon-key" />
       </div>
     </lay-layer>
 
     <!-- ===== MODAL CÀI ĐẶT CHU KỲ ĐỒNG BỘ (PER-ENDPOINT) ===== -->
     <lay-layer
       v-model="intervalEditing"
-      title="Cài đặt chu kỳ đồng bộ"
+      :title="t('sync.syncIntervalTitle')"
       :area="['500px', 'auto']"
       :shade-close="true"
       :btn="[
-        { text: intervalSaving ? 'Đang lưu...' : 'Lưu tất cả', callback: () => saveIntervals() },
-        { text: 'Hủy', callback: () => { intervalEditing = false; } },
+        { text: intervalSaving ? t('sync.saving') : t('sync.saveAll'), callback: () => saveIntervals() },
+        { text: t('common.cancel'), callback: () => { intervalEditing = false; } },
       ]"
     >
       <div style="padding: 16px 20px">
         <div style="margin-bottom: 12px; color: #666; font-size: 13px">
-          Cài đặt chu kỳ đồng bộ riêng cho từng loại dữ liệu (phút). Tối thiểu 1 phút.
+          {{ t('sync.syncIntervalDesc') }}
         </div>
         <table class="interval-table">
           <thead>
             <tr>
-              <th>Loại dữ liệu</th>
-              <th style="width: 120px; text-align: center">Chu kỳ (phút)</th>
+              <th>{{ t('sync.dataType') }}</th>
+              <th style="width: 120px; text-align: center">{{ t('sync.cycleMinutes') }}</th>
             </tr>
           </thead>
           <tbody>

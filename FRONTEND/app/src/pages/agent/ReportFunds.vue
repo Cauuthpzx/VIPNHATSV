@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { reactive, ref } from "vue";
+import { reactive, ref, computed } from "vue";
+import { useI18n } from "vue-i18n";
 import { useDateRange } from "@/composables/useDateRange";
 import { useListPage } from "@/composables/useListPage";
 import { fetchReportFunds } from "@/api/services/proxy";
@@ -7,6 +8,8 @@ import { createExportAllFn } from "@/composables/useExportAll";
 import { layer } from "@layui/layui-vue";
 import { useAgentFilter } from "@/composables/useAgentFilter";
 import CookieBadge from "@/components/CookieBadge.vue";
+
+const { t } = useI18n();
 
 const { dateRange, dateQuickSelect, dateQuickOptions, dateQuickWidth, resetDateRange } = useDateRange("today");
 const { dataSource, loading, page, setLoading, bindLoadData, guardStale } = useListPage();
@@ -16,31 +19,31 @@ const searchForm = reactive({
   username: "",
 });
 
-const columns = [
-  { title: "Nhân viên", key: "_agentName", ellipsisTooltip: true },
-  { title: "Tên tài khoản", key: "username", ellipsisTooltip: true },
-  { title: "Thuộc đại lý", key: "user_parent_format", ellipsisTooltip: true },
-  { title: "Số lần nạp", key: "deposit_count", customSlot: "num", ellipsisTooltip: true },
-  { title: "Số tiền nạp", key: "deposit_amount", customSlot: "num", ellipsisTooltip: true },
-  { title: "Số lần rút", key: "withdrawal_count", customSlot: "num", ellipsisTooltip: true },
-  { title: "Số tiền rút", key: "withdrawal_amount", customSlot: "num", ellipsisTooltip: true },
-  { title: "Phí dịch vụ", key: "charge_fee", customSlot: "num", ellipsisTooltip: true },
-  { title: "Hoa hồng đại lý", key: "agent_commission", customSlot: "num", ellipsisTooltip: true },
-  { title: "Ưu đãi", key: "promotion", customSlot: "num", ellipsisTooltip: true },
-  { title: "Hoàn trả bên thứ 3", key: "third_rebate", customSlot: "num", ellipsisTooltip: true },
-  { title: "Tiền thưởng từ bên thứ 3", key: "third_activity_amount", customSlot: "num", ellipsisTooltip: true },
-  { title: "Thời gian", key: "date", ellipsisTooltip: true },
-];
+const columns = computed(() => [
+  { title: t("common.agent"), key: "_agentName" },
+  { title: t("reportFunds.account"), key: "username" },
+  { title: t("reportFunds.agentBelong"), key: "user_parent_format" },
+  { title: t("reportFunds.depositCount"), key: "deposit_count", customSlot: "num" },
+  { title: t("reportFunds.depositAmount"), key: "deposit_amount", customSlot: "num" },
+  { title: t("reportFunds.withdrawCount"), key: "withdrawal_count", customSlot: "num" },
+  { title: t("reportFunds.withdrawAmount"), key: "withdrawal_amount", customSlot: "num" },
+  { title: t("reportFunds.serviceFee"), key: "charge_fee", customSlot: "num" },
+  { title: t("reportFunds.agentCommission"), key: "agent_commission", customSlot: "num" },
+  { title: t("reportFunds.promotion"), key: "promotion", customSlot: "num" },
+  { title: t("reportFunds.thirdPartyRebate"), key: "third_rebate", customSlot: "num" },
+  { title: t("reportFunds.thirdPartyBonus"), key: "third_activity_amount", customSlot: "num" },
+  { title: t("common.time"), key: "date" },
+]);
 
-const summaryColumns = [
-  { title: "Số tiền nạp", key: "total_deposit_amount", customSlot: "sumNum", ellipsisTooltip: true },
-  { title: "Số tiền rút", key: "total_withdrawal_amount", customSlot: "sumNum", ellipsisTooltip: true },
-  { title: "Phí dịch vụ", key: "total_charge_fee", customSlot: "sumNum", ellipsisTooltip: true },
-  { title: "Hoa hồng đại lý", key: "total_agent_commission", customSlot: "sumNum", ellipsisTooltip: true },
-  { title: "Ưu đãi", key: "total_promotion", customSlot: "sumNum", ellipsisTooltip: true },
-  { title: "Hoàn trả bên thứ 3", key: "total_third_rebate", customSlot: "sumNum", ellipsisTooltip: true },
-  { title: "Tiền thưởng từ bên thứ 3", key: "total_third_activity_amount", customSlot: "sumNum", ellipsisTooltip: true },
-];
+const summaryColumns = computed(() => [
+  { title: t("reportFunds.depositAmount"), key: "total_deposit_amount", customSlot: "sumNum" },
+  { title: t("reportFunds.withdrawAmount"), key: "total_withdrawal_amount", customSlot: "sumNum" },
+  { title: t("reportFunds.serviceFee"), key: "total_charge_fee", customSlot: "sumNum" },
+  { title: t("reportFunds.agentCommission"), key: "total_agent_commission", customSlot: "sumNum" },
+  { title: t("reportFunds.promotion"), key: "total_promotion", customSlot: "sumNum" },
+  { title: t("reportFunds.thirdPartyRebate"), key: "total_third_rebate", customSlot: "sumNum" },
+  { title: t("reportFunds.thirdPartyBonus"), key: "total_third_activity_amount", customSlot: "sumNum" },
+]);
 
 const summaryData = ref([
   {
@@ -73,7 +76,7 @@ async function loadData() {
       summaryData.value = [{ total_deposit_amount: "0.0000", total_withdrawal_amount: "0.0000", total_charge_fee: "0.0000", total_agent_commission: "0.0000", total_promotion: "0.0000", total_third_rebate: "0.0000", total_third_activity_amount: "0.0000" }];
     }
   } catch {
-    if (!isStale()) layer.msg("Lỗi tải dữ liệu", { icon: 2 });
+    if (!isStale()) layer.msg(t("common.errorLoad"), { icon: 2 });
   } finally {
     if (!isStale()) setLoading(false);
   }
@@ -98,17 +101,17 @@ function handleReset() {
 <template>
   <div>
     <lay-card>
-      <lay-field title="Sao kê giao dịch">
+      <lay-field :title="t('reportFunds.title')">
       <div class="search-form-wrap">
         <div class="layui-inline">
-          <span class="form-label">Nhân viên :</span>
+          <span class="form-label">{{ t("common.agentLabel") }}</span>
           <lay-select v-model="selectedAgentId" :style="{ width: agentWidth }">
             <lay-select-option v-for="opt in agentOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
           </lay-select>
         </div>
         <div class="layui-inline">
-          <span class="form-label">Thời gian :</span>
-          <lay-date-picker v-model="dateRange" range single-panel range-separator="-" :placeholder="['Ngày bắt đầu', 'Ngày kết thúc']" />
+          <span class="form-label">{{ t("common.timeLabel") }}</span>
+          <lay-date-picker v-model="dateRange" range single-panel range-separator="-" :placeholder="[t('common.dateStart'), t('common.dateEnd')]" />
         </div>
         <div class="layui-inline">
           <lay-select v-model="dateQuickSelect" :style="{ width: dateQuickWidth }">
@@ -116,15 +119,15 @@ function handleReset() {
           </lay-select>
         </div>
         <div class="layui-inline">
-          <span class="form-label">Tên tài khoản :</span>
-          <lay-input v-model="searchForm.username" placeholder="Nhập tên tài khoản" />
+          <span class="form-label">{{ t("reportFunds.accountLabel") }}</span>
+          <lay-input v-model="searchForm.username" :placeholder="t('reportFunds.accountPlaceholder')" />
         </div>
         <div class="layui-inline">
           <lay-button type="normal" @click="handleSearch">
-            <i class="layui-icon layui-icon-search"></i> Tìm kiếm
+            <i class="layui-icon layui-icon-search"></i> {{ t("common.search") }}
           </lay-button>
           <lay-button type="primary" @click="handleReset">
-            <i class="layui-icon layui-icon-refresh"></i> Đặt lại
+            <i class="layui-icon layui-icon-refresh"></i> {{ t("common.reset") }}
           </lay-button>
         </div>
       </div>
@@ -145,15 +148,15 @@ function handleReset() {
             <CookieBadge />
           </template>
           <template #num="{ row, column }">
-            <lay-count-up :end-val="Number(row[column.key]) || 0" :duration="600" :decimal-places="String(row[column.key]).includes('.') ? 2 : 0" :use-grouping="false" />
+            <lay-count-up :end-val="Number(row[column.key]) || 0" :duration="0" :decimal-places="String(row[column.key]).includes('.') ? 2 : 0" :use-grouping="false" />
           </template>
         </lay-table>
         <lay-table :columns="summaryColumns" :data-source="summaryData" :default-toolbar="true">
           <template v-slot:toolbar>
-            <lay-button size="xs" type="normal"><b>DỮ LIỆU TỔNG HỢP</b></lay-button>
+            <lay-button size="xs" type="normal"><b>{{ t("common.summaryData") }}</b></lay-button>
           </template>
           <template #sumNum="{ row, column }">
-            <lay-count-up :end-val="Number(row[column.key]) || 0" :duration="600" :decimal-places="String(row[column.key]).includes('.') ? 4 : 0" :use-grouping="false" />
+            <lay-count-up :end-val="Number(row[column.key]) || 0" :duration="0" :decimal-places="String(row[column.key]).includes('.') ? 4 : 0" :use-grouping="false" />
           </template>
         </lay-table>
       </div>

@@ -103,7 +103,7 @@ import LayTree from "./component/tree/index";
 import LayTreeSelect from "./component/treeSelect/index";
 import LayUpload from "./component/upload/index";
 import LayWatermark from "./component/watermark/index";
-import i18n, { useI18n } from "./language";
+import i18n, { useI18n, setLayuiLocale } from "./language";
 import LayConfigProvider from "./provider";
 import "./theme/index.less";
 import "@layui/layer-vue/lib/index.css";
@@ -328,7 +328,7 @@ export {
   LayWatermark,
 };
 
-export { layer, useI18n };
+export { layer, useI18n, setLayuiLocale, i18n as layuiI18n };
 
 export default { install };
 

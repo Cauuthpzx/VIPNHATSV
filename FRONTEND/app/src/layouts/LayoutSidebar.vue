@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import { useI18n } from "vue-i18n";
 import { useAppStore } from "@/stores/app";
 import { useAuthStore } from "@/stores/auth";
 import { menuData } from "@/config/menu";
 import type { MenuItem } from "@/config/menu";
 import { useSidebarSlider } from "@/composables/useSidebarSlider";
+
+const { t } = useI18n();
 
 const router = useRouter();
 const route = useRoute();
@@ -52,13 +55,13 @@ function onMenuClick(childId: string) {
   for (const group of filteredMenuData.value) {
     // Menu đơn
     if (group.path && group.id === childId) {
-      store.addTab({ title: group.title, path: group.path, closable: true });
+      store.addTab({ titleKey: group.titleKey, path: group.path, closable: true });
       router.push(group.path);
       return;
     }
     const child = group.children.find((c) => c.id === childId);
     if (child) {
-      store.addTab({ title: child.title, path: child.path, closable: true });
+      store.addTab({ titleKey: child.titleKey, path: child.path, closable: true });
       router.push(child.path);
       return;
     }
@@ -142,20 +145,20 @@ defineExpose({ sideWidth: computed(() => (store.collapsed ? 60 : 200)) });
             <template #icon>
               <i :class="['layui-icon', group.icon]"></i>
             </template>
-            <template #title>{{ group.title }}</template>
+            <template #title>{{ t(group.titleKey) }}</template>
           </lay-menu-item>
           <!-- Menu có sub -->
           <lay-sub-menu v-else :id="group.id">
             <template #icon>
               <i :class="['layui-icon', group.icon]"></i>
             </template>
-            <template #title>{{ group.title }}</template>
+            <template #title>{{ t(group.titleKey) }}</template>
             <lay-menu-item
               v-for="child in group.children"
               :key="child.id"
               :id="child.id"
             >
-              <template #title>{{ child.title }}</template>
+              <template #title>{{ t(child.titleKey) }}</template>
             </lay-menu-item>
           </lay-sub-menu>
         </template>

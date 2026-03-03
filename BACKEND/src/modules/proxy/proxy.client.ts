@@ -11,10 +11,10 @@ import { withRetry } from "../../utils/retry.js";
 // Persistent HTTP Agent — keep-alive + connection pooling for upstream
 // ---------------------------------------------------------------------------
 const upstreamAgent = new Agent({
-  keepAliveTimeout: 30_000,
-  keepAliveMaxTimeout: 60_000,
-  connections: 50,       // max concurrent sockets (increased for parallel sync)
-  pipelining: 1,
+  keepAliveTimeout: 60_000,
+  keepAliveMaxTimeout: 120_000,
+  connections: 100,       // max concurrent sockets (increased for parallel sync)
+  pipelining: 1,          // PHP upstream doesn't reliably support HTTP pipelining
 });
 
 const upstreamBreaker = new CircuitBreaker({

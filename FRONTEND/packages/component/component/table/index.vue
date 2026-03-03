@@ -239,6 +239,7 @@ const tableToolbarProps = computed(() => {
     lastLevelAllColumns: lastLevelAllColumns.value,
     tableRef: tableRef.value,
     exportAllFn: props.exportAllFn,
+    exportFileName: props.exportFileName,
   };
 });
 

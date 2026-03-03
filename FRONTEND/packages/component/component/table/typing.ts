@@ -35,6 +35,7 @@ export interface TableProps {
   emptyDescription?: string;
   initSort?: initSort;
   exportAllFn?: () => Promise<Recordable[]>;
+  exportFileName?: string;
 }
 
 type OptionalKeys = "skin" | "page" | "height" | "emptyDescription";
@@ -96,6 +97,9 @@ interface TableBaseColumn {
     dataSource: TableProps["dataSource"]
   ) => void;
   exportCellType?: string;
+  exportTitle?: string;
+  exportHeaderColor?: string;
+  exportCellColor?: string;
 }
 
 export type TableColumn =

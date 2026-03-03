@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import { ref } from "vue";
+import { useI18n } from "vue-i18n";
+
+const { t } = useI18n();
 
 const info = ref({
   lastLoginTime: "2026-03-01 01:33:06",
@@ -13,30 +16,30 @@ const info = ref({
 
 <template>
   <div class="welcome-page">
-    <lay-quote>hào mừng bạn đăng nhập hệ thống quản lí</lay-quote>
+    <lay-quote>{{ t('welcome.greeting') }}</lay-quote>
 
     <lay-row :space="15">
       <lay-col :md="14">
         <lay-card>
-          <div class="section-title">Thông tin cơ bản</div>
+          <div class="section-title">{{ t('welcome.basicInfo') }}</div>
           <lay-line theme="green" />
           <div class="info-row">
-            Thời gian lần đăng nhập trước：{{ info.lastLoginTime }}，IP lần đăng nhập trước：
+            {{ t('welcome.lastLoginTime') }}{{ info.lastLoginTime }}，{{ t('welcome.lastLoginIp') }}
           </div>
           <div class="info-row">{{ info.lastLoginIp }}</div>
           <br />
           <div class="info-row">
-            Thời gian lần đăng nhập này：{{ info.currentLoginTime }}，IP lần đăng nhập này：
+            {{ t('welcome.currentLoginTime') }}{{ info.currentLoginTime }}，{{ t('welcome.currentLoginIp') }}
           </div>
           <div class="info-row">{{ info.currentLoginIp }}</div>
         </lay-card>
       </lay-col>
       <lay-col :md="10">
         <lay-card>
-          <div class="section-title">Tổng quan quỹ tiền</div>
+          <div class="section-title">{{ t('welcome.fundOverview') }}</div>
           <lay-line theme="green" />
-          <div class="info-row">Ví tiền đại lý：{{ info.agentBalance }}</div>
-          <div class="info-row">Số tiền đóng băng：{{ info.frozenAmount }}</div>
+          <div class="info-row">{{ t('welcome.agentWallet') }}{{ info.agentBalance }}</div>
+          <div class="info-row">{{ t('welcome.frozenAmount') }}{{ info.frozenAmount }}</div>
         </lay-card>
       </lay-col>
     </lay-row>

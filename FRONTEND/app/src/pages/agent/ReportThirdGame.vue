@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { reactive, ref } from "vue";
+import { reactive, ref, computed } from "vue";
+import { useI18n } from "vue-i18n";
 import { useDateRange } from "@/composables/useDateRange";
 import { useListPage } from "@/composables/useListPage";
 import { useAutoFitSelect } from "@/composables/useAutoFitSelect";
@@ -8,6 +9,8 @@ import { fetchReportThirdGame } from "@/api/services/proxy";
 import { createExportAllFn } from "@/composables/useExportAll";
 import { layer } from "@layui/layui-vue";
 import CookieBadge from "@/components/CookieBadge.vue";
+
+const { t } = useI18n();
 
 const { dateRange, dateQuickSelect, dateQuickOptions, dateQuickWidth, resetDateRange } = useDateRange("today");
 const { dataSource, loading, page, setLoading, bindLoadData, guardStale } = useListPage();
@@ -63,25 +66,25 @@ const platformOptions = [
 
 const { selectWidth: platformWidth } = useAutoFitSelect(platformOptions);
 
-const columns = [
-  { title: "Nhân viên", key: "_agentName", ellipsisTooltip: true },
-  { title: "Tên tài khoản", key: "username", ellipsisTooltip: true },
-  { title: "Nhà cung cấp game", key: "platform_id_name", ellipsisTooltip: true },
-  { title: "Số lần cược", key: "t_bet_times", customSlot: "num", ellipsisTooltip: true },
-  { title: "Tiền cược", key: "t_bet_amount", customSlot: "num", ellipsisTooltip: true },
-  { title: "Tiền cược hợp lệ", key: "t_turnover", customSlot: "num", ellipsisTooltip: true },
-  { title: "Tiền thưởng", key: "t_prize", customSlot: "num", ellipsisTooltip: true },
-  { title: "Thắng thua", key: "t_win_lose", customSlot: "num", ellipsisTooltip: true },
-];
+const columns = computed(() => [
+  { title: t("common.agent"), key: "_agentName" },
+  { title: t("reportThirdGame.account"), key: "username" },
+  { title: t("reportThirdGame.provider"), key: "platform_id_name", ellipsisTooltip: true },
+  { title: t("reportThirdGame.betCount"), key: "t_bet_times", customSlot: "num" },
+  { title: t("reportThirdGame.betAmount"), key: "t_bet_amount", customSlot: "num" },
+  { title: t("reportThirdGame.validBet"), key: "t_turnover", customSlot: "num" },
+  { title: t("reportThirdGame.prize"), key: "t_prize", customSlot: "num" },
+  { title: t("reportThirdGame.winLose"), key: "t_win_lose", customSlot: "num" },
+]);
 
-const summaryColumns = [
-  { title: "Số lần cược", key: "total_bet_times", customSlot: "sumNum", ellipsisTooltip: true },
-  { title: "Số khách đặt cược", key: "total_bet_number", customSlot: "sumNum", ellipsisTooltip: true },
-  { title: "Tiền cược", key: "total_bet_amount", customSlot: "sumNum", ellipsisTooltip: true },
-  { title: "Tiền cược hợp lệ", key: "total_turnover", customSlot: "sumNum", ellipsisTooltip: true },
-  { title: "Tiền thưởng", key: "total_prize", customSlot: "sumNum", ellipsisTooltip: true },
-  { title: "Thắng thua", key: "total_win_lose", customSlot: "sumNum", ellipsisTooltip: true },
-];
+const summaryColumns = computed(() => [
+  { title: t("reportThirdGame.betCount"), key: "total_bet_times", customSlot: "sumNum" },
+  { title: t("reportThirdGame.bettorsCount"), key: "total_bet_number", customSlot: "sumNum" },
+  { title: t("reportThirdGame.betAmount"), key: "total_bet_amount", customSlot: "sumNum" },
+  { title: t("reportThirdGame.validBet"), key: "total_turnover", customSlot: "sumNum" },
+  { title: t("reportThirdGame.prize"), key: "total_prize", customSlot: "sumNum" },
+  { title: t("reportThirdGame.winLose"), key: "total_win_lose", customSlot: "sumNum" },
+]);
 
 const summaryData = ref([
   {
@@ -114,7 +117,7 @@ async function loadData() {
       summaryData.value = [{ total_bet_number: 0, total_bet_times: 0, total_bet_amount: "0.0000", total_turnover: "0.0000", total_prize: "0.0000", total_win_lose: "0.0000" }];
     }
   } catch {
-    if (!isStale()) layer.msg("Lỗi tải dữ liệu", { icon: 2 });
+    if (!isStale()) layer.msg(t("common.errorLoad"), { icon: 2 });
   } finally {
     if (!isStale()) setLoading(false);
   }
@@ -141,17 +144,17 @@ function handleReset() {
 <template>
   <div>
     <lay-card>
-      <lay-field title="Báo cáo nhà cung cấp">
+      <lay-field :title="t('reportThirdGame.title')">
       <div class="search-form-wrap">
         <div class="layui-inline">
-          <span class="form-label">Nhân viên :</span>
+          <span class="form-label">{{ t("common.agentLabel") }}</span>
           <lay-select v-model="selectedAgentId" :style="{ width: agentWidth }">
             <lay-select-option v-for="opt in agentOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
           </lay-select>
         </div>
         <div class="layui-inline">
-          <span class="form-label">Thời gian :</span>
-          <lay-date-picker v-model="dateRange" range single-panel range-separator="-" :placeholder="['Ngày bắt đầu', 'Ngày kết thúc']" />
+          <span class="form-label">{{ t("common.timeLabel") }}</span>
+          <lay-date-picker v-model="dateRange" range single-panel range-separator="-" :placeholder="[t('common.dateStart'), t('common.dateEnd')]" />
         </div>
         <div class="layui-inline">
           <lay-select v-model="dateQuickSelect" :style="{ width: dateQuickWidth }">
@@ -159,21 +162,21 @@ function handleReset() {
           </lay-select>
         </div>
         <div class="layui-inline">
-          <span class="form-label">Tên tài khoản :</span>
-          <lay-input v-model="searchForm.username" placeholder="Nhập tên tài khoản" />
+          <span class="form-label">{{ t("reportThirdGame.accountLabel") }}</span>
+          <lay-input v-model="searchForm.username" :placeholder="t('reportThirdGame.accountPlaceholder')" />
         </div>
         <div class="layui-inline">
-          <span class="form-label">Nhà cung cấp :</span>
+          <span class="form-label">{{ t("reportThirdGame.providerLabel") }}</span>
           <lay-select v-model="searchForm.platform" :style="{ width: platformWidth }">
             <lay-select-option v-for="opt in platformOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
           </lay-select>
         </div>
         <div class="layui-inline">
           <lay-button type="normal" @click="handleSearch">
-            <i class="layui-icon layui-icon-search"></i> Tìm kiếm
+            <i class="layui-icon layui-icon-search"></i> {{ t("common.search") }}
           </lay-button>
           <lay-button type="primary" @click="handleReset">
-            <i class="layui-icon layui-icon-refresh"></i> Đặt lại
+            <i class="layui-icon layui-icon-refresh"></i> {{ t("common.reset") }}
           </lay-button>
         </div>
       </div>
@@ -194,15 +197,15 @@ function handleReset() {
             <CookieBadge />
           </template>
           <template #num="{ row, column }">
-            <lay-count-up :end-val="Number(row[column.key]) || 0" :duration="600" :decimal-places="String(row[column.key]).includes('.') ? 2 : 0" :use-grouping="false" />
+            <lay-count-up :end-val="Number(row[column.key]) || 0" :duration="0" :decimal-places="String(row[column.key]).includes('.') ? 2 : 0" :use-grouping="false" />
           </template>
         </lay-table>
         <lay-table :columns="summaryColumns" :data-source="summaryData" :default-toolbar="true">
           <template v-slot:toolbar>
-            <lay-button size="xs" type="normal"><b>DỮ LIỆU TỔNG HỢP</b></lay-button>
+            <lay-button size="xs" type="normal"><b>{{ t("common.summaryData") }}</b></lay-button>
           </template>
           <template #sumNum="{ row, column }">
-            <lay-count-up :end-val="Number(row[column.key]) || 0" :duration="600" :decimal-places="String(row[column.key]).includes('.') ? 4 : 0" :use-grouping="false" />
+            <lay-count-up :end-val="Number(row[column.key]) || 0" :duration="0" :decimal-places="String(row[column.key]).includes('.') ? 4 : 0" :use-grouping="false" />
           </template>
         </lay-table>
       </div>

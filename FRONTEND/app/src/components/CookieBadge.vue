@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { computed } from "vue";
+import { useI18n } from "vue-i18n";
 import { useAgentStore } from "@/stores/agent";
+
+const { t } = useI18n();
 
 const agentStore = useAgentStore();
 const stats = computed(() => agentStore.cookieStats);
@@ -17,7 +20,7 @@ const color = computed(() => {
 <template>
   <lay-tag :color="color" size="sm" bordered class="cookie-badge">
     <i class="layui-icon layui-icon-key"></i>
-    Đại lý khả dụng:
+    {{ t('common.agentAvailable') }}
     <template v-if="ready">
       <lay-count-up :end-val="stats.valid" :duration="600" />/<lay-count-up :end-val="stats.total" :duration="600" />
     </template>

@@ -39,9 +39,10 @@ model User {
   lastLoginIp    String?        @map("last_login_ip")
   roleId         String         @map("role_id")
   role           Role           @relation(fields: [roleId], references: [id])
-  refreshTokens  RefreshToken[]
-  createdAt      DateTime       @default(now()) @map("created_at")
-  updatedAt      DateTime       @updatedAt @map("updated_at")
+  refreshTokens    RefreshToken[]
+  dashboardSetting DashboardSetting?
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
 
   @@index([createdAt(sort: Desc)])
   @@map("users")
@@ -107,7 +108,7 @@ model Notification {
   id        String   @id @default(cuid())
   agentId   String   @map("agent_id")
   agent     Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
-  type      String   // "member_new" | "member_lost"
+  type      String   // "member_new" | "member_lost" | "big_deposit" | "big_withdrawal"
   username  String
   money     String?
   isRead    Boolean  @default(false) @map("is_read")
@@ -116,7 +117,27 @@ model Notification {
   @@index([isRead, createdAt(sort: Desc)])
   @@index([agentId])
   @@index([agentId, username, createdAt])
+  @@index([type, createdAt(sort: Desc)])
   @@map("notifications")
+}
+
+// ===================================================================
+// DASHBOARD SETTINGS — per-user polling interval & chart preferences
+// ===================================================================
+
+model DashboardSetting {
+  id             String   @id @default(cuid())
+  userId         String   @unique @map("user_id")
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Polling interval in seconds (0 = disabled)
+  pollInterval   Int      @default(60) @map("poll_interval")
+  /// Notification threshold for big deposit (VND)
+  bigDepositMin  Decimal  @default(10000000) @db.Decimal(18, 4) @map("big_deposit_min")
+  /// Notification threshold for big withdrawal (VND)
+  bigWithdrawMin Decimal  @default(10000000) @db.Decimal(18, 4) @map("big_withdraw_min")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@map("dashboard_settings")
 }
 
 // ===================================================================
@@ -141,8 +162,11 @@ model ProxyUser {
   syncedAt         DateTime @default(now()) @map("synced_at")
 
   @@unique([agentId, username], name: "uq_proxy_user")
+  @@index([agentId])
   @@index([registerTime(sort: Desc)])
   @@index([agentId, registerTime(sort: Desc)])
+  @@index([agentId, money(sort: Desc)])
+  @@index([agentId, depositAmount(sort: Desc)])
   @@map("proxy_users")
 }
 
@@ -162,6 +186,7 @@ model ProxyInvite {
   syncedAt         DateTime @default(now()) @map("synced_at")
 
   @@unique([agentId, inviteCode], name: "uq_invite")
+  @@index([agentId])
   @@index([createTime(sort: Desc)])
   @@map("proxy_invites")
 }
@@ -180,6 +205,8 @@ model ProxyDeposit {
   syncedAt         DateTime @default(now()) @map("synced_at")
 
   @@unique([agentId, username, amount, type, createTime], name: "uq_deposit")
+  @@index([agentId])
+  @@index([agentId, syncDate])
   @@index([createTime(sort: Desc)])
   @@index([username, createTime(sort: Desc)])
   @@index([syncDate])
@@ -201,6 +228,8 @@ model ProxyWithdrawal {
   raw              Json     @default("{}")
   syncedAt         DateTime @default(now()) @map("synced_at")
 
+  @@index([agentId])
+  @@index([agentId, syncDate])
   @@index([createTime(sort: Desc)])
   @@index([username, createTime(sort: Desc)])
   @@index([syncDate])
@@ -226,6 +255,8 @@ model ProxyBet {
   raw            Json     @default("{}")
   syncedAt       DateTime @default(now()) @map("synced_at")
 
+  @@index([agentId])
+  @@index([agentId, syncDate])
   @@index([createTime(sort: Desc)])
   @@index([username, createTime(sort: Desc)])
   @@index([syncDate])
@@ -249,6 +280,8 @@ model ProxyBetOrder {
   raw              Json     @default("{}")
   syncedAt         DateTime @default(now()) @map("synced_at")
 
+  @@index([agentId])
+  @@index([agentId, syncDate])
   @@index([betTime(sort: Desc)])
   @@index([platformUsername, betTime(sort: Desc)])
   @@index([syncDate])
@@ -273,6 +306,8 @@ model ProxyReportLottery {
   syncedAt         DateTime @default(now()) @map("synced_at")
 
   @@unique([agentId, username, lotteryName, reportDate], name: "uq_report_lottery")
+  @@index([agentId])
+  @@index([agentId, reportDate])
   @@index([reportDate(sort: Desc)])
   @@index([username, reportDate(sort: Desc)])
   @@map("proxy_report_lottery")
@@ -297,6 +332,8 @@ model ProxyReportFunds {
   syncedAt             DateTime @default(now()) @map("synced_at")
 
   @@unique([agentId, username, reportDate], name: "uq_report_funds")
+  @@index([agentId])
+  @@index([agentId, reportDate])
   @@index([reportDate(sort: Desc)])
   @@index([username, reportDate(sort: Desc)])
   @@map("proxy_report_funds")
@@ -317,6 +354,8 @@ model ProxyReportThirdGame {
   syncedAt         DateTime @default(now()) @map("synced_at")
 
   @@unique([agentId, username, platformIdName, reportDate], name: "uq_report_third_game")
+  @@index([agentId])
+  @@index([agentId, reportDate])
   @@index([reportDate(sort: Desc)])
   @@index([username, reportDate(sort: Desc)])
   @@map("proxy_report_third_game")
@@ -351,4 +390,33 @@ model SyncDateLock {
   @@index([tableName])
   @@index([agentId])
   @@map("sync_date_locks")
+}
+
+// ===================================================================
+// EMPLOYEE-CUSTOMER MAPPING — Revenue Report (Doanh Thu)
+// ===================================================================
+
+model Employee {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  customers EmployeeCustomer[]
+
+  @@map("employees")
+}
+
+model EmployeeCustomer {
+  id               String   @id @default(cuid())
+  employeeId       String   @map("employee_id")
+  employee         Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  customerUsername  String   @map("customer_username")
+  assignedDate     String?  @map("assigned_date")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  @@unique([employeeId, customerUsername], name: "uq_employee_customer")
+  @@index([customerUsername])
+  @@index([employeeId])
+  @@map("employee_customers")
 }

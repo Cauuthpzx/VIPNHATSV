@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from "vue";
+import { useI18n } from "vue-i18n";
 import { useNotificationStore, NOTIF_TYPE_CONFIG, type Notification } from "@/stores/notification";
 import { fetchMemberDetail } from "@/api/services/notification";
 import { layer } from "@layui/layui-vue";
 
+const { t } = useI18n();
 const store = useNotificationStore();
 
 const panelVisible = ref(false);
@@ -72,10 +74,10 @@ async function openDetail(n: Notification, e: MouseEvent) {
     if (data) {
       memberInfo.value = data;
     } else {
-      layer.msg("Không tìm thấy thông tin hội viên", { icon: 0 });
+      layer.msg(t("notification.memberNotFound"), { icon: 0 });
     }
   } catch {
-    layer.msg("Lỗi tải thông tin hội viên", { icon: 2 });
+    layer.msg(t("notification.errorLoadMember"), { icon: 2 });
   } finally {
     memberLoading.value = false;
   }
@@ -98,25 +100,25 @@ function formatDateTime(isoStr: string): string {
   return `${hh}:${mm} ${dd}/${mo}/${yy}`;
 }
 
-const memberFields: { key: string; label: string }[] = [
-  { key: "username", label: "Tên hội viên" },
-  { key: "money", label: "Số dư" },
-  { key: "typeFormat", label: "Loại hình" },
-  { key: "parentUser", label: "Đại lý cấp trên" },
-  { key: "depositCount", label: "Lần nạp" },
-  { key: "depositAmount", label: "Tổng tiền nạp" },
-  { key: "withdrawalCount", label: "Lần rút" },
-  { key: "withdrawalAmount", label: "Tổng tiền rút" },
-  { key: "loginTime", label: "Đăng nhập cuối" },
-  { key: "registerTime", label: "Thời gian đăng ký" },
-  { key: "statusFormat", label: "Trạng thái" },
-  { key: "syncedAt", label: "Cập nhật lúc" },
+const memberFields: { key: string; labelKey: string }[] = [
+  { key: "username", labelKey: "notification.memberName" },
+  { key: "money", labelKey: "notification.memberBalance" },
+  { key: "typeFormat", labelKey: "notification.memberType" },
+  { key: "parentUser", labelKey: "notification.memberParent" },
+  { key: "depositCount", labelKey: "notification.depositCount" },
+  { key: "depositAmount", labelKey: "notification.totalDeposit" },
+  { key: "withdrawalCount", labelKey: "notification.withdrawCount" },
+  { key: "withdrawalAmount", labelKey: "notification.totalWithdraw" },
+  { key: "loginTime", labelKey: "notification.lastLogin" },
+  { key: "registerTime", labelKey: "notification.registerTime" },
+  { key: "statusFormat", labelKey: "notification.status" },
+  { key: "syncedAt", labelKey: "notification.updatedAt" },
 ];
 
 function formatFieldValue(key: string, val: unknown): string {
   if (val === null || val === undefined) return "-";
   if (key === "syncedAt") return new Date(String(val)).toLocaleString("vi-VN");
-  if (key === "depositCount" || key === "withdrawalCount") return `${val} lần`;
+  if (key === "depositCount" || key === "withdrawalCount") return `${val}${t("notification.times")}`;
   if (key === "money" || key === "depositAmount" || key === "withdrawalAmount") {
     return Number(val).toLocaleString("vi-VN") + " ₫";
   }
@@ -129,8 +131,8 @@ const badgeText = computed(() => {
 });
 
 const panelTitle = computed(() => {
-  if (store.hasUnread) return `Thông báo (${store.unreadCount} mới)`;
-  return "Thông báo";
+  if (store.hasUnread) return t("notification.titleWithCount", { n: store.unreadCount });
+  return t("notification.title");
 });
 </script>
 
@@ -157,13 +159,13 @@ const panelTitle = computed(() => {
               class="hub-notify-filter-btn"
               :class="{ active: filter === 'all' && !showSettings }"
               @click="filter = 'all'; showSettings = false"
-            >Tất cả</button>
+            >{{ t('notification.all') }}</button>
             <button
               class="hub-notify-filter-btn"
               :class="{ active: filter === 'unread' && !showSettings }"
               @click="filter = 'unread'; showSettings = false"
             >
-              Chưa đọc
+              {{ t('notification.unread') }}
               <span v-if="store.unreadCount > 0" class="hub-notify-filter-count">{{ store.unreadCount }}</span>
             </button>
           </div>
@@ -172,7 +174,7 @@ const panelTitle = computed(() => {
               href="javascript:;"
               class="hub-notify-action-btn"
               :class="{ active: showSettings }"
-              title="Cài đặt"
+              :title="t('notification.settings')"
               @click="showSettings = !showSettings"
             >
               <i class="layui-icon layui-icon-set" />
@@ -181,7 +183,7 @@ const panelTitle = computed(() => {
               v-show="!showSettings && store.hasUnread"
               href="javascript:;"
               class="hub-notify-action-btn hub-notify-action-btn--primary"
-              title="Đánh dấu tất cả đã đọc"
+              :title="t('notification.markAllRead')"
               @click="store.markAllAsRead()"
             >
               <i class="layui-icon layui-icon-ok" />
@@ -190,7 +192,7 @@ const panelTitle = computed(() => {
               v-show="!showSettings && store.hasReadItems"
               href="javascript:;"
               class="hub-notify-action-btn hub-notify-action-btn--warn"
-              title="Xóa đã đọc"
+              :title="t('notification.deleteRead')"
               @click="store.removeRead()"
             >
               <i class="layui-icon layui-icon-delete" />
@@ -199,7 +201,7 @@ const panelTitle = computed(() => {
               v-show="!showSettings && store.notifications.length > 0"
               href="javascript:;"
               class="hub-notify-action-btn hub-notify-action-btn--danger"
-              title="Xóa tất cả"
+              :title="t('notification.deleteAll')"
               @click="store.removeAll()"
             >
               <i class="layui-icon layui-icon-close" />
@@ -209,18 +211,18 @@ const panelTitle = computed(() => {
 
         <!-- Settings view -->
         <div v-if="showSettings" class="hub-notify-settings">
-          <div class="hub-notify-settings-title">Loại thông báo hiển thị</div>
+          <div class="hub-notify-settings-title">{{ t('notification.typeSettings') }}</div>
           <div
-            v-for="t in NOTIF_TYPE_CONFIG"
-            :key="t.type"
+            v-for="tc in NOTIF_TYPE_CONFIG"
+            :key="tc.type"
             class="hub-notify-settings-row"
           >
-            <span class="hub-notify-settings-dot" :style="{ background: t.color }" />
-            <span class="hub-notify-settings-icon">{{ t.icon }}</span>
-            <span class="hub-notify-settings-label">{{ t.label }}</span>
+            <span class="hub-notify-settings-dot" :style="{ background: tc.color }" />
+            <span class="hub-notify-settings-icon">{{ tc.icon }}</span>
+            <span class="hub-notify-settings-label">{{ t(tc.labelKey) }}</span>
             <lay-switch
-              :model-value="store.enabledTypes[t.type]"
-              @update:model-value="store.toggleType(t.type)"
+              :model-value="store.enabledTypes[tc.type]"
+              @update:model-value="store.toggleType(tc.type)"
               size="xs"
             />
           </div>
@@ -229,13 +231,13 @@ const panelTitle = computed(() => {
         <!-- Loading -->
         <div v-else-if="store.loading && store.notifications.length === 0" class="hub-notify-empty">
           <i class="layui-icon layui-icon-loading layui-anim layui-anim-rotate layui-anim-loop" style="font-size: 20px; color: #009688;" />
-          <span>Đang tải...</span>
+          <span>{{ t('common.loading') }}</span>
         </div>
 
         <!-- Empty -->
         <div v-else-if="isEmpty" class="hub-notify-empty">
           <i class="layui-icon layui-icon-face-surprised" style="font-size: 36px; color: #d9d9d9;" />
-          <span>Không có thông báo</span>
+          <span>{{ t('notification.noNotifications') }}</span>
         </div>
 
         <!-- Notification list -->
@@ -253,14 +255,14 @@ const panelTitle = computed(() => {
             <div class="hub-notify-item-body">
               <div class="hub-notify-item-line1">
                 <span class="hub-notify-item-agent-tag">{{ n.agentName || "—" }}</span>
-                <span class="hub-notify-item-dash"> - đại lý : </span>
-                <span class="hub-notify-item-verb">{{ n.type === "member_new" ? "vừa có" : "vừa mất" }} 1 khách hàng</span>
+                <span class="hub-notify-item-dash">{{ t('notification.agentSuffix') }}</span>
+                <span class="hub-notify-item-verb">{{ n.type === "member_new" ? t('notification.justGot') : t('notification.justLost') }} {{ t('notification.customer') }}</span>
               </div>
               <div class="hub-notify-item-line2">
                 <strong class="hub-notify-item-username">{{ n.username }}</strong>
                 <span v-if="n.money" class="hub-notify-item-money">{{ Number(n.money).toLocaleString("vi-VN") }} ₫</span>
                 <span class="hub-notify-item-time">{{ formatDateTime(n.createdAt) }}</span>
-                <a href="javascript:;" class="hub-notify-item-detail" @click="openDetail(n, $event)">Chi tiết</a>
+                <a href="javascript:;" class="hub-notify-item-detail" @click="openDetail(n, $event)">{{ t('notification.memberDetailTitle') }}</a>
               </div>
             </div>
           </div>
@@ -268,7 +270,7 @@ const panelTitle = computed(() => {
           <!-- Load more -->
           <div v-if="store.hasMore" class="hub-notify-load-more">
             <button @click.stop="store.loadMore()" :disabled="store.loadingMore">
-              {{ store.loadingMore ? "Đang tải..." : `Xem thêm (${store.notifications.length}/${store.totalCount})` }}
+              {{ store.loadingMore ? t('common.loading') : t('notification.loadMore', { current: store.notifications.length, total: store.totalCount }) }}
             </button>
           </div>
         </div>
@@ -278,7 +280,7 @@ const panelTitle = computed(() => {
     <!-- Member detail dialog -->
     <lay-layer
       v-model="detailVisible"
-      :title="detailNotif ? (detailNotif.agentName ? detailNotif.agentName + ' › ' : '') + detailNotif.username : 'Chi tiết'"
+      :title="detailNotif ? (detailNotif.agentName ? detailNotif.agentName + ' › ' : '') + detailNotif.username : t('notification.memberDetailTitle')"
       :area="['440px', 'auto']"
       :shade-close="true"
       :move="true"
@@ -287,13 +289,13 @@ const panelTitle = computed(() => {
       <div v-if="detailNotif" class="hub-member-detail">
         <div v-if="memberLoading" class="hub-member-loading">
           <i class="layui-icon layui-icon-loading layui-anim layui-anim-rotate layui-anim-loop" />
-          Đang tải thông tin...
+          {{ t('notification.memberDetailLoading') }}
         </div>
 
         <table v-if="memberInfo" class="hub-member-table">
           <tbody>
             <tr v-for="field in memberFields" :key="field.key">
-              <td class="hub-member-label">{{ field.label }}</td>
+              <td class="hub-member-label">{{ t(field.labelKey) }}</td>
               <td>
                 <template v-if="field.key === 'username'">
                   <strong>{{ memberInfo[field.key] ?? "-" }}</strong>
@@ -310,7 +312,7 @@ const panelTitle = computed(() => {
         </table>
 
         <div v-if="!memberLoading && !memberInfo" class="hub-member-empty">
-          Không tìm thấy dữ liệu hội viên
+          {{ t('notification.memberDetailEmpty') }}
         </div>
       </div>
     </lay-layer>

@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from "vue";
+import { useI18n } from "vue-i18n";
 import { layer } from "@layui/layui-vue";
 import { useAuthStore } from "@/stores/auth";
-import { PERMISSIONS, PERMISSION_LABELS, ALL_PERMISSIONS } from "@/constants/permissions";
+import { PERMISSIONS, PERMISSION_LABEL_KEYS, ALL_PERMISSIONS } from "@/constants/permissions";
 import { buildPermissionTreeData, extractPermissions } from "@/constants/permissionTree";
 import {
   fetchRoles,
@@ -12,6 +13,7 @@ import {
   type SystemRole,
 } from "@/api/services/system";
 
+const { t } = useI18n();
 const authStore = useAuthStore();
 const canWrite = authStore.hasPermission(PERMISSIONS.ROLES_WRITE);
 const canDelete = authStore.hasPermission(PERMISSIONS.ROLES_DELETE);
@@ -19,13 +21,13 @@ const canDelete = authStore.hasPermission(PERMISSIONS.ROLES_DELETE);
 const dataSource = ref<SystemRole[]>([]);
 const loading = ref(false);
 
-const columns = [
-  { title: "Tên", key: "name", ellipsisTooltip: true },
-  { title: "Loại", key: "type", customSlot: "type", width: "120px" },
-  { title: "Cấp độ", key: "level", width: "100px" },
-  { title: "Quyền hạn", key: "permissions", customSlot: "permissions" },
-  { title: "Thao tác", key: "action", customSlot: "action", width: "250px", fixed: "right" },
-];
+const columns = computed(() => [
+  { title: t("systemRoles.name"), key: "name", ellipsisTooltip: true },
+  { title: t("systemRoles.type"), key: "type", customSlot: "type", width: "120px" },
+  { title: t("systemRoles.level"), key: "level", width: "100px" },
+  { title: t("systemRoles.permissionsCol"), key: "permissions", customSlot: "permissions" },
+  { title: t("common.actions"), key: "action", customSlot: "action", width: "250px", fixed: "right" },
+]);
 
 async function loadData() {
   if (dataSource.value.length === 0) loading.value = true;
@@ -33,7 +35,7 @@ async function loadData() {
     const res = await fetchRoles();
     dataSource.value = res.data.data;
   } catch {
-    layer.msg("Lỗi tải dữ liệu", { icon: 2 });
+    layer.msg(t("common.errorLoad"), { icon: 2 });
   } finally {
     loading.value = false;
   }
@@ -60,9 +62,9 @@ function getTypeColor(type: string) {
 const allPermKeys = Object.values(PERMISSIONS);
 
 function getPermissionTags(perms: string[]) {
-  if (perms.includes(ALL_PERMISSIONS)) return [{ label: "Toàn quyền", color: "#ff4d4f" }];
+  if (perms.includes(ALL_PERMISSIONS)) return [{ label: t("systemRoles.allPermissions"), color: "#ff4d4f" }];
   return perms.slice(0, 3).map((p) => ({
-    label: PERMISSION_LABELS[p] || p,
+    label: PERMISSION_LABEL_KEYS[p] ? t(PERMISSION_LABEL_KEYS[p]) : p,
     color: "#16baaa",
   }));
 }
@@ -108,11 +110,11 @@ function openEdit(row: SystemRole) {
 
 async function handleSubmit() {
   if (!formData.name) {
-    layer.msg("Vui lòng nhập tên vai trò", { icon: 2 });
+    layer.msg(t("systemRoles.enterName"), { icon: 2 });
     return;
   }
   if (!formData.type) {
-    layer.msg("Vui lòng chọn loại", { icon: 2 });
+    layer.msg(t("systemRoles.selectTypeRequired"), { icon: 2 });
     return;
   }
 
@@ -124,7 +126,7 @@ async function handleSubmit() {
         type: formData.type,
         level: formData.level,
       });
-      layer.msg("Cập nhật thành công", { icon: 1 });
+      layer.msg(t("systemRoles.updateSuccess"), { icon: 1 });
     } else {
       await createRole({
         name: formData.name,
@@ -132,12 +134,12 @@ async function handleSubmit() {
         level: formData.level,
         permissions: [],
       });
-      layer.msg("Tạo thành công", { icon: 1 });
+      layer.msg(t("systemRoles.createSuccess"), { icon: 1 });
     }
     showModal.value = false;
     loadData();
   } catch (err: any) {
-    const msg = err?.response?.data?.message || "Thao tác thất bại";
+    const msg = err?.response?.data?.message || t("common.operationFailed");
     layer.msg(msg, { icon: 2 });
   } finally {
     submitting.value = false;
@@ -150,7 +152,7 @@ const permRoleId = ref("");
 const permRoleName = ref("");
 const permSubmitting = ref(false);
 
-const permissionTreeData = buildPermissionTreeData();
+const permissionTreeData = computed(() => buildPermissionTreeData(t));
 const treeCheckedKeys = ref<(string | number)[]>([]);
 
 const isAllChecked = computed(() => {
@@ -185,14 +187,14 @@ async function savePermissions() {
   try {
     const perms = extractPermissions(treeCheckedKeys.value);
     await updateRole(permRoleId.value, { permissions: perms });
-    layer.msg("Cập nhật quyền hạn thành công", { icon: 1 });
+    layer.msg(t("systemRoles.permissionsUpdateSuccess"), { icon: 1 });
     showPermModal.value = false;
     loadData();
     if (authStore.user?.role?.id === permRoleId.value) {
       authStore.fetchMe();
     }
   } catch (err: any) {
-    const msg = err?.response?.data?.message || "Thao tác thất bại";
+    const msg = err?.response?.data?.message || t("common.operationFailed");
     layer.msg(msg, { icon: 2 });
   } finally {
     permSubmitting.value = false;
@@ -203,10 +205,10 @@ async function savePermissions() {
 async function handleDelete(row: SystemRole) {
   try {
     await deleteRole(row.id);
-    layer.msg("Xóa thành công", { icon: 1 });
+    layer.msg(t("systemRoles.deleteSuccess"), { icon: 1 });
     loadData();
   } catch (err: any) {
-    const msg = err?.response?.data?.message || "Xóa thất bại";
+    const msg = err?.response?.data?.message || t("systemRoles.deleteFailed");
     layer.msg(msg, { icon: 2 });
   }
 }
@@ -217,7 +219,7 @@ onMounted(() => loadData());
 <template>
   <div>
     <lay-card>
-      <lay-field title="Quản lý vai trò">
+      <lay-field :title="t('systemRoles.title')">
         <div class="table-container">
           <lay-table
             :resize="true"
@@ -228,7 +230,7 @@ onMounted(() => loadData());
           >
             <template v-slot:toolbar>
               <lay-button v-if="canWrite" type="normal" size="xs" @click="openCreate">
-                <i class="layui-icon layui-icon-addition"></i> Thêm mới
+                <i class="layui-icon layui-icon-addition"></i> {{ t('systemRoles.addNew') }}
               </lay-button>
             </template>
 
@@ -275,7 +277,7 @@ onMounted(() => loadData());
                   type="normal"
                   @click="openEdit(row)"
                 >
-                  Sửa
+                  {{ t('common.edit') }}
                 </lay-button>
                 <lay-button
                   v-if="canWrite"
@@ -283,14 +285,14 @@ onMounted(() => loadData());
                   type="warm"
                   @click="openPermissions(row)"
                 >
-                  Phân quyền
+                  {{ t('systemRoles.assignPermissions') }}
                 </lay-button>
                 <lay-popconfirm
                   v-if="canDelete"
-                  content="Bạn có chắc muốn xóa vai trò này?"
+                  :content="t('systemRoles.confirmDelete')"
                   @confirm="handleDelete(row)"
                 >
-                  <lay-button size="xs" type="danger">Xóa</lay-button>
+                  <lay-button size="xs" type="danger">{{ t('common.delete') }}</lay-button>
                 </lay-popconfirm>
               </div>
             </template>
@@ -302,23 +304,23 @@ onMounted(() => loadData());
     <!-- Create/Edit Modal -->
     <lay-layer
       v-model="showModal"
-      :title="isEdit ? 'Sửa vai trò' : 'Thêm vai trò'"
+      :title="isEdit ? t('systemRoles.editRole') : t('systemRoles.addRole')"
       :area="['500px', 'auto']"
       :shade-close="false"
       :move="true"
     >
       <div style="padding: 20px 30px;">
         <div class="layui-form-item">
-          <label class="layui-form-label">Tên</label>
+          <label class="layui-form-label">{{ t('systemRoles.name') }}</label>
           <div class="layui-input-block">
-            <lay-input v-model="formData.name" placeholder="Nhập tên vai trò" />
+            <lay-input v-model="formData.name" :placeholder="t('systemRoles.rolePlaceholder')" />
           </div>
         </div>
 
         <div class="layui-form-item">
-          <label class="layui-form-label">Loại</label>
+          <label class="layui-form-label">{{ t('systemRoles.type') }}</label>
           <div class="layui-input-block">
-            <lay-select v-model="formData.type" placeholder="Chọn loại">
+            <lay-select v-model="formData.type" :placeholder="t('systemRoles.selectType')">
               <lay-select-option
                 v-for="opt in typeOptions"
                 :key="opt.value"
@@ -330,16 +332,16 @@ onMounted(() => loadData());
         </div>
 
         <div class="layui-form-item">
-          <label class="layui-form-label">Cấp độ</label>
+          <label class="layui-form-label">{{ t('systemRoles.level') }}</label>
           <div class="layui-input-block">
             <lay-slider v-model="formData.level" :min="0" :max="100" :step="1" />
           </div>
         </div>
 
         <div class="layui-form-item" style="text-align: right; margin-bottom: 0;">
-          <lay-button @click="showModal = false">Hủy</lay-button>
+          <lay-button @click="showModal = false">{{ t('common.cancel') }}</lay-button>
           <lay-button type="normal" :loading="submitting" @click="handleSubmit">
-            {{ isEdit ? "Cập nhật" : "Tạo mới" }}
+            {{ isEdit ? t('common.update') : t('common.create') }}
           </lay-button>
         </div>
       </div>
@@ -348,7 +350,7 @@ onMounted(() => loadData());
     <!-- Permission Modal -->
     <lay-layer
       v-model="showPermModal"
-      :title="`Phân quyền — ${permRoleName}`"
+      :title="t('systemRoles.permissionsTitle', { name: permRoleName })"
       :area="['650px', '580px']"
       :shade-close="false"
       :move="true"
@@ -359,7 +361,7 @@ onMounted(() => loadData());
             :modelValue="isAllChecked"
             :is-indeterminate="isIndeterminate"
             skin="primary"
-            label="Toàn quyền"
+            :label="t('systemRoles.allPermissions')"
             @change="toggleAllPerms"
           />
           <span class="perm-counter">
@@ -397,9 +399,9 @@ onMounted(() => loadData());
         </div>
 
         <div style="text-align: right; margin-top: 16px;">
-          <lay-button @click="showPermModal = false">Hủy</lay-button>
+          <lay-button @click="showPermModal = false">{{ t('common.cancel') }}</lay-button>
           <lay-button type="normal" :loading="permSubmitting" @click="savePermissions">
-            Lưu quyền hạn
+            {{ t('systemRoles.savePermissions') }}
           </lay-button>
         </div>
       </div>

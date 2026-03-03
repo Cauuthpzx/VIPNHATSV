@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
+import { useI18n } from "vue-i18n";
 import { useRouter } from "vue-router";
 import { layer } from "@layui/layui-vue";
 import { useAuthStore } from "@/stores/auth";
@@ -11,6 +12,8 @@ import {
   revokeSession,
   type SessionItem,
 } from "@/api/services/proxy";
+
+const { t } = useI18n();
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -37,7 +40,7 @@ function cancelEdit() {
 async function saveName() {
   const name = editName.value.trim();
   if (!name) {
-    layer.msg("Tên không được để trống", { icon: 2 });
+    layer.msg(t("profile.nameEmpty"), { icon: 2 });
     return;
   }
   saving.value = true;
@@ -46,10 +49,10 @@ async function saveName() {
     if (res.data.success) {
       if (authStore.user) authStore.user.name = name;
       editing.value = false;
-      layer.msg("Cập nhật tên thành công", { icon: 1 });
+      layer.msg(t("profile.nameUpdateSuccess"), { icon: 1 });
     }
   } catch {
-    layer.msg("Cập nhật thất bại, vui lòng thử lại", { icon: 2 });
+    layer.msg(t("profile.nameUpdateFailed"), { icon: 2 });
   } finally {
     saving.value = false;
   }
@@ -68,15 +71,15 @@ const lastLoginIp = computed(() => {
 });
 
 // ─── Quick actions ───────────────────────────────────────────────────────────
-const quickActions = [
+const quickActions = computed(() => [
   {
-    title: "Đổi mật khẩu đăng nhập (Agent)",
-    desc: "Thay đổi mật khẩu đăng nhập upstream agent",
+    title: t("profile.changeAgentPassword"),
+    desc: t("profile.changeAgentPasswordDesc"),
     icon: "layui-icon-password",
     color: "#16baaa",
     path: "/agent/edit-password",
   },
-];
+]);
 
 // ─── Đổi mật khẩu hệ thống MAXHUB ──────────────────────────────────────
 const sysForm = ref({ oldPassword: "", newPassword: "", confirmPassword: "" });
@@ -84,15 +87,15 @@ const sysSubmitting = ref(false);
 
 async function handleSysPasswordChange() {
   if (!sysForm.value.oldPassword) {
-    layer.msg("Vui lòng nhập mật khẩu cũ", { icon: 2 });
+    layer.msg(t("password.enterOld"), { icon: 2 });
     return;
   }
   if (!sysForm.value.newPassword) {
-    layer.msg("Vui lòng nhập mật khẩu mới", { icon: 2 });
+    layer.msg(t("password.enterNew"), { icon: 2 });
     return;
   }
   if (sysForm.value.newPassword !== sysForm.value.confirmPassword) {
-    layer.msg("Xác nhận mật khẩu không khớp", { icon: 2 });
+    layer.msg(t("password.mismatch"), { icon: 2 });
     return;
   }
   sysSubmitting.value = true;
@@ -101,13 +104,13 @@ async function handleSysPasswordChange() {
       oldPassword: sysForm.value.oldPassword,
       newPassword: sysForm.value.newPassword,
     });
-    layer.msg("Đổi mật khẩu thành công. Đang đăng xuất...", { icon: 1 });
+    layer.msg(t("profile.changePasswordSuccessLogout"), { icon: 1 });
     setTimeout(() => {
       authStore.logout();
       router.push("/login");
     }, 1500);
   } catch (err: any) {
-    const msg = err?.response?.data?.message || "Thao tác thất bại";
+    const msg = err?.response?.data?.message || t("common.operationFailed");
     layer.msg(msg, { icon: 2 });
   } finally {
     sysSubmitting.value = false;
@@ -118,25 +121,25 @@ async function handleSysPasswordChange() {
 const logoutAllLoading = ref(false);
 
 async function handleLogoutAll() {
-  layer.confirm("Đăng xuất tất cả thiết bị? Bạn sẽ cần đăng nhập lại.", {
+  layer.confirm(t("profile.logoutAllConfirm"), {
     btn: [
-      { text: "Xác nhận", callback: async (id: string) => {
+      { text: t("common.confirm"), callback: async (id: string) => {
         layer.close(id);
         logoutAllLoading.value = true;
         try {
           await logoutAllDevices();
-          layer.msg("Đã đăng xuất tất cả thiết bị", { icon: 1 });
+          layer.msg(t("profile.logoutAllSuccess"), { icon: 1 });
           setTimeout(() => {
             authStore.logout();
             router.push("/login");
           }, 1000);
         } catch {
-          layer.msg("Thao tác thất bại", { icon: 2 });
+          layer.msg(t("common.operationFailed"), { icon: 2 });
         } finally {
           logoutAllLoading.value = false;
         }
       }},
-      { text: "Hủy", callback: (id: string) => { layer.close(id); } },
+      { text: t("common.cancel"), callback: (id: string) => { layer.close(id); } },
     ],
   });
 }
@@ -163,14 +166,14 @@ async function handleRevokeSession(id: string) {
   try {
     await revokeSession(id);
     sessions.value = sessions.value.filter((s) => s.id !== id);
-    layer.msg("Đã thu hồi phiên", { icon: 1 });
+    layer.msg(t("profile.sessionRevoked"), { icon: 1 });
   } catch {
-    layer.msg("Thao tác thất bại", { icon: 2 });
+    layer.msg(t("common.operationFailed"), { icon: 2 });
   }
 }
 
 function parseUA(ua: string | null): string {
-  if (!ua) return "Không rõ";
+  if (!ua) return t("common.unknown");
   if (ua.includes("Chrome")) return "Chrome";
   if (ua.includes("Firefox")) return "Firefox";
   if (ua.includes("Safari")) return "Safari";
@@ -195,7 +198,7 @@ onMounted(() => {
         <lay-card>
           <template #title>
             <lay-icon type="layui-icon-username" style="margin-right: 6px" />
-            Thông tin tài khoản
+            {{ t("profile.accountInfo") }}
           </template>
           <div class="profile-card">
             <div class="profile-avatar">{{ avatarLetter }}</div>
@@ -211,13 +214,13 @@ onMounted(() => {
             <div class="profile-name-edit" v-else>
               <lay-input
                 v-model="editName"
-                placeholder="Nhập tên mới"
+                :placeholder="t('profile.editNamePlaceholder')"
                 size="sm"
                 style="width: 180px"
                 @keyup.enter="saveName"
               />
-              <lay-button type="normal" size="xs" :loading="saving" @click="saveName">Lưu</lay-button>
-              <lay-button size="xs" @click="cancelEdit">Hủy</lay-button>
+              <lay-button type="normal" size="xs" :loading="saving" @click="saveName">{{ t("common.save") }}</lay-button>
+              <lay-button size="xs" @click="cancelEdit">{{ t("common.cancel") }}</lay-button>
             </div>
 
             <lay-tag type="normal" color="#16baaa" style="margin-top: 8px">
@@ -228,27 +231,27 @@ onMounted(() => {
 
             <div class="profile-detail">
               <div class="detail-row">
-                <span class="detail-label">Tài khoản</span>
+                <span class="detail-label">{{ t("profile.account") }}</span>
                 <span class="detail-value" style="font-weight: 600">{{ authStore.user?.username || "—" }}</span>
               </div>
               <div class="detail-row">
-                <span class="detail-label">Email</span>
-                <span class="detail-value">{{ authStore.user?.email || "Chưa cập nhật" }}</span>
+                <span class="detail-label">{{ t("profile.email") }}</span>
+                <span class="detail-value">{{ authStore.user?.email || t("profile.emailNotSet") }}</span>
               </div>
               <div class="detail-row">
                 <span class="detail-label">User ID</span>
                 <span class="detail-value detail-id">{{ authStore.user?.id || "—" }}</span>
               </div>
               <div class="detail-row">
-                <span class="detail-label">Trạng thái</span>
-                <lay-tag type="normal" color="#16baaa" size="sm">Online</lay-tag>
+                <span class="detail-label">{{ t("profile.status") }}</span>
+                <lay-tag type="normal" color="#16baaa" size="sm">{{ t("common.online") }}</lay-tag>
               </div>
               <div class="detail-row" v-if="lastLoginAt">
-                <span class="detail-label">Đăng nhập lần cuối</span>
+                <span class="detail-label">{{ t("profile.lastLogin") }}</span>
                 <span class="detail-value">{{ lastLoginAt }}</span>
               </div>
               <div class="detail-row" v-if="lastLoginIp">
-                <span class="detail-label">IP đăng nhập</span>
+                <span class="detail-label">{{ t("profile.loginIp") }}</span>
                 <span class="detail-value detail-id">{{ lastLoginIp }}</span>
               </div>
             </div>
@@ -262,7 +265,7 @@ onMounted(() => {
         <lay-card>
           <template #title>
             <lay-icon type="layui-icon-set" style="margin-right: 6px" />
-            Cài đặt Agent (Upstream)
+            {{ t("profile.agentSettings") }}
           </template>
           <lay-row :space="12">
             <lay-col :md="12" :xs="24" v-for="action in quickActions" :key="action.path">
@@ -284,24 +287,24 @@ onMounted(() => {
         <lay-card style="margin-top: 16px">
           <template #title>
             <lay-icon type="layui-icon-shield" style="margin-right: 6px; color: #722ed1" />
-            Đổi mật khẩu hệ thống MAXHUB
+            {{ t("profile.changeSystemPassword") }}
           </template>
           <div class="sys-pw-form">
             <div class="sys-pw-row">
               <lay-icon type="layui-icon-password" :size="18" class="sys-pw-icon" />
-              <lay-input v-model="sysForm.oldPassword" type="password" placeholder="Nhập mật khẩu hiện tại" />
+              <lay-input v-model="sysForm.oldPassword" type="password" :placeholder="t('profile.currentPasswordPlaceholder')" />
             </div>
             <div class="sys-pw-row">
               <lay-icon type="layui-icon-key" :size="18" class="sys-pw-icon" />
-              <lay-input v-model="sysForm.newPassword" type="password" placeholder="Nhập mật khẩu mới" />
+              <lay-input v-model="sysForm.newPassword" type="password" :placeholder="t('profile.newPasswordPlaceholder')" />
             </div>
             <div class="sys-pw-row">
               <lay-icon type="layui-icon-ok-circle" :size="18" class="sys-pw-icon" />
-              <lay-input v-model="sysForm.confirmPassword" type="password" placeholder="Nhập lại mật khẩu mới" />
+              <lay-input v-model="sysForm.confirmPassword" type="password" :placeholder="t('profile.confirmPasswordPlaceholder')" />
             </div>
             <div class="sys-pw-actions">
-              <lay-button type="normal" :loading="sysSubmitting" @click="handleSysPasswordChange">Đồng ý</lay-button>
-              <lay-button @click="Object.assign(sysForm, { oldPassword: '', newPassword: '', confirmPassword: '' })">Huỷ bỏ</lay-button>
+              <lay-button type="normal" :loading="sysSubmitting" @click="handleSysPasswordChange">{{ t("profile.agree") }}</lay-button>
+              <lay-button @click="Object.assign(sysForm, { oldPassword: '', newPassword: '', confirmPassword: '' })">{{ t("profile.cancelBtn") }}</lay-button>
             </div>
           </div>
         </lay-card>
@@ -310,20 +313,20 @@ onMounted(() => {
         <lay-card style="margin-top: 16px">
           <template #title>
             <lay-icon type="layui-icon-cellphone" style="margin-right: 6px" />
-            Phiên đăng nhập đang hoạt động
+            {{ t("profile.activeSessions") }}
             <lay-button
               size="xs"
               style="margin-left: 12px"
               @click="loadSessions"
               :loading="sessionsLoading"
-            >Làm mới</lay-button>
+            >{{ t("profile.refreshBtn") }}</lay-button>
           </template>
           <div class="sessions-list">
             <div v-if="sessionsLoading && !sessions.length" style="padding: 20px; text-align: center; color: #999;">
-              Đang tải...
+              {{ t("common.loading") }}
             </div>
             <div v-else-if="!sessions.length" style="padding: 20px; text-align: center; color: #999;">
-              Không có phiên nào
+              {{ t("profile.noSessions") }}
             </div>
             <div
               v-for="session in sessions"
@@ -337,7 +340,7 @@ onMounted(() => {
                   <span>{{ formatDate(session.createdAt) }}</span>
                 </div>
               </div>
-              <lay-button size="xs" type="warm" @click="handleRevokeSession(session.id)">Thu hồi</lay-button>
+              <lay-button size="xs" type="warm" @click="handleRevokeSession(session.id)">{{ t("profile.revokeSession") }}</lay-button>
             </div>
           </div>
         </lay-card>
@@ -346,15 +349,15 @@ onMounted(() => {
         <lay-card style="margin-top: 16px">
           <template #title>
             <lay-icon type="layui-icon-auz" style="margin-right: 6px" />
-            Bảo mật
+            {{ t("profile.security") }}
           </template>
           <div style="padding: 12px 0;">
             <div class="security-row">
               <div>
-                <div class="security-title">Đăng xuất tất cả thiết bị</div>
-                <div class="security-desc">Thu hồi tất cả phiên đăng nhập trên mọi thiết bị. Bạn sẽ cần đăng nhập lại.</div>
+                <div class="security-title">{{ t("profile.logoutAllDevices") }}</div>
+                <div class="security-desc">{{ t("profile.logoutAllDesc") }}</div>
               </div>
-              <lay-button type="danger" :loading="logoutAllLoading" @click="handleLogoutAll">Đăng xuất tất cả</lay-button>
+              <lay-button type="danger" :loading="logoutAllLoading" @click="handleLogoutAll">{{ t("profile.logoutAllBtn") }}</lay-button>
             </div>
           </div>
         </lay-card>

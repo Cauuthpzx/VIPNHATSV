@@ -1,4 +1,5 @@
 import { computed, type Ref } from "vue";
+import { useI18n } from "vue-i18n";
 
 export interface StrengthCheck {
   label: string;
@@ -6,14 +7,16 @@ export interface StrengthCheck {
 }
 
 export function usePasswordStrength(password: Ref<string>) {
+  const { t } = useI18n();
+
   const checks = computed<StrengthCheck[]>(() => {
     const p = password.value;
     return [
-      { label: "8+ ký tự", pass: p.length >= 8 },
-      { label: "Chữ hoa (A-Z)", pass: /[A-Z]/.test(p) },
-      { label: "Chữ thường (a-z)", pass: /[a-z]/.test(p) },
-      { label: "Số (0-9)", pass: /[0-9]/.test(p) },
-      { label: "Ký tự đặc biệt (!@#...)", pass: /[^A-Za-z0-9]/.test(p) },
+      { label: t("password.minLength"), pass: p.length >= 8 },
+      { label: t("password.uppercase"), pass: /[A-Z]/.test(p) },
+      { label: t("password.lowercase"), pass: /[a-z]/.test(p) },
+      { label: t("password.number"), pass: /[0-9]/.test(p) },
+      { label: t("password.special"), pass: /[^A-Za-z0-9]/.test(p) },
     ];
   });
 
@@ -22,10 +25,10 @@ export function usePasswordStrength(password: Ref<string>) {
 
   const label = computed(() => {
     if (!password.value) return "";
-    if (passedCount.value <= 2) return "Yếu";
-    if (passedCount.value <= 3) return "Trung bình";
-    if (passedCount.value <= 4) return "Khá";
-    return "Mạnh";
+    if (passedCount.value <= 2) return t("password.weak");
+    if (passedCount.value <= 3) return t("password.medium");
+    if (passedCount.value <= 4) return t("password.fair");
+    return t("password.strong");
   });
 
   const color = computed(() => {

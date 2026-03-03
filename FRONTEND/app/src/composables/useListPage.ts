@@ -1,5 +1,18 @@
 import { ref, reactive, nextTick, watch, onMounted, onBeforeUnmount, type Ref, type WatchSource } from "vue";
 
+/** Debounce helper — collapses rapid-fire calls into one, with cancel support */
+function debounce<T extends (...args: any[]) => any>(fn: T, ms: number): T & { cancel: () => void } {
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  const debounced = ((...args: any[]) => {
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), ms);
+  }) as unknown as T & { cancel: () => void };
+  debounced.cancel = () => {
+    if (timer) { clearTimeout(timer); timer = null; }
+  };
+  return debounced;
+}
+
 export interface PageState {
   current: number;
   limit: number;
@@ -51,6 +64,12 @@ export function useListPage<T = Record<string, any>>(initialLimit = 10) {
     // Set loading ngay lập tức (sync, trước render) → tránh flash empty state
     loading.value = true;
 
+    // Debounced loadData — prevents cascading calls when agent+dateRange change simultaneously
+    const debouncedLoad = debounce(() => {
+      page.current = 1;
+      loadData();
+    }, 150);
+
     function handlePageChange(p: { current: number; limit: number }) {
       page.current = p.current;
       page.limit = p.limit;
@@ -64,25 +83,20 @@ export function useListPage<T = Record<string, any>>(initialLimit = 10) {
     }
 
     if (agentIdSource) {
-      watch(agentIdSource, () => {
-        page.current = 1;
-        loadData();
-      });
+      watch(agentIdSource, debouncedLoad);
     }
 
     if (extraSources) {
       for (const src of extraSources) {
-        watch(src, () => {
-          page.current = 1;
-          loadData();
-        });
+        watch(src, debouncedLoad);
       }
     }
 
     onMounted(() => loadData());
 
     // Bump version on unmount so any in-flight request becomes stale
-    onBeforeUnmount(() => { latestVersion++; });
+    // Cancel pending debounce timer to prevent firing after unmount
+    onBeforeUnmount(() => { latestVersion++; debouncedLoad.cancel(); });
 
     return { handlePageChange, handleSearch };
   }

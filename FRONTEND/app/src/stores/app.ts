@@ -3,7 +3,7 @@ import { ref, computed } from "vue";
 import { useAuthStore } from "@/stores/auth";
 
 export interface TabItem {
-  title: string;
+  titleKey: string;
   path: string;
   closable: boolean;
 }
@@ -14,7 +14,7 @@ export const useAppStore = defineStore("app", () => {
   const username = computed(() => authStore.user?.name || authStore.user?.username || "");
 
   const tabs = ref<TabItem[]>([
-    { title: "Trang chủ", path: "/agent/welcome", closable: false },
+    { titleKey: "menu.home", path: "/agent/welcome", closable: false },
   ]);
   const activeTab = ref("/agent/welcome");
 
