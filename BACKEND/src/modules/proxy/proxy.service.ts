@@ -56,7 +56,6 @@ const CACHE_TTL: Record<string, number> = {
   "/agent/getLottery": 600,
 };
 
-
 // ---------------------------------------------------------------------------
 // Natural sort keys
 // ---------------------------------------------------------------------------
@@ -100,12 +99,12 @@ function buildCacheKey(path: string, params: Record<string, string>, agentId: st
  */
 const DATE_UPSTREAM_FORMAT: Record<string, { param: string; separator: string }> = {
   "/agent/depositAndWithdrawal.html": { param: "date", separator: "|" },
-  "/agent/withdrawalsRecord.html":    { param: "date", separator: "|" },
-  "/agent/bet.html":                  { param: "date", separator: "|" },
-  "/agent/betOrder.html":             { param: "bet_time", separator: "|" },
-  "/agent/reportLottery.html":        { param: "date", separator: " | " },
-  "/agent/reportFunds.html":          { param: "date", separator: " | " },
-  "/agent/reportThirdGame.html":      { param: "date", separator: " | " },
+  "/agent/withdrawalsRecord.html": { param: "date", separator: "|" },
+  "/agent/bet.html": { param: "date", separator: "|" },
+  "/agent/betOrder.html": { param: "bet_time", separator: "|" },
+  "/agent/reportLottery.html": { param: "date", separator: " | " },
+  "/agent/reportFunds.html": { param: "date", separator: " | " },
+  "/agent/reportThirdGame.html": { param: "date", separator: " | " },
 };
 
 function buildUpstreamParams(input: Record<string, unknown>, path: string): Record<string, string> {
@@ -195,7 +194,7 @@ const TOTAL_DATA_FIELDS: Record<string, Record<string, string | "COUNT_DISTINCT"
     total_turnover: "t_turnover",
     total_prize: "t_prize",
     total_win_lose: "t_win_lose",
-    total_bet_number: "COUNT_DISTINCT",   // count distinct usernames
+    total_bet_number: "COUNT_DISTINCT", // count distinct usernames
   },
   "/agent/reportLottery.html": {
     total_bet_count: "bet_count",
@@ -416,7 +415,9 @@ async function fetchMultiAgentWithPipeline<T = unknown>(
       try {
         results[i] = JSON.parse(l1Hit);
         continue;
-      } catch { /* corrupt — fall through */ }
+      } catch {
+        /* corrupt — fall through */
+      }
     }
     needL2Check.push(i);
   }
@@ -425,7 +426,7 @@ async function fetchMultiAgentWithPipeline<T = unknown>(
   if (needL2Check.length === 0) return results;
 
   // 1. L2: Batch cache check with MGET (single Redis round-trip) — only for L1 misses
-  let cached: (string | null)[] = [];
+  let cached: (string | null)[];
   try {
     cached = await app.redis.mget(...needL2Check.map((i) => agentMeta[i].cacheKey));
   } catch {
@@ -452,60 +453,68 @@ async function fetchMultiAgentWithPipeline<T = unknown>(
 
   // 3. Fetch only missing agents — ALL in parallel (no concurrency cap)
   if (toFetch.length > 0) {
-    const fetched = await promisePool(
-      toFetch,
-      toFetch.length,
-      async ({ idx, meta }) => {
-        try {
-          const upstream = await fetchUpstream<T>({ path, cookie: meta.cookie, params, requestId });
-          let result: SingleResult<T>;
-          if (Array.isArray(upstream.data)) {
-            const items = upstream.data.map((item: any) => ({
-              _agentName: meta.agent.name,
-              ...item,
-            }));
-            result = { items: items as T[], total: upstream.count ?? 0, totalData: upstream.total_data };
-          } else {
-            result = { items: upstream.data as T[], total: upstream.count ?? 0, totalData: upstream.total_data };
-          }
-          return { idx, result, cacheKey: meta.cacheKey };
-        } catch (err) {
-          // Auto re-login on session expired
-          if (err instanceof AppError && err.code === ERROR_CODES.AGENT_SESSION_EXPIRED) {
-            try {
-              const newCookie = await agentService.attemptAutoRelogin(app, meta.agent.id);
-              if (newCookie) {
-                const retryUpstream = await fetchUpstream<T>({ path, cookie: newCookie, params, requestId });
-                let retryResult: SingleResult<T>;
-                if (Array.isArray(retryUpstream.data)) {
-                  const items = retryUpstream.data.map((item: any) => ({
-                    _agentName: meta.agent.name,
-                    ...item,
-                  }));
-                  retryResult = { items: items as T[], total: retryUpstream.count ?? 0, totalData: retryUpstream.total_data };
-                } else {
-                  retryResult = { items: retryUpstream.data as T[], total: retryUpstream.count ?? 0, totalData: retryUpstream.total_data };
-                }
-                return { idx, result: retryResult, cacheKey: meta.cacheKey };
-              }
-            } catch (reloginErr) {
-              logger.warn("Agent re-login retry also failed", {
-                agentId: meta.agent.id,
-                error: reloginErr instanceof Error ? reloginErr.message : String(reloginErr),
-              });
-            }
-          }
-
-          logger.warn("Agent fetch failed, skipping", {
-            agentId: meta.agent.id,
-            name: meta.agent.name,
-            requestId,
-            error: err instanceof Error ? err.message : String(err),
-          });
-          return { idx, result: { items: [] as T[], total: 0 } as SingleResult<T>, cacheKey: null };
+    const fetched = await promisePool(toFetch, toFetch.length, async ({ idx, meta }) => {
+      try {
+        const upstream = await fetchUpstream<T>({ path, cookie: meta.cookie, params, requestId });
+        let result: SingleResult<T>;
+        if (Array.isArray(upstream.data)) {
+          const items = upstream.data.map((item: any) => ({
+            _agentName: meta.agent.name,
+            ...item,
+          }));
+          result = { items: items as T[], total: upstream.count ?? 0, totalData: upstream.total_data };
+        } else {
+          result = {
+            items: upstream.data as T[],
+            total: upstream.count ?? 0,
+            totalData: upstream.total_data,
+          };
         }
-      },
-    );
+        return { idx, result, cacheKey: meta.cacheKey };
+      } catch (err) {
+        // Auto re-login on session expired
+        if (err instanceof AppError && err.code === ERROR_CODES.AGENT_SESSION_EXPIRED) {
+          try {
+            const newCookie = await agentService.attemptAutoRelogin(app, meta.agent.id);
+            if (newCookie) {
+              const retryUpstream = await fetchUpstream<T>({ path, cookie: newCookie, params, requestId });
+              let retryResult: SingleResult<T>;
+              if (Array.isArray(retryUpstream.data)) {
+                const items = retryUpstream.data.map((item: any) => ({
+                  _agentName: meta.agent.name,
+                  ...item,
+                }));
+                retryResult = {
+                  items: items as T[],
+                  total: retryUpstream.count ?? 0,
+                  totalData: retryUpstream.total_data,
+                };
+              } else {
+                retryResult = {
+                  items: retryUpstream.data as T[],
+                  total: retryUpstream.count ?? 0,
+                  totalData: retryUpstream.total_data,
+                };
+              }
+              return { idx, result: retryResult, cacheKey: meta.cacheKey };
+            }
+          } catch (reloginErr) {
+            logger.warn("Agent re-login retry also failed", {
+              agentId: meta.agent.id,
+              error: reloginErr instanceof Error ? reloginErr.message : String(reloginErr),
+            });
+          }
+        }
+
+        logger.warn("Agent fetch failed, skipping", {
+          agentId: meta.agent.id,
+          name: meta.agent.name,
+          requestId,
+          error: err instanceof Error ? err.message : String(err),
+        });
+        return { idx, result: { items: [] as T[], total: 0 } as SingleResult<T>, cacheKey: null };
+      }
+    });
 
     // 4. Batch cache write: L1 (instant) + L2 Redis pipeline (single round-trip)
     const pipeline = app.redis.pipeline();
@@ -516,9 +525,15 @@ async function fetchMultiAgentWithPipeline<T = unknown>(
         l1Cache.set(cacheKey, serialized, l1Ttl); // L1
         pipeline.set(cacheKey, serialized, "EX", ttl); // L2
         // 5. Write-through to DB (fire-and-forget)
-        writeThroughToDb(app, path, agents[idx].id, result.items as Record<string, unknown>[]).catch((err) => {
-          logger.warn("Write-through to DB failed", { path, agentId: agents[idx].id, error: (err as Error).message });
-        });
+        writeThroughToDb(app, path, agents[idx].id, result.items as Record<string, unknown>[]).catch(
+          (err) => {
+            logger.warn("Write-through to DB failed", {
+              path,
+              agentId: agents[idx].id,
+              error: (err as Error).message,
+            });
+          },
+        );
       }
     }
     pipeline.exec().catch((err) => {
@@ -550,9 +565,11 @@ async function cachedProxyCall<T = unknown>(
   const mergedParamsForKey = { ...params };
   delete mergedParamsForKey.page;
   delete mergedParamsForKey.limit;
-  const sortedParts = Object.keys(mergedParamsForKey).sort()
-    .filter(k => mergedParamsForKey[k] !== "" && mergedParamsForKey[k] !== undefined)
-    .map(k => `${k}=${mergedParamsForKey[k]}`).join("&");
+  const sortedParts = Object.keys(mergedParamsForKey)
+    .sort()
+    .filter((k) => mergedParamsForKey[k] !== "" && mergedParamsForKey[k] !== undefined)
+    .map((k) => `${k}=${mergedParamsForKey[k]}`)
+    .join("&");
   const mergedCacheKey = `merged:${path}:${sortedParts}:${explicitAgentId || "all"}`;
   const l1MergedHit = l1Cache.get(mergedCacheKey);
   if (l1MergedHit) {
@@ -617,7 +634,16 @@ async function cachedProxyCall<T = unknown>(
     const upstreamParams = { ...params };
     delete upstreamParams.start_date;
     delete upstreamParams.end_date;
-    const result = await fetchSingleAgent<T>(app, path, upstreamParams, agentId, agentName, cookie, ttl, requestId);
+    const result = await fetchSingleAgent<T>(
+      app,
+      path,
+      upstreamParams,
+      agentId,
+      agentName,
+      cookie,
+      ttl,
+      requestId,
+    );
 
     // Signal demand sync (non-reference, non-explicitAgent)
     if (!isReferenceRequest(path, input) && !explicitAgentId) {
@@ -709,10 +735,18 @@ async function writeThroughToDb(
 
   try {
     const count = await upsertFn(app.prisma, agentId, items);
-    logger.debug("[WriteThrough] Saved to DB", { path, table, agentId, items: items.length, upserted: count });
+    logger.debug("[WriteThrough] Saved to DB", {
+      path,
+      table,
+      agentId,
+      items: items.length,
+      upserted: count,
+    });
   } catch (err) {
     logger.warn("[WriteThrough] Failed (non-blocking)", {
-      path, table, agentId,
+      path,
+      table,
+      agentId,
       error: err instanceof Error ? err.message : String(err),
     });
   }
@@ -774,11 +808,7 @@ export function fetchLotteryDropdown(app: FastifyInstance, input: Record<string,
 // Action endpoints — forward to upstream without caching (write operations)
 // ---------------------------------------------------------------------------
 
-async function actionProxyCall(
-  app: FastifyInstance,
-  path: string,
-  input: Record<string, unknown>,
-) {
+async function actionProxyCall(app: FastifyInstance, path: string, input: Record<string, unknown>) {
   const agentId = input.agentId as string;
   const requestId = input._requestId as string | undefined;
   const cookie = await agentService.getAgentCookie(app, agentId);

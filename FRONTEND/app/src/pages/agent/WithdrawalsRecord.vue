@@ -12,7 +12,8 @@ import CookieBadge from "@/components/CookieBadge.vue";
 
 const { t } = useI18n();
 
-const { dateRange, dateQuickSelect, dateQuickOptions, dateQuickWidth, resetDateRange } = useDateRange("today");
+const { dateRange, dateQuickSelect, dateQuickOptions, dateQuickWidth, resetDateRange } =
+  useDateRange("today");
 const { dataSource, loading, page, setLoading, bindLoadData, guardStale } = useListPage();
 const { selectedAgentId, agentOptions, agentWidth } = useAgentFilter();
 
@@ -71,12 +72,13 @@ const { handlePageChange, handleSearch } = bindLoadData(loadData, selectedAgentI
 
 const exportAllFn = createExportAllFn((p, limit) =>
   fetchWithdrawalsRecord({
-    page: p, limit,
+    page: p,
+    limit,
     username: searchForm.username || undefined,
     serial_no: searchForm.serialNumber || undefined,
     status: searchForm.status || undefined,
     date: dateRange.value?.length === 2 ? `${dateRange.value[0]} - ${dateRange.value[1]}` : undefined,
-  }).then(r => r.data.data),
+  }).then((r) => r.data.data),
 );
 
 function handleReset() {
@@ -97,45 +99,69 @@ function handleDetail(_row: Record<string, unknown>) {
   <div>
     <lay-card>
       <lay-field :title="t('withdrawals.title')">
-      <div class="search-form-wrap">
-        <div class="layui-inline">
-          <span class="form-label">{{ t("common.agentLabel") }}</span>
-          <lay-select v-model="selectedAgentId" :style="{ width: agentWidth }">
-            <lay-select-option v-for="opt in agentOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
-          </lay-select>
+        <div class="search-form-wrap">
+          <div class="layui-inline">
+            <span class="form-label">{{ t("common.agentLabel") }}</span>
+            <lay-select v-model="selectedAgentId" :style="{ width: agentWidth }">
+              <lay-select-option
+                v-for="opt in agentOptions"
+                :key="opt.value"
+                :value="opt.value"
+                :label="opt.label"
+              />
+            </lay-select>
+          </div>
+          <div class="layui-inline">
+            <span class="form-label">{{ t("common.timeLabel") }}</span>
+            <lay-date-picker
+              v-model="dateRange"
+              range
+              single-panel
+              range-separator="-"
+              :placeholder="[t('common.dateStart'), t('common.dateEnd')]"
+            />
+          </div>
+          <div class="layui-inline">
+            <lay-select v-model="dateQuickSelect" :style="{ width: dateQuickWidth }">
+              <lay-select-option
+                v-for="opt in dateQuickOptions"
+                :key="opt.value"
+                :value="opt.value"
+                :label="opt.label"
+              />
+            </lay-select>
+          </div>
+          <div class="layui-inline">
+            <span class="form-label">{{ t("withdrawals.accountLabel") }}</span>
+            <lay-input v-model="searchForm.username" :placeholder="t('withdrawals.accountPlaceholder')" />
+          </div>
+          <div class="layui-inline">
+            <span class="form-label">{{ t("withdrawals.serialNoLabel") }}</span>
+            <lay-input
+              v-model="searchForm.serialNumber"
+              :placeholder="t('withdrawals.serialNoPlaceholder')"
+            />
+          </div>
+          <div class="layui-inline">
+            <span class="form-label">{{ t("withdrawals.statusLabel") }}</span>
+            <lay-select v-model="searchForm.status" :style="{ width: statusWidth }">
+              <lay-select-option
+                v-for="opt in statusOptions"
+                :key="opt.value"
+                :value="opt.value"
+                :label="opt.label"
+              />
+            </lay-select>
+          </div>
+          <div class="layui-inline">
+            <lay-button type="normal" @click="handleSearch">
+              <i class="layui-icon layui-icon-search" /> {{ t("common.search") }}
+            </lay-button>
+            <lay-button type="primary" @click="handleReset">
+              <i class="layui-icon layui-icon-refresh" /> {{ t("common.reset") }}
+            </lay-button>
+          </div>
         </div>
-        <div class="layui-inline">
-          <span class="form-label">{{ t("common.timeLabel") }}</span>
-          <lay-date-picker v-model="dateRange" range single-panel range-separator="-" :placeholder="[t('common.dateStart'), t('common.dateEnd')]" />
-        </div>
-        <div class="layui-inline">
-          <lay-select v-model="dateQuickSelect" :style="{ width: dateQuickWidth }">
-            <lay-select-option v-for="opt in dateQuickOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
-          </lay-select>
-        </div>
-        <div class="layui-inline">
-          <span class="form-label">{{ t("withdrawals.accountLabel") }}</span>
-          <lay-input v-model="searchForm.username" :placeholder="t('withdrawals.accountPlaceholder')" />
-        </div>
-        <div class="layui-inline">
-          <span class="form-label">{{ t("withdrawals.serialNoLabel") }}</span>
-          <lay-input v-model="searchForm.serialNumber" :placeholder="t('withdrawals.serialNoPlaceholder')" />
-        </div>
-        <div class="layui-inline">
-          <span class="form-label">{{ t("withdrawals.statusLabel") }}</span>
-          <lay-select v-model="searchForm.status" :style="{ width: statusWidth }">
-            <lay-select-option v-for="opt in statusOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
-          </lay-select>
-        </div>
-        <div class="layui-inline">
-          <lay-button type="normal" @click="handleSearch">
-            <i class="layui-icon layui-icon-search"></i> {{ t("common.search") }}
-          </lay-button>
-          <lay-button type="primary" @click="handleReset">
-            <i class="layui-icon layui-icon-refresh"></i> {{ t("common.reset") }}
-          </lay-button>
-        </div>
-      </div>
       </lay-field>
 
       <div class="table-container">
@@ -149,14 +175,21 @@ function handleDetail(_row: Record<string, unknown>) {
           :export-all-fn="exportAllFn"
           @change="handlePageChange"
         >
-          <template v-slot:toolbar>
+          <template #toolbar>
             <CookieBadge />
           </template>
           <template #num="{ row, column }">
-            <lay-count-up :end-val="Number(row[column.key]) || 0" :duration="0" :decimal-places="String(row[column.key]).includes('.') ? 2 : 0" :use-grouping="false" />
+            <lay-count-up
+              :end-val="Number(row[column.key]) || 0"
+              :duration="0"
+              :decimal-places="String(row[column.key]).includes('.') ? 2 : 0"
+              :use-grouping="false"
+            />
           </template>
           <template #operation="{ row }">
-            <lay-button size="xs" type="primary" @click="handleDetail(row)">{{ t("common.detail") }}</lay-button>
+            <lay-button size="xs" type="primary" @click="handleDetail(row)">
+              {{ t("common.detail") }}
+            </lay-button>
           </template>
         </lay-table>
       </div>

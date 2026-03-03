@@ -47,16 +47,37 @@ useTabsSlider();
 
 <template>
   <div class="layadmin-pagetabs" :style="{ left: sideWidth + 'px' }">
-    <div class="layui-icon layadmin-tabs-control layui-icon-prev" @click="scrollLeft"></div>
-    <div class="layui-icon layadmin-tabs-control layui-icon-next" @click="scrollRight"></div>
+    <div class="layui-icon layadmin-tabs-control layui-icon-prev" @click="scrollLeft" />
+    <div class="layui-icon layadmin-tabs-control layui-icon-next" @click="scrollRight" />
     <div class="layui-icon layadmin-tabs-control layui-icon-down" @click="toggleTabMenu">
       <ul v-show="showTabMenu" class="layadmin-tabs-select" @mouseleave="closeTabMenu">
-        <li><a href="javascript:;" @click="onTabClose(store.activeTab, $event)">{{ t('tabs.closeCurrent') }}</a></li>
-        <li><a href="javascript:;" @click="store.closeOtherTabs(); closeTabMenu()">{{ t('tabs.closeOthers') }}</a></li>
-        <li><a href="javascript:;" @click="store.closeAllTabs(); router.push(store.activeTab); closeTabMenu()">{{ t('tabs.closeAll') }}</a></li>
+        <li>
+          <a href="javascript:;" @click="onTabClose(store.activeTab, $event)">{{ t("tabs.closeCurrent") }}</a>
+        </li>
+        <li>
+          <a
+            href="javascript:;"
+            @click="
+              store.closeOtherTabs();
+              closeTabMenu();
+            "
+            >{{ t("tabs.closeOthers") }}</a
+          >
+        </li>
+        <li>
+          <a
+            href="javascript:;"
+            @click="
+              store.closeAllTabs();
+              router.push(store.activeTab);
+              closeTabMenu();
+            "
+            >{{ t("tabs.closeAll") }}</a
+          >
+        </li>
       </ul>
     </div>
-    <div class="layui-tab" ref="tabsInner">
+    <div ref="tabsInner" class="layui-tab">
       <ul class="layui-tab-title">
         <li
           v-for="tab in store.tabs"
@@ -64,13 +85,25 @@ useTabsSlider();
           :class="{ 'layui-this': store.activeTab === tab.path }"
           @click="onTabClick(tab.path)"
         >
-          <svg v-if="!tab.closable" class="tab-home-icon" xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24"><path d="M4 10h3v7H4zm6.5 0h3v7h-3zM2 19h20v3H2zm15-9h3v7h-3zm-5-9L2 6v2h20V6z" fill="currentColor"/></svg>
-          <template v-else>{{ t(tab.titleKey) }}</template>
-          <i
-            v-if="tab.closable"
-            class="layui-icon layui-tab-close"
-            @click="onTabClose(tab.path, $event)"
-          >&#x1006;</i>
+          <svg
+            v-if="!tab.closable"
+            class="tab-home-icon"
+            xmlns="http://www.w3.org/2000/svg"
+            width="22"
+            height="22"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M4 10h3v7H4zm6.5 0h3v7h-3zM2 19h20v3H2zm15-9h3v7h-3zm-5-9L2 6v2h20V6z"
+              fill="currentColor"
+            />
+          </svg>
+          <template v-else>
+            {{ t(tab.titleKey) }}
+          </template>
+          <i v-if="tab.closable" class="layui-icon layui-tab-close" @click="onTabClose(tab.path, $event)"
+            >&#x1006;</i
+          >
         </li>
       </ul>
     </div>

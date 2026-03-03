@@ -19,12 +19,15 @@ const color = computed(() => {
 
 <template>
   <lay-tag :color="color" size="sm" bordered class="cookie-badge">
-    <i class="layui-icon layui-icon-key"></i>
-    {{ t('common.agentAvailable') }}
+    <i class="layui-icon layui-icon-key" />
+    {{ t("common.agentAvailable") }}
     <template v-if="ready">
-      <lay-count-up :end-val="stats.valid" :duration="600" />/<lay-count-up :end-val="stats.total" :duration="600" />
+      <lay-count-up :end-val="stats.valid" :duration="600" />/<lay-count-up
+        :end-val="stats.total"
+        :duration="600"
+      />
     </template>
-    <template v-else>…</template>
+    <template v-else> … </template>
   </lay-tag>
 </template>
 

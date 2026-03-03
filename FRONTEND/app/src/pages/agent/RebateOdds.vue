@@ -167,7 +167,9 @@ watch(selectedLottery, (val) => {
   }
 });
 
-watch(selectedAgentId, () => { if (selectedLottery.value) fetchRebateData(); });
+watch(selectedAgentId, () => {
+  if (selectedLottery.value) fetchRebateData();
+});
 onMounted(() => {
   fetchInit();
 });
@@ -177,35 +179,40 @@ onMounted(() => {
   <div>
     <lay-card>
       <lay-field :title="t('rebateOdds.title')">
-      <div class="search-form-wrap">
-        <div class="layui-inline">
-          <span class="form-label">{{ t('common.agentLabel') }}</span>
-          <lay-select v-model="selectedAgentId" :style="{ width: agentWidth }">
-            <lay-select-option v-for="opt in agentOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
-          </lay-select>
+        <div class="search-form-wrap">
+          <div class="layui-inline">
+            <span class="form-label">{{ t("common.agentLabel") }}</span>
+            <lay-select v-model="selectedAgentId" :style="{ width: agentWidth }">
+              <lay-select-option
+                v-for="opt in agentOptions"
+                :key="opt.value"
+                :value="opt.value"
+                :label="opt.label"
+              />
+            </lay-select>
+          </div>
+          <div class="layui-inline">
+            <span class="form-label">{{ t("rebateOdds.lotteryLabel") }}</span>
+            <lay-select v-model="selectedSeries" :style="{ width: seriesWidth }">
+              <lay-select-option
+                v-for="opt in seriesOptions"
+                :key="opt.value"
+                :value="opt.value"
+                :label="opt.label"
+              />
+            </lay-select>
+          </div>
+          <div class="layui-inline">
+            <lay-select v-model="selectedLottery" :style="{ width: lotteryWidth }">
+              <lay-select-option
+                v-for="opt in lotteryOptions"
+                :key="opt.value"
+                :value="opt.value"
+                :label="opt.label"
+              />
+            </lay-select>
+          </div>
         </div>
-        <div class="layui-inline">
-          <span class="form-label">{{ t('rebateOdds.lotteryLabel') }}</span>
-          <lay-select v-model="selectedSeries" :style="{ width: seriesWidth }">
-            <lay-select-option
-              v-for="opt in seriesOptions"
-              :key="opt.value"
-              :value="opt.value"
-              :label="opt.label"
-            />
-          </lay-select>
-        </div>
-        <div class="layui-inline">
-          <lay-select v-model="selectedLottery" :style="{ width: lotteryWidth }">
-            <lay-select-option
-              v-for="opt in lotteryOptions"
-              :key="opt.value"
-              :value="opt.value"
-              :label="opt.label"
-            />
-          </lay-select>
-        </div>
-      </div>
       </lay-field>
 
       <div class="table-container">
@@ -216,7 +223,7 @@ onMounted(() => {
           :default-toolbar="defaultToolbar"
           :data-source="dataSource"
         >
-          <template v-slot:toolbar>
+          <template #toolbar>
             <CookieBadge />
           </template>
         </lay-table>

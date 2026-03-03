@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { decryptAES, encryptRSA, encryptSessionCookie, decryptSessionCookie } from "../../utils/crypto.js";
-import { fetchUpstream, type UpstreamResponse } from "../proxy/proxy.client.js";
+import { fetchUpstream } from "../proxy/proxy.client.js";
 import { AppError } from "../../errors/AppError.js";
 import { HTTP_STATUS } from "../../constants/http.js";
 import { ERROR_CODES } from "../../constants/error-codes.js";
@@ -107,16 +107,24 @@ export async function loginAgent(
     );
   }
 
-  let captchaAttempts = 0;
+  let captchaAttempts: number;
 
   try {
     // Step 1: Load agent and decrypt password
     const agent = await app.prisma.agent.findUnique({ where: { id: agentId } });
     if (!agent || !agent.isActive) {
-      throw new AppError("Agent không tồn tại hoặc đã bị vô hiệu hoá", HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND);
+      throw new AppError(
+        "Agent không tồn tại hoặc đã bị vô hiệu hoá",
+        HTTP_STATUS.NOT_FOUND,
+        ERROR_CODES.NOT_FOUND,
+      );
     }
     if (!agent.extPassword) {
-      throw new AppError("Agent chưa có mật khẩu upstream", HTTP_STATUS.BAD_REQUEST, ERROR_CODES.VALIDATION_ERROR);
+      throw new AppError(
+        "Agent chưa có mật khẩu upstream",
+        HTTP_STATUS.BAD_REQUEST,
+        ERROR_CODES.VALIDATION_ERROR,
+      );
     }
 
     const password = decryptAES(agent.extPassword);
@@ -154,7 +162,11 @@ export async function loginAgent(
 
     const publicKey = initData.data?.public_key;
     if (!publicKey) {
-      throw new AppError("Không lấy được RSA public key từ EE88", HTTP_STATUS.BAD_GATEWAY, ERROR_CODES.LOGIN_FAILED);
+      throw new AppError(
+        "Không lấy được RSA public key từ EE88",
+        HTTP_STATUS.BAD_GATEWAY,
+        ERROR_CODES.LOGIN_FAILED,
+      );
     }
 
     // Capture session ID from init
@@ -243,11 +255,17 @@ export async function loginAgent(
         await logLoginAttempt(app, agentId, true, captchaAttempts, null, ipAddress, triggeredBy);
 
         // Invalidate active agents cache + proxy cache for this agent
-        try { await app.redis.del("cache:active_agents"); } catch { /* ignore */ }
+        try {
+          await app.redis.del("cache:active_agents");
+        } catch {
+          /* ignore */
+        }
         try {
           const { invalidateAgentProxyCache } = await import("../proxy/agent.service.js");
           await invalidateAgentProxyCache(app, agentId);
-        } catch { /* ignore */ }
+        } catch {
+          /* ignore */
+        }
 
         logger.info({ agentId, captchaAttempts }, "Đăng nhập EE88 thành công");
         return { success: true, captchaAttempts, errorMessage: null };
@@ -301,7 +319,9 @@ export async function logoutAgent(app: FastifyInstance, agentId: string): Promis
           "X-Requested-With": "XMLHttpRequest",
         },
       });
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }
 
   await app.prisma.agent.update({
@@ -315,7 +335,11 @@ export async function logoutAgent(app: FastifyInstance, agentId: string): Promis
   });
 
   // Invalidate cache
-  try { await app.redis.del("cache:active_agents"); } catch { /* ignore */ }
+  try {
+    await app.redis.del("cache:active_agents");
+  } catch {
+    /* ignore */
+  }
 
   logger.info({ agentId }, "Agent đã logout");
 }
@@ -329,10 +353,7 @@ export async function loginAllAgents(
     where: {
       isActive: true,
       extPassword: { not: "" },
-      OR: [
-        { status: { in: ["offline", "error"] } },
-        { cookieExpires: { lt: new Date() } },
-      ],
+      OR: [{ status: { in: ["offline", "error"] } }, { cookieExpires: { lt: new Date() } }],
     },
     select: { id: true },
   });
@@ -428,11 +449,7 @@ export async function getSessionInfo(app: FastifyInstance, agentId: string) {
 /**
  * Set cookie thủ công — dùng cookie lấy từ trình duyệt (dev tools).
  */
-export async function setCookieManual(
-  app: FastifyInstance,
-  agentId: string,
-  cookie: string,
-): Promise<void> {
+export async function setCookieManual(app: FastifyInstance, agentId: string, cookie: string): Promise<void> {
   const agent = await app.prisma.agent.findUnique({ where: { id: agentId } });
   if (!agent) throw new AppError("Agent không tồn tại", HTTP_STATUS.NOT_FOUND, ERROR_CODES.NOT_FOUND);
 
@@ -449,11 +466,17 @@ export async function setCookieManual(
   });
 
   // Invalidate active agents cache + proxy cache for this agent
-  try { await app.redis.del("cache:active_agents"); } catch { /* ignore */ }
+  try {
+    await app.redis.del("cache:active_agents");
+  } catch {
+    /* ignore */
+  }
   try {
     const { invalidateAgentProxyCache } = await import("../proxy/agent.service.js");
     await invalidateAgentProxyCache(app, agentId);
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 
   logger.info({ agentId, agentName: agent.name }, "Đã set cookie thủ công");
 }

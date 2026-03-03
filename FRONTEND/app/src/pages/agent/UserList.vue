@@ -93,12 +93,13 @@ const { handlePageChange, handleSearch } = bindLoadData(loadData, selectedAgentI
 
 const exportAllFn = createExportAllFn((p, limit) =>
   fetchUserList({
-    page: p, limit,
+    page: p,
+    limit,
     username: searchForm.username || undefined,
     status: searchForm.status || undefined,
     sort_field: searchForm.sortField || undefined,
     sort_order: searchForm.sortOrder || undefined,
-  }).then(r => r.data.data),
+  }).then((r) => r.data.data),
 );
 
 function handleReset() {
@@ -116,48 +117,75 @@ function handleReset() {
   <div>
     <lay-card>
       <lay-field :title="t('userList.title')">
-      <div class="search-form-wrap">
-        <div class="layui-inline">
-          <span class="form-label">{{ t("common.agentLabel") }}</span>
-          <lay-select v-model="selectedAgentId" :style="{ width: agentWidth }">
-            <lay-select-option v-for="opt in agentOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
-          </lay-select>
+        <div class="search-form-wrap">
+          <div class="layui-inline">
+            <span class="form-label">{{ t("common.agentLabel") }}</span>
+            <lay-select v-model="selectedAgentId" :style="{ width: agentWidth }">
+              <lay-select-option
+                v-for="opt in agentOptions"
+                :key="opt.value"
+                :value="opt.value"
+                :label="opt.label"
+              />
+            </lay-select>
+          </div>
+          <div class="layui-inline">
+            <span class="form-label">{{ t("userList.accountLabel") }}</span>
+            <lay-input v-model="searchForm.username" :placeholder="t('userList.accountPlaceholder')" />
+          </div>
+          <div class="layui-inline">
+            <span class="form-label">{{ t("userList.registerTimeLabel") }}</span>
+            <lay-date-picker
+              v-model="searchForm.dateRange"
+              range
+              single-panel
+              range-separator="-"
+              :placeholder="[t('common.dateStart'), t('common.dateEnd')]"
+              :allow-clear="true"
+            />
+          </div>
+          <div class="layui-inline">
+            <span class="form-label">{{ t("userList.statusLabel") }}</span>
+            <lay-select v-model="searchForm.status" :style="{ width: statusWidth }">
+              <lay-select-option
+                v-for="opt in statusOptions"
+                :key="opt.value"
+                :value="opt.value"
+                :label="opt.label"
+              />
+            </lay-select>
+          </div>
+          <div class="layui-inline">
+            <span class="form-label">{{ t("userList.sortFieldLabel") }}</span>
+            <lay-select v-model="searchForm.sortField" :style="{ width: sortFieldWidth }">
+              <lay-select-option
+                v-for="opt in sortFieldOptions"
+                :key="opt.value"
+                :value="opt.value"
+                :label="opt.label"
+              />
+            </lay-select>
+          </div>
+          <div class="layui-inline">
+            <span class="form-label">{{ t("userList.sortOrderLabel") }}</span>
+            <lay-select v-model="searchForm.sortOrder" :style="{ width: sortOrderWidth }">
+              <lay-select-option
+                v-for="opt in sortOrderOptions"
+                :key="opt.value"
+                :value="opt.value"
+                :label="opt.label"
+              />
+            </lay-select>
+          </div>
+          <div class="layui-inline">
+            <lay-button type="normal" @click="handleSearch">
+              <i class="layui-icon layui-icon-search" /> {{ t("common.search") }}
+            </lay-button>
+            <lay-button type="primary" @click="handleReset">
+              <i class="layui-icon layui-icon-refresh" /> {{ t("common.reset") }}
+            </lay-button>
+          </div>
         </div>
-        <div class="layui-inline">
-          <span class="form-label">{{ t("userList.accountLabel") }}</span>
-          <lay-input v-model="searchForm.username" :placeholder="t('userList.accountPlaceholder')" />
-        </div>
-        <div class="layui-inline">
-          <span class="form-label">{{ t("userList.registerTimeLabel") }}</span>
-          <lay-date-picker v-model="searchForm.dateRange" range single-panel range-separator="-" :placeholder="[t('common.dateStart'), t('common.dateEnd')]" :allow-clear="true" />
-        </div>
-        <div class="layui-inline">
-          <span class="form-label">{{ t("userList.statusLabel") }}</span>
-          <lay-select v-model="searchForm.status" :style="{ width: statusWidth }">
-            <lay-select-option v-for="opt in statusOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
-          </lay-select>
-        </div>
-        <div class="layui-inline">
-          <span class="form-label">{{ t("userList.sortFieldLabel") }}</span>
-          <lay-select v-model="searchForm.sortField" :style="{ width: sortFieldWidth }">
-            <lay-select-option v-for="opt in sortFieldOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
-          </lay-select>
-        </div>
-        <div class="layui-inline">
-          <span class="form-label">{{ t("userList.sortOrderLabel") }}</span>
-          <lay-select v-model="searchForm.sortOrder" :style="{ width: sortOrderWidth }">
-            <lay-select-option v-for="opt in sortOrderOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
-          </lay-select>
-        </div>
-        <div class="layui-inline">
-          <lay-button type="normal" @click="handleSearch">
-            <i class="layui-icon layui-icon-search"></i> {{ t("common.search") }}
-          </lay-button>
-          <lay-button type="primary" @click="handleReset">
-            <i class="layui-icon layui-icon-refresh"></i> {{ t("common.reset") }}
-          </lay-button>
-        </div>
-      </div>
       </lay-field>
 
       <div class="table-container">
@@ -171,19 +199,32 @@ function handleReset() {
           :export-all-fn="canExport ? exportAllFn : undefined"
           @change="handlePageChange"
         >
-          <template v-slot:toolbar>
+          <template #toolbar>
             <CookieBadge />
             <template v-if="canWrite">
-              <lay-button type="normal" size="xs">{{ t("userList.addMember") }}</lay-button>
-              <lay-button type="normal" size="xs">{{ t("userList.addAgent") }}</lay-button>
-              <lay-button type="normal" size="xs">{{ t("userList.rebateSettings") }}</lay-button>
+              <lay-button type="normal" size="xs">
+                {{ t("userList.addMember") }}
+              </lay-button>
+              <lay-button type="normal" size="xs">
+                {{ t("userList.addAgent") }}
+              </lay-button>
+              <lay-button type="normal" size="xs">
+                {{ t("userList.rebateSettings") }}
+              </lay-button>
             </template>
           </template>
           <template #num="{ row, column }">
-            <lay-count-up :end-val="Number(row[column.key]) || 0" :duration="0" :decimal-places="String(row[column.key]).includes('.') ? 2 : 0" :use-grouping="false" />
+            <lay-count-up
+              :end-val="Number(row[column.key]) || 0"
+              :duration="0"
+              :decimal-places="String(row[column.key]).includes('.') ? 2 : 0"
+              :use-grouping="false"
+            />
           </template>
-          <template v-slot:action>
-            <lay-button v-if="canWrite" size="xs" type="normal">{{ t("userList.rebateSettings") }}</lay-button>
+          <template #action>
+            <lay-button v-if="canWrite" size="xs" type="normal">
+              {{ t("userList.rebateSettings") }}
+            </lay-button>
           </template>
         </lay-table>
       </div>

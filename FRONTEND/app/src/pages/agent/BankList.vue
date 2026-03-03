@@ -58,9 +58,10 @@ const { handlePageChange, handleSearch } = bindLoadData(loadData, selectedAgentI
 
 const exportAllFn = createExportAllFn((p, limit) =>
   fetchBankList({
-    page: p, limit,
+    page: p,
+    limit,
     card_no: searchForm.accountNumber || undefined,
-  }).then(r => r.data.data),
+  }).then((r) => r.data.data),
 );
 
 function handleReset() {
@@ -86,26 +87,31 @@ function handleDelete(_row: Record<string, unknown>) {
   <div>
     <lay-card>
       <lay-field :title="t('bankList.title')">
-      <div class="search-form-wrap">
-        <div class="layui-inline">
-          <span class="form-label">{{ t("common.agentLabel") }}</span>
-          <lay-select v-model="selectedAgentId" :style="{ width: agentWidth }">
-            <lay-select-option v-for="opt in agentOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
-          </lay-select>
+        <div class="search-form-wrap">
+          <div class="layui-inline">
+            <span class="form-label">{{ t("common.agentLabel") }}</span>
+            <lay-select v-model="selectedAgentId" :style="{ width: agentWidth }">
+              <lay-select-option
+                v-for="opt in agentOptions"
+                :key="opt.value"
+                :value="opt.value"
+                :label="opt.label"
+              />
+            </lay-select>
+          </div>
+          <div class="layui-inline">
+            <span class="form-label">{{ t("bankList.accountLabel") }}</span>
+            <lay-input v-model="searchForm.accountNumber" :placeholder="t('bankList.accountPlaceholder')" />
+          </div>
+          <div class="layui-inline">
+            <lay-button type="normal" @click="handleSearch">
+              <i class="layui-icon layui-icon-search" /> {{ t("common.search") }}
+            </lay-button>
+            <lay-button type="primary" @click="handleReset">
+              <i class="layui-icon layui-icon-refresh" /> {{ t("common.reset") }}
+            </lay-button>
+          </div>
         </div>
-        <div class="layui-inline">
-          <span class="form-label">{{ t("bankList.accountLabel") }}</span>
-          <lay-input v-model="searchForm.accountNumber" :placeholder="t('bankList.accountPlaceholder')" />
-        </div>
-        <div class="layui-inline">
-          <lay-button type="normal" @click="handleSearch">
-            <i class="layui-icon layui-icon-search"></i> {{ t("common.search") }}
-          </lay-button>
-          <lay-button type="primary" @click="handleReset">
-            <i class="layui-icon layui-icon-refresh"></i> {{ t("common.reset") }}
-          </lay-button>
-        </div>
-      </div>
       </lay-field>
 
       <div class="table-container">
@@ -119,13 +125,19 @@ function handleDelete(_row: Record<string, unknown>) {
           :export-all-fn="canExport ? exportAllFn : undefined"
           @change="handlePageChange"
         >
-          <template v-slot:toolbar>
+          <template #toolbar>
             <CookieBadge />
-            <lay-button v-if="canWrite" type="normal" size="xs" @click="handleAdd">{{ t("bankList.addBank") }}</lay-button>
+            <lay-button v-if="canWrite" type="normal" size="xs" @click="handleAdd">
+              {{ t("bankList.addBank") }}
+            </lay-button>
           </template>
           <template #operation="{ row }">
-            <lay-button v-if="canWrite" size="xs" type="primary" @click="handleEdit(row)">{{ t("common.edit") }}</lay-button>
-            <lay-button v-if="canWrite" size="xs" type="danger" @click="handleDelete(row)">{{ t("common.delete") }}</lay-button>
+            <lay-button v-if="canWrite" size="xs" type="primary" @click="handleEdit(row)">
+              {{ t("common.edit") }}
+            </lay-button>
+            <lay-button v-if="canWrite" size="xs" type="danger" @click="handleDelete(row)">
+              {{ t("common.delete") }}
+            </lay-button>
           </template>
         </lay-table>
       </div>

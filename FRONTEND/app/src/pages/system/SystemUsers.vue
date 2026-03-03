@@ -223,7 +223,7 @@ onMounted(() => {
       <lay-field :title="t('systemUsers.title')">
         <div class="search-form-wrap">
           <div class="layui-inline">
-            <span class="form-label">{{ t('common.search') }}:</span>
+            <span class="form-label">{{ t("common.search") }}:</span>
             <lay-input
               v-model="searchKeyword"
               :placeholder="t('systemUsers.searchPlaceholder')"
@@ -232,10 +232,10 @@ onMounted(() => {
           </div>
           <div class="layui-inline">
             <lay-button type="normal" @click="handleSearch">
-              <i class="layui-icon layui-icon-search"></i> {{ t('common.search') }}
+              <i class="layui-icon layui-icon-search" /> {{ t("common.search") }}
             </lay-button>
             <lay-button type="primary" @click="handleReset">
-              <i class="layui-icon layui-icon-refresh"></i> {{ t('common.reset') }}
+              <i class="layui-icon layui-icon-refresh" /> {{ t("common.reset") }}
             </lay-button>
           </div>
         </div>
@@ -251,31 +251,21 @@ onMounted(() => {
           :data-source="dataSource"
           @change="handlePageChange"
         >
-          <template v-slot:toolbar>
+          <template #toolbar>
             <lay-button v-if="canWrite" type="normal" size="xs" @click="openCreate">
-              <i class="layui-icon layui-icon-addition"></i> {{ t('systemUsers.addNew') }}
+              <i class="layui-icon layui-icon-addition" /> {{ t("systemUsers.addNew") }}
             </lay-button>
           </template>
 
           <template #role="{ row }">
-            <lay-tag
-              :color="getRoleColor(row.role?.type)"
-              variant="light"
-              size="sm"
-              bordered
-            >
+            <lay-tag :color="getRoleColor(row.role?.type)" variant="light" size="sm" bordered>
               {{ row.role?.name || "—" }}
             </lay-tag>
           </template>
 
           <template #status="{ row }">
-            <lay-tag
-              :color="row.isActive ? '#16baaa' : '#ff4d4f'"
-              variant="light"
-              size="sm"
-              bordered
-            >
-              {{ row.isActive ? t('systemUsers.active') : t('systemUsers.locked') }}
+            <lay-tag :color="row.isActive ? '#16baaa' : '#ff4d4f'" variant="light" size="sm" bordered>
+              {{ row.isActive ? t("systemUsers.active") : t("systemUsers.locked") }}
             </lay-tag>
           </template>
 
@@ -285,13 +275,8 @@ onMounted(() => {
 
           <template #action="{ row }">
             <div class="action-btns">
-              <lay-button
-                v-if="canWrite"
-                size="xs"
-                type="normal"
-                @click="openEdit(row)"
-              >
-                {{ t('common.edit') }}
+              <lay-button v-if="canWrite" size="xs" type="normal" @click="openEdit(row)">
+                {{ t("common.edit") }}
               </lay-button>
               <lay-button
                 v-if="canWrite"
@@ -299,14 +284,16 @@ onMounted(() => {
                 :type="row.isActive ? 'warm' : 'normal'"
                 @click="toggleActive(row)"
               >
-                {{ row.isActive ? t('systemUsers.lock') : t('systemUsers.unlock') }}
+                {{ row.isActive ? t("systemUsers.lock") : t("systemUsers.unlock") }}
               </lay-button>
               <lay-popconfirm
                 v-if="canDelete"
                 :content="t('systemUsers.confirmDelete')"
                 @confirm="handleDelete(row)"
               >
-                <lay-button size="xs" type="danger">{{ t('common.delete') }}</lay-button>
+                <lay-button size="xs" type="danger">
+                  {{ t("common.delete") }}
+                </lay-button>
               </lay-popconfirm>
             </div>
           </template>
@@ -322,9 +309,9 @@ onMounted(() => {
       :shade-close="false"
       :move="true"
     >
-      <div style="padding: 20px 30px;">
+      <div style="padding: 20px 30px">
         <div class="layui-form-item">
-          <label class="layui-form-label">{{ t('systemUsers.username') }}</label>
+          <label class="layui-form-label">{{ t("systemUsers.username") }}</label>
           <div class="layui-input-block">
             <lay-input
               v-model="formData.username"
@@ -335,7 +322,7 @@ onMounted(() => {
         </div>
 
         <div v-if="!isEdit" class="layui-form-item">
-          <label class="layui-form-label">{{ t('auth.password') }}</label>
+          <label class="layui-form-label">{{ t("auth.password") }}</label>
           <div class="layui-input-block">
             <lay-input
               v-model="formData.password"
@@ -348,40 +335,29 @@ onMounted(() => {
         <div class="layui-form-item">
           <label class="layui-form-label">Email</label>
           <div class="layui-input-block">
-            <lay-input
-              v-model="formData.email"
-              :placeholder="t('systemUsers.emailOptional')"
-            />
+            <lay-input v-model="formData.email" :placeholder="t('systemUsers.emailOptional')" />
           </div>
         </div>
 
         <div class="layui-form-item">
-          <label class="layui-form-label">{{ t('systemUsers.name') }}</label>
+          <label class="layui-form-label">{{ t("systemUsers.name") }}</label>
           <div class="layui-input-block">
-            <lay-input
-              v-model="formData.name"
-              :placeholder="t('systemUsers.namePlaceholder')"
-            />
+            <lay-input v-model="formData.name" :placeholder="t('systemUsers.namePlaceholder')" />
           </div>
         </div>
 
         <div class="layui-form-item">
-          <label class="layui-form-label">{{ t('systemUsers.role') }}</label>
+          <label class="layui-form-label">{{ t("systemUsers.role") }}</label>
           <div class="layui-input-block">
             <lay-select v-model="formData.roleId" :placeholder="t('systemUsers.selectRole')">
-              <lay-select-option
-                v-for="r in roles"
-                :key="r.id"
-                :value="r.id"
-                :label="r.name"
-              />
+              <lay-select-option v-for="r in roles" :key="r.id" :value="r.id" :label="r.name" />
             </lay-select>
           </div>
         </div>
 
         <div v-if="isEdit" class="layui-form-item">
-          <label class="layui-form-label">{{ t('common.status') }}</label>
-          <div class="layui-input-block" style="display: flex; align-items: center; min-height: 38px;">
+          <label class="layui-form-label">{{ t("common.status") }}</label>
+          <div class="layui-input-block" style="display: flex; align-items: center; min-height: 38px">
             <lay-switch
               v-model="formData.isActive"
               :onswitch-text="t('systemUsers.active')"
@@ -390,10 +366,12 @@ onMounted(() => {
           </div>
         </div>
 
-        <div class="layui-form-item" style="text-align: right; margin-bottom: 0;">
-          <lay-button @click="showModal = false">{{ t('common.cancel') }}</lay-button>
+        <div class="layui-form-item" style="text-align: right; margin-bottom: 0">
+          <lay-button @click="showModal = false">
+            {{ t("common.cancel") }}
+          </lay-button>
           <lay-button type="normal" :loading="submitting" @click="handleSubmit">
-            {{ isEdit ? t('common.update') : t('common.create') }}
+            {{ isEdit ? t("common.update") : t("common.create") }}
           </lay-button>
         </div>
       </div>

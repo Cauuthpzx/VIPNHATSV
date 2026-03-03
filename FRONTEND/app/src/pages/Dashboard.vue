@@ -3,8 +3,24 @@ import { ref, computed, watch, onMounted, onBeforeUnmount, h } from "vue";
 import { useI18n } from "vue-i18n";
 import { layer } from "@layui/layui-vue";
 import VChart from "vue-echarts";
-import { registerCharts, formatMoney as fmtMoney, tooltipFormatter, yAxisMoneyFormatter } from "@/composables/useCharts";
-import { fetchDashboardSummary, fetchActivityFeed, fetchDashboardSettings, saveDashboardSettings, fetchMemberDetail, fetchOnlineMembers, type DashboardSummary, type ActivityItem, type DashboardSettings, type MemberDetail } from "@/api/services/dashboard";
+import {
+  registerCharts,
+  formatMoney as fmtMoney,
+  tooltipFormatter,
+  yAxisMoneyFormatter,
+} from "@/composables/useCharts";
+import {
+  fetchDashboardSummary,
+  fetchActivityFeed,
+  fetchDashboardSettings,
+  saveDashboardSettings,
+  fetchMemberDetail,
+  fetchOnlineMembers,
+  type DashboardSummary,
+  type ActivityItem,
+  type DashboardSettings,
+  type MemberDetail,
+} from "@/api/services/dashboard";
 import { useAuthStore } from "@/stores/auth";
 import { useDateRange } from "@/composables/useDateRange";
 import { useToolbarPermission } from "@/composables/useToolbarPermission";
@@ -22,9 +38,17 @@ const activityItems = ref<ActivityItem[]>([]);
 const activityLoading = ref(false);
 
 // --- Settings ---
-const settings = ref<DashboardSettings>({ pollInterval: 300, bigDepositMin: 10_000_000, bigWithdrawMin: 10_000_000 });
+const settings = ref<DashboardSettings>({
+  pollInterval: 300,
+  bigDepositMin: 10_000_000,
+  bigWithdrawMin: 10_000_000,
+});
 const showSettings = ref(false);
-const settingsForm = ref<DashboardSettings>({ pollInterval: 300, bigDepositMin: 10_000_000, bigWithdrawMin: 10_000_000 });
+const settingsForm = ref<DashboardSettings>({
+  pollInterval: 300,
+  bigDepositMin: 10_000_000,
+  bigWithdrawMin: 10_000_000,
+});
 const settingsSaving = ref(false);
 
 // --- Member detail drawer ---
@@ -38,7 +62,10 @@ const lastUpdatedText = ref("");
 let lastUpdatedTimer: ReturnType<typeof setInterval> | null = null;
 
 function updateLastUpdatedText() {
-  if (!lastUpdatedAt.value) { lastUpdatedText.value = ""; return; }
+  if (!lastUpdatedAt.value) {
+    lastUpdatedText.value = "";
+    return;
+  }
   const diff = Date.now() - lastUpdatedAt.value.getTime();
   const secs = Math.floor(diff / 1000);
   if (secs < 5) lastUpdatedText.value = t("dashboard.justUpdated");
@@ -71,8 +98,14 @@ function setupPolling() {
 }
 
 function clearTimers() {
-  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
-  if (lastUpdatedTimer) { clearInterval(lastUpdatedTimer); lastUpdatedTimer = null; }
+  if (pollTimer) {
+    clearInterval(pollTimer);
+    pollTimer = null;
+  }
+  if (lastUpdatedTimer) {
+    clearInterval(lastUpdatedTimer);
+    lastUpdatedTimer = null;
+  }
 }
 
 // Load lần đầu (có loading spinner)
@@ -106,8 +139,10 @@ async function silentLoadData() {
 }
 
 function handleDateChange() {
-  if (!data.value) { loading.value = true; loadData(); }
-  else silentLoadData();
+  if (!data.value) {
+    loading.value = true;
+    loadData();
+  } else silentLoadData();
 }
 
 async function loadActivity() {
@@ -181,10 +216,11 @@ async function openMemberDetail(agentId: string, username: string) {
 // Auto-reload when quick select changes (dateRange is set by composable watcher)
 // Dùng silentLoadData để tránh destroy DOM → scroll reset
 watch(dateQuickSelect, () => {
-  if (!data.value) { loading.value = true; loadData(); }
-  else silentLoadData();
+  if (!data.value) {
+    loading.value = true;
+    loadData();
+  } else silentLoadData();
 });
-
 
 onMounted(async () => {
   await loadSettings();
@@ -262,7 +298,13 @@ const trendOption = computed(() => {
   if (!data.value) return {};
   const trend = data.value.trend7d;
   return {
-    tooltip: { trigger: "axis", formatter: tooltipFormatter, padding: [10, 14], textStyle: { fontSize: 13 }, extraCssText: "max-height:400px;overflow-y:auto;line-height:1.6" },
+    tooltip: {
+      trigger: "axis",
+      formatter: tooltipFormatter,
+      padding: [10, 14],
+      textStyle: { fontSize: 13 },
+      extraCssText: "max-height:400px;overflow-y:auto;line-height:1.6",
+    },
     legend: { data: [t("dashboard.chartDeposit"), t("dashboard.chartWithdrawal")], bottom: 0 },
     grid: { top: 10, right: 20, bottom: 35, left: 60, containLabel: false },
     xAxis: {
@@ -303,16 +345,18 @@ function buildPieOption(items: { name: string; value: number }[]) {
   return {
     tooltip: { trigger: "item", formatter: "{b}: {c} ({d}%)" },
     legend: { orient: "vertical", right: 10, top: "center", textStyle: { fontSize: 11 } },
-    series: [{
-      type: "pie",
-      radius: ["40%", "70%"],
-      center: ["35%", "50%"],
-      avoidLabelOverlap: true,
-      itemStyle: { borderRadius: 4, borderColor: "#fff", borderWidth: 2 },
-      label: { show: false },
-      emphasis: { label: { show: true, fontSize: 13, fontWeight: "bold" } },
-      data: items.map((p) => ({ name: p.name, value: p.value })),
-    }],
+    series: [
+      {
+        type: "pie",
+        radius: ["40%", "70%"],
+        center: ["35%", "50%"],
+        avoidLabelOverlap: true,
+        itemStyle: { borderRadius: 4, borderColor: "#fff", borderWidth: 2 },
+        label: { show: false },
+        emphasis: { label: { show: true, fontSize: 13, fontWeight: "bold" } },
+        data: items.map((p) => ({ name: p.name, value: p.value })),
+      },
+    ],
   };
 }
 
@@ -375,8 +419,24 @@ const agentColumns = computed(() => {
   }));
 
   return [
-    { title: "", exportTitle: "#", exportHeaderColor: "E0E0E0", titleSlot: () => h("span", { class: "bg-base" }, "#"), type: "number", width: "36px", align: "center" },
-    { title: "", exportTitle: t("common.agent").toUpperCase(), exportHeaderColor: "E0E0E0", titleSlot: () => h("span", { class: "bg-base" }, t("common.agent").toUpperCase()), key: "name", width: "90px", ellipsisTooltip: true },
+    {
+      title: "",
+      exportTitle: "#",
+      exportHeaderColor: "E0E0E0",
+      titleSlot: () => h("span", { class: "bg-base" }, "#"),
+      type: "number",
+      width: "36px",
+      align: "center",
+    },
+    {
+      title: "",
+      exportTitle: t("common.agent").toUpperCase(),
+      exportHeaderColor: "E0E0E0",
+      titleSlot: () => h("span", { class: "bg-base" }, t("common.agent").toUpperCase()),
+      key: "name",
+      width: "90px",
+      ellipsisTooltip: true,
+    },
     {
       title: "",
       exportTitle: t("dashboard.memberOnline"),
@@ -392,10 +452,50 @@ const agentColumns = computed(() => {
       exportCellColor: "E8F5E9",
       titleSlot: () => h("span", { class: "th-group bg-today" }, t("dashboard.todayLabel")),
       children: [
-        { title: "", exportTitle: t("dashboard.exploitation"), exportHeaderColor: "B2DFDB", exportCellColor: "E8F5E9", titleSlot: () => h("span", { class: "bg-today" }, t("dashboard.exploitation")), key: "newAccountsToday", width: "68px", align: "center", customSlot: "todayCell" },
-        { title: "", exportTitle: t("dashboard.betLottery"), exportHeaderColor: "B2DFDB", exportCellColor: "E8F5E9", titleSlot: () => h("span", { class: "bg-today" }, t("dashboard.betLottery")), key: "betLotteryToday", width: "72px", align: "center", customSlot: "todayMoney" },
-        { title: "", exportTitle: t("dashboard.betThird"), exportHeaderColor: "B2DFDB", exportCellColor: "E8F5E9", titleSlot: () => h("span", { class: "bg-today" }, t("dashboard.betThird")), key: "betThirdToday", width: "72px", align: "center", customSlot: "todayMoney" },
-        { title: "", exportTitle: t("dashboard.depositLabel"), exportHeaderColor: "B2DFDB", exportCellColor: "E8F5E9", titleSlot: () => h("span", { class: "bg-today" }, t("dashboard.depositLabel")), key: "depositToday", width: "72px", align: "center", customSlot: "todayMoney" },
+        {
+          title: "",
+          exportTitle: t("dashboard.exploitation"),
+          exportHeaderColor: "B2DFDB",
+          exportCellColor: "E8F5E9",
+          titleSlot: () => h("span", { class: "bg-today" }, t("dashboard.exploitation")),
+          key: "newAccountsToday",
+          width: "68px",
+          align: "center",
+          customSlot: "todayCell",
+        },
+        {
+          title: "",
+          exportTitle: t("dashboard.betLottery"),
+          exportHeaderColor: "B2DFDB",
+          exportCellColor: "E8F5E9",
+          titleSlot: () => h("span", { class: "bg-today" }, t("dashboard.betLottery")),
+          key: "betLotteryToday",
+          width: "72px",
+          align: "center",
+          customSlot: "todayMoney",
+        },
+        {
+          title: "",
+          exportTitle: t("dashboard.betThird"),
+          exportHeaderColor: "B2DFDB",
+          exportCellColor: "E8F5E9",
+          titleSlot: () => h("span", { class: "bg-today" }, t("dashboard.betThird")),
+          key: "betThirdToday",
+          width: "72px",
+          align: "center",
+          customSlot: "todayMoney",
+        },
+        {
+          title: "",
+          exportTitle: t("dashboard.depositLabel"),
+          exportHeaderColor: "B2DFDB",
+          exportCellColor: "E8F5E9",
+          titleSlot: () => h("span", { class: "bg-today" }, t("dashboard.depositLabel")),
+          key: "depositToday",
+          width: "72px",
+          align: "center",
+          customSlot: "todayMoney",
+        },
       ],
     },
     {
@@ -405,9 +505,39 @@ const agentColumns = computed(() => {
       exportCellColor: "FFF8E1",
       titleSlot: () => h("span", { class: "th-group bg-month" }, t("dashboard.monthTotal")),
       children: [
-        { title: "", exportTitle: t("dashboard.depositLabel"), exportHeaderColor: "FFE0B2", exportCellColor: "FFF8E1", titleSlot: () => h("span", { class: "bg-month" }, t("dashboard.depositLabel")), key: "totalDepositMonth", width: "72px", align: "center", customSlot: "monthMoney" },
-        { title: "", exportTitle: t("dashboard.betLottery"), exportHeaderColor: "FFE0B2", exportCellColor: "FFF8E1", titleSlot: () => h("span", { class: "bg-month" }, t("dashboard.betLottery")), key: "totalBetLotteryMonth", width: "72px", align: "center", customSlot: "monthMoney" },
-        { title: "", exportTitle: t("dashboard.winLose"), exportHeaderColor: "FFE0B2", exportCellColor: "FFF8E1", titleSlot: () => h("span", { class: "bg-month" }, t("dashboard.winLose")), key: "winLoseLotteryMonth", width: "80px", align: "center", customSlot: "monthWinLose" },
+        {
+          title: "",
+          exportTitle: t("dashboard.depositLabel"),
+          exportHeaderColor: "FFE0B2",
+          exportCellColor: "FFF8E1",
+          titleSlot: () => h("span", { class: "bg-month" }, t("dashboard.depositLabel")),
+          key: "totalDepositMonth",
+          width: "72px",
+          align: "center",
+          customSlot: "monthMoney",
+        },
+        {
+          title: "",
+          exportTitle: t("dashboard.betLottery"),
+          exportHeaderColor: "FFE0B2",
+          exportCellColor: "FFF8E1",
+          titleSlot: () => h("span", { class: "bg-month" }, t("dashboard.betLottery")),
+          key: "totalBetLotteryMonth",
+          width: "72px",
+          align: "center",
+          customSlot: "monthMoney",
+        },
+        {
+          title: "",
+          exportTitle: t("dashboard.winLose"),
+          exportHeaderColor: "FFE0B2",
+          exportCellColor: "FFF8E1",
+          titleSlot: () => h("span", { class: "bg-month" }, t("dashboard.winLose")),
+          key: "winLoseLotteryMonth",
+          width: "80px",
+          align: "center",
+          customSlot: "monthWinLose",
+        },
       ],
     },
   ];
@@ -447,21 +577,28 @@ async function openOnlineMembers(agentId: string, date: string) {
     onlineMembersLoading.value = false;
   }
 }
-
 </script>
 
 <template>
   <div class="dashboard">
     <!-- Loading skeleton -->
     <div v-if="loading" class="dashboard-loading">
-      <i class="layui-icon layui-icon-loading layui-anim layui-anim-rotate layui-anim-loop" style="font-size: 32px; color: #009688"></i>
+      <i
+        class="layui-icon layui-icon-loading layui-anim layui-anim-rotate layui-anim-loop"
+        style="font-size: 32px; color: #009688"
+      />
     </div>
 
     <template v-else-if="data">
       <!-- === DATE RANGE FILTER === -->
       <div class="dashboard-filter">
         <lay-select v-model="dateQuickSelect" :style="{ width: dateQuickWidth }" size="sm">
-          <lay-select-option v-for="opt in dateQuickOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
+          <lay-select-option
+            v-for="opt in dateQuickOptions"
+            :key="opt.value"
+            :value="opt.value"
+            :label="opt.label"
+          />
         </lay-select>
         <lay-date-picker
           v-model="dateRange"
@@ -474,7 +611,7 @@ async function openOnlineMembers(agentId: string, date: string) {
           @change="handleDateChange"
         />
         <span v-if="lastUpdatedText" class="last-updated">
-          <i class="layui-icon layui-icon-ok-circle" style="font-size: 12px; margin-right: 3px"></i>
+          <i class="layui-icon layui-icon-ok-circle" style="font-size: 12px; margin-right: 3px" />
           {{ lastUpdatedText }}
         </span>
       </div>
@@ -483,13 +620,17 @@ async function openOnlineMembers(agentId: string, date: string) {
       <div class="kpi-grid">
         <div v-for="card in kpiCardsRow1" :key="card.label" class="kpi-card">
           <div class="kpi-icon" :style="{ background: card.color }">
-            <i class="layui-icon" :class="card.icon"></i>
+            <i class="layui-icon" :class="card.icon" />
           </div>
           <div class="kpi-body">
-            <div class="kpi-label">{{ card.label }}</div>
-            <div class="kpi-value">{{ formatMoney(card.value) }}</div>
+            <div class="kpi-label">
+              {{ card.label }}
+            </div>
+            <div class="kpi-value">
+              {{ formatMoney(card.value) }}
+            </div>
             <div class="kpi-meta">
-              <span class="kpi-count">{{ card.count }} {{ t('dashboard.unitOrders') }}</span>
+              <span class="kpi-count">{{ card.count }} {{ t("dashboard.unitOrders") }}</span>
               <span :class="changeClass(card.value, card.yesterdayValue)">
                 {{ pctChange(card.value, card.yesterdayValue) }}
               </span>
@@ -503,15 +644,21 @@ async function openOnlineMembers(agentId: string, date: string) {
       <div class="kpi-grid">
         <div v-for="card in kpiCardsRow2" :key="card.label" class="kpi-card">
           <div class="kpi-icon" :style="{ background: card.color }">
-            <i class="layui-icon" :class="card.icon"></i>
+            <i class="layui-icon" :class="card.icon" />
           </div>
           <div class="kpi-body">
-            <div class="kpi-label">{{ card.label }}</div>
+            <div class="kpi-label">
+              {{ card.label }}
+            </div>
             <div class="kpi-value" :class="card.isMoney ? (card.value >= 0 ? 'text-green' : 'text-red') : ''">
               {{ card.isCount ? card.value : formatMoney(card.value) }}
             </div>
             <div class="kpi-meta">
-              <span class="kpi-count">{{ card.isCount ? card.count + ' ' + t('dashboard.unitCustomers') : card.count + ' ' + t('dashboard.unitOrders') }}</span>
+              <span class="kpi-count">{{
+                card.isCount
+                  ? card.count + " " + t("dashboard.unitCustomers")
+                  : card.count + " " + t("dashboard.unitOrders")
+              }}</span>
               <span :class="changeClass(card.value, card.yesterdayValue)">
                 {{ pctChange(card.value, card.yesterdayValue) }}
               </span>
@@ -526,8 +673,13 @@ async function openOnlineMembers(agentId: string, date: string) {
         <lay-col :md="15">
           <lay-card>
             <div class="section-header">
-              {{ t('dashboard.chartDeposit') }} / {{ t('dashboard.chartWithdrawal') }} {{ trendLabel }}
-              <i v-if="authStore.isAdmin" class="layui-icon layui-icon-set section-settings-btn" :title="t('dashboard.dashboardSettings')" @click="openSettings"></i>
+              {{ t("dashboard.chartDeposit") }} / {{ t("dashboard.chartWithdrawal") }} {{ trendLabel }}
+              <i
+                v-if="authStore.isAdmin"
+                class="layui-icon layui-icon-set section-settings-btn"
+                :title="t('dashboard.dashboardSettings')"
+                @click="openSettings"
+              />
             </div>
             <v-chart :option="trendOption" autoresize style="height: 280px" />
           </lay-card>
@@ -536,9 +688,22 @@ async function openOnlineMembers(agentId: string, date: string) {
           <lay-card>
             <div class="section-header">
               {{ currentPieLabel }}
-              <i v-if="authStore.isAdmin" class="layui-icon layui-icon-set section-settings-btn" :title="t('dashboard.dashboardSettings')" @click="openSettings"></i>
+              <i
+                v-if="authStore.isAdmin"
+                class="layui-icon layui-icon-set section-settings-btn"
+                :title="t('dashboard.dashboardSettings')"
+                @click="openSettings"
+              />
             </div>
-            <lay-carousel v-model="pieActiveId" anim="fade" :autoplay="true" :interval="8000" indicator="outside" arrow="always" class="pie-carousel">
+            <lay-carousel
+              v-model="pieActiveId"
+              anim="fade"
+              :autoplay="true"
+              :interval="8000"
+              indicator="outside"
+              arrow="always"
+              class="pie-carousel"
+            >
               <lay-carousel-item id="platform">
                 <v-chart :option="platformPieOption" autoresize class="pie-chart" />
               </lay-carousel-item>
@@ -552,12 +717,24 @@ async function openOnlineMembers(agentId: string, date: string) {
 
       <!-- === AGENT TABLE === -->
       <lay-card class="section-card">
-        <div class="section-header">{{ t('dashboard.agentOverview') }}</div>
-        <lay-table :columns="agentColumns" :data-source="agentTableData" size="sm" :default-toolbar="defaultToolbar">
+        <div class="section-header">
+          {{ t("dashboard.agentOverview") }}
+        </div>
+        <lay-table
+          :columns="agentColumns"
+          :data-source="agentTableData"
+          size="sm"
+          :default-toolbar="defaultToolbar"
+        >
           <template #toolbar>
             <div class="agent-toolbar">
               <lay-select v-model="dateQuickSelect" :style="{ width: dateQuickWidth }" size="xs">
-                <lay-select-option v-for="opt in dateQuickOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
+                <lay-select-option
+                  v-for="opt in dateQuickOptions"
+                  :key="opt.value"
+                  :value="opt.value"
+                  :label="opt.label"
+                />
               </lay-select>
               <lay-date-picker
                 v-model="dateRange"
@@ -604,66 +781,94 @@ async function openOnlineMembers(agentId: string, date: string) {
         <lay-col :md="16">
           <lay-card>
             <div class="section-header">
-              {{ t('dashboard.recentActivity') }}
-              <span class="poll-badge" v-if="settings.pollInterval > 0">
-                <i class="layui-icon layui-icon-loading layui-anim layui-anim-rotate layui-anim-loop" style="font-size: 12px"></i>
-                {{ settings.pollInterval >= 60 ? Math.round(settings.pollInterval / 60) + 'p' : settings.pollInterval + 's' }}
+              {{ t("dashboard.recentActivity") }}
+              <span v-if="settings.pollInterval > 0" class="poll-badge">
+                <i
+                  class="layui-icon layui-icon-loading layui-anim layui-anim-rotate layui-anim-loop"
+                  style="font-size: 12px"
+                />
+                {{
+                  settings.pollInterval >= 60
+                    ? Math.round(settings.pollInterval / 60) + "p"
+                    : settings.pollInterval + "s"
+                }}
               </span>
-              <i v-if="authStore.isAdmin" class="layui-icon layui-icon-set section-settings-btn" :title="t('dashboard.dashboardSettings')" @click="openSettings"></i>
+              <i
+                v-if="authStore.isAdmin"
+                class="layui-icon layui-icon-set section-settings-btn"
+                :title="t('dashboard.dashboardSettings')"
+                @click="openSettings"
+              />
             </div>
 
             <div class="activity-feed">
               <!-- Column headers -->
               <div class="activity-header">
-                <span class="ah-type">{{ t('common.status') }}</span>
-                <span class="ah-agent">{{ t('common.agent') }}</span>
-                <span class="ah-user">{{ t('common.username') }}</span>
-                <span class="ah-money">{{ t('common.amount') }}</span>
-                <span class="ah-time">{{ t('common.time') }}</span>
+                <span class="ah-type">{{ t("common.status") }}</span>
+                <span class="ah-agent">{{ t("common.agent") }}</span>
+                <span class="ah-user">{{ t("common.username") }}</span>
+                <span class="ah-money">{{ t("common.amount") }}</span>
+                <span class="ah-time">{{ t("common.time") }}</span>
               </div>
               <template v-if="activityItems.length > 0">
                 <div v-for="item in activityItems" :key="item.id" class="activity-item">
-                  <span class="activity-tag" :class="activityTagClass(item.type)">{{ activityLabel(item.type) }}</span>
+                  <span class="activity-tag" :class="activityTagClass(item.type)">{{
+                    activityLabel(item.type)
+                  }}</span>
                   <span class="activity-agent">{{ item.agentName }}</span>
-                  <span class="activity-username" @click="openMemberDetail(item.agentId, item.username)">{{ item.username }}</span>
-                  <span class="activity-money" :class="{ 'money-deposit': item.type === 'big_deposit' || item.type === 'member_new', 'money-withdrawal': item.type === 'big_withdrawal' || item.type === 'member_lost' }">
+                  <span class="activity-username" @click="openMemberDetail(item.agentId, item.username)">{{
+                    item.username
+                  }}</span>
+                  <span
+                    class="activity-money"
+                    :class="{
+                      'money-deposit': item.type === 'big_deposit' || item.type === 'member_new',
+                      'money-withdrawal': item.type === 'big_withdrawal' || item.type === 'member_lost',
+                    }"
+                  >
                     {{ item.money ? formatMoney(Number(item.money)) : "—" }}
                   </span>
                   <span class="activity-time">{{ timeAgo(item.createdAt) }}</span>
                 </div>
               </template>
               <div v-else class="activity-empty">
-                {{ activityLoading ? t('common.loading') : t('dashboard.noActivity') }}
+                {{ activityLoading ? t("common.loading") : t("dashboard.noActivity") }}
               </div>
             </div>
           </lay-card>
         </lay-col>
         <lay-col :md="8">
           <lay-card class="info-card">
-            <div class="section-header">{{ t('dashboard.quickInfo') }}</div>
+            <div class="section-header">
+              {{ t("dashboard.quickInfo") }}
+            </div>
             <div class="info-row">
-              <span class="info-label">{{ t('dashboard.lastLogin') }}</span>
+              <span class="info-label">{{ t("dashboard.lastLogin") }}</span>
               <span class="info-val">{{ formatLoginTime(data.loginInfo.lastLoginAt) }}</span>
             </div>
             <div class="info-row">
-              <span class="info-label">{{ t('dashboard.loginIp') }}</span>
+              <span class="info-label">{{ t("dashboard.loginIp") }}</span>
               <span class="info-val">{{ data.loginInfo.lastLoginIp || "—" }}</span>
             </div>
             <lay-line margin="12px 0" />
             <div class="info-row">
-              <span class="info-label">{{ t('dashboard.totalAgent') }}</span>
+              <span class="info-label">{{ t("dashboard.totalAgent") }}</span>
               <span class="info-val">{{ data.agentSessionSummary.total }}</span>
             </div>
             <div class="info-row">
-              <span class="info-label">{{ t('dashboard.activeAgent') }}</span>
-              <span class="info-val" style="color: #009688; font-weight: 600">{{ data.agentSessionSummary.active }}</span>
+              <span class="info-label">{{ t("dashboard.activeAgent") }}</span>
+              <span class="info-val" style="color: #009688; font-weight: 600">{{
+                data.agentSessionSummary.active
+              }}</span>
             </div>
             <div class="info-row">
-              <span class="info-label">{{ t('dashboard.errorAgent') }}</span>
-              <span class="info-val" style="color: #ff5722; font-weight: 600">{{ data.agentSessionSummary.error }}</span>
+              <span class="info-label">{{ t("dashboard.errorAgent") }}</span>
+              <span class="info-val" style="color: #ff5722; font-weight: 600">{{
+                data.agentSessionSummary.error
+              }}</span>
             </div>
             <div class="info-row">
-              <span class="info-label">{{ t('dashboard.offlineAgent') }}</span>
+              <span class="info-label">{{ t("dashboard.offlineAgent") }}</span>
               <span class="info-val" style="color: #999">{{ data.agentSessionSummary.offline }}</span>
             </div>
           </lay-card>
@@ -676,27 +881,41 @@ async function openOnlineMembers(agentId: string, date: string) {
       v-model="showSettings"
       :title="t('dashboard.dashboardSettings')"
       :area="['400px', '380px']"
-      :shadeClose="true"
+      :shade-close="true"
     >
       <div class="settings-panel">
         <div class="settings-row">
-          <label>{{ t('dashboard.pollInterval') }}</label>
+          <label>{{ t("dashboard.pollInterval") }}</label>
           <lay-input v-model.number="settingsForm.pollInterval" placeholder="60" type="number" size="sm" />
-          <span class="settings-hint">{{ t('dashboard.pollHint') }}</span>
+          <span class="settings-hint">{{ t("dashboard.pollHint") }}</span>
         </div>
         <div class="settings-row">
-          <label>{{ t('dashboard.bigDepositThreshold') }}</label>
-          <lay-input v-model.number="settingsForm.bigDepositMin" placeholder="10000000" type="number" size="sm" />
-          <span class="settings-hint">{{ t('dashboard.bigDepositHint') }}</span>
+          <label>{{ t("dashboard.bigDepositThreshold") }}</label>
+          <lay-input
+            v-model.number="settingsForm.bigDepositMin"
+            placeholder="10000000"
+            type="number"
+            size="sm"
+          />
+          <span class="settings-hint">{{ t("dashboard.bigDepositHint") }}</span>
         </div>
         <div class="settings-row">
-          <label>{{ t('dashboard.bigWithdrawThreshold') }}</label>
-          <lay-input v-model.number="settingsForm.bigWithdrawMin" placeholder="10000000" type="number" size="sm" />
-          <span class="settings-hint">{{ t('dashboard.bigWithdrawHint') }}</span>
+          <label>{{ t("dashboard.bigWithdrawThreshold") }}</label>
+          <lay-input
+            v-model.number="settingsForm.bigWithdrawMin"
+            placeholder="10000000"
+            type="number"
+            size="sm"
+          />
+          <span class="settings-hint">{{ t("dashboard.bigWithdrawHint") }}</span>
         </div>
         <div class="settings-actions">
-          <lay-button type="primary" size="sm" :loading="settingsSaving" @click="handleSaveSettings">{{ t('common.save') }}</lay-button>
-          <lay-button size="sm" @click="showSettings = false">{{ t('common.cancel') }}</lay-button>
+          <lay-button type="primary" size="sm" :loading="settingsSaving" @click="handleSaveSettings">
+            {{ t("common.save") }}
+          </lay-button>
+          <lay-button size="sm" @click="showSettings = false">
+            {{ t("common.cancel") }}
+          </lay-button>
         </div>
       </div>
     </lay-layer>
@@ -706,53 +925,64 @@ async function openOnlineMembers(agentId: string, date: string) {
       v-model="showMemberDetail"
       :title="t('dashboard.memberDetail')"
       :area="['480px', '500px']"
-      :shadeClose="true"
+      :shade-close="true"
     >
       <div class="member-detail-panel">
         <div v-if="memberLoading" class="member-loading">
-          <i class="layui-icon layui-icon-loading layui-anim layui-anim-rotate layui-anim-loop" style="font-size: 24px; color: #009688"></i>
+          <i
+            class="layui-icon layui-icon-loading layui-anim layui-anim-rotate layui-anim-loop"
+            style="font-size: 24px; color: #009688"
+          />
         </div>
         <template v-else-if="memberDetail">
           <div class="detail-row">
-            <span class="detail-label">{{ t('common.username') }}</span>
+            <span class="detail-label">{{ t("common.username") }}</span>
             <span class="detail-val text-bold">{{ memberDetail.username }}</span>
           </div>
           <div class="detail-row">
-            <span class="detail-label">{{ t('dashboard.memberType') }}</span>
+            <span class="detail-label">{{ t("dashboard.memberType") }}</span>
             <span class="detail-val">{{ memberDetail.typeFormat || "—" }}</span>
           </div>
           <div class="detail-row">
-            <span class="detail-label">{{ t('dashboard.memberParent') }}</span>
+            <span class="detail-label">{{ t("dashboard.memberParent") }}</span>
             <span class="detail-val">{{ memberDetail.parentUser || "—" }}</span>
           </div>
           <div class="detail-row">
-            <span class="detail-label">{{ t('dashboard.memberStatus') }}</span>
+            <span class="detail-label">{{ t("dashboard.memberStatus") }}</span>
             <span class="detail-val">{{ memberDetail.statusFormat || "—" }}</span>
           </div>
           <lay-line margin="12px 0" />
           <div class="detail-row">
-            <span class="detail-label">{{ t('dashboard.memberBalance') }}</span>
-            <span class="detail-val text-bold" style="color: #009688">{{ formatMoney(Number(memberDetail.money || 0)) }}</span>
+            <span class="detail-label">{{ t("dashboard.memberBalance") }}</span>
+            <span class="detail-val text-bold" style="color: #009688">{{
+              formatMoney(Number(memberDetail.money || 0))
+            }}</span>
           </div>
           <div class="detail-row">
-            <span class="detail-label">{{ t('dashboard.memberTotalDeposit') }}</span>
-            <span class="detail-val">{{ formatMoney(Number(memberDetail.depositAmount)) }} ({{ memberDetail.depositCount }} {{ t('notification.times') }})</span>
+            <span class="detail-label">{{ t("dashboard.memberTotalDeposit") }}</span>
+            <span class="detail-val"
+              >{{ formatMoney(Number(memberDetail.depositAmount)) }} ({{ memberDetail.depositCount }}
+              {{ t("notification.times") }})</span
+            >
           </div>
           <div class="detail-row">
-            <span class="detail-label">{{ t('dashboard.memberTotalWithdraw') }}</span>
-            <span class="detail-val">{{ formatMoney(Number(memberDetail.withdrawalAmount)) }} ({{ memberDetail.withdrawalCount }} {{ t('notification.times') }})</span>
+            <span class="detail-label">{{ t("dashboard.memberTotalWithdraw") }}</span>
+            <span class="detail-val"
+              >{{ formatMoney(Number(memberDetail.withdrawalAmount)) }} ({{ memberDetail.withdrawalCount }}
+              {{ t("notification.times") }})</span
+            >
           </div>
           <lay-line margin="12px 0" />
           <div class="detail-row">
-            <span class="detail-label">{{ t('dashboard.memberRegisterTime') }}</span>
+            <span class="detail-label">{{ t("dashboard.memberRegisterTime") }}</span>
             <span class="detail-val">{{ memberDetail.registerTime || "—" }}</span>
           </div>
           <div class="detail-row">
-            <span class="detail-label">{{ t('dashboard.memberLastLogin') }}</span>
+            <span class="detail-label">{{ t("dashboard.memberLastLogin") }}</span>
             <span class="detail-val">{{ memberDetail.loginTime || "—" }}</span>
           </div>
           <div class="detail-row">
-            <span class="detail-label">{{ t('dashboard.memberSyncTime') }}</span>
+            <span class="detail-label">{{ t("dashboard.memberSyncTime") }}</span>
             <span class="detail-val">{{ formatLoginTime(memberDetail.syncedAt) }}</span>
           </div>
         </template>
@@ -764,14 +994,19 @@ async function openOnlineMembers(agentId: string, date: string) {
       v-model="showOnlineMembers"
       :title="onlineMembersTitle"
       :area="['420px', '500px']"
-      :shadeClose="true"
+      :shade-close="true"
     >
       <div class="online-members-panel">
         <div v-if="onlineMembersLoading" class="member-loading">
-          <i class="layui-icon layui-icon-loading layui-anim layui-anim-rotate layui-anim-loop" style="font-size: 24px; color: #009688"></i>
+          <i
+            class="layui-icon layui-icon-loading layui-anim layui-anim-rotate layui-anim-loop"
+            style="font-size: 24px; color: #009688"
+          />
         </div>
         <template v-else>
-          <div class="online-members-count">{{ t('dashboard.totalMembers', { n: onlineMembersList.length }) }}</div>
+          <div class="online-members-count">
+            {{ t("dashboard.totalMembers", { n: onlineMembersList.length }) }}
+          </div>
           <div class="online-members-list">
             <div
               v-for="username in onlineMembersList"
@@ -779,12 +1014,15 @@ async function openOnlineMembers(agentId: string, date: string) {
               class="online-member-item"
               @click="openMemberDetail(onlineMembersAgentId, username)"
             >
-              <i class="layui-icon layui-icon-username" style="font-size: 14px; color: #999; margin-right: 6px"></i>
+              <i
+                class="layui-icon layui-icon-username"
+                style="font-size: 14px; color: #999; margin-right: 6px"
+              />
               {{ username }}
             </div>
           </div>
           <div v-if="onlineMembersList.length === 0" class="activity-empty">
-            {{ t('dashboard.noOnlineMembers') }}
+            {{ t("dashboard.noOnlineMembers") }}
           </div>
         </template>
       </div>
@@ -983,7 +1221,6 @@ async function openOnlineMembers(agentId: string, date: string) {
   min-height: 240px;
 }
 
-
 .bottom-row {
   margin-top: 0;
 }
@@ -1140,9 +1377,16 @@ async function openOnlineMembers(agentId: string, date: string) {
 .ah-agent,
 .ah-user,
 .ah-money,
-.ah-time { flex: 1; min-width: 0; }
-.ah-money { text-align: right; }
-.ah-time { text-align: right; }
+.ah-time {
+  flex: 1;
+  min-width: 0;
+}
+.ah-money {
+  text-align: right;
+}
+.ah-time {
+  text-align: right;
+}
 
 .activity-item {
   display: flex;
@@ -1178,10 +1422,22 @@ async function openOnlineMembers(agentId: string, date: string) {
   line-height: 20px;
 }
 
-.tag-new { background: #e6f7f5; color: #009688; }
-.tag-lost { background: #fff0ec; color: #ff5722; }
-.tag-deposit { background: #e8f4ff; color: #1e9fff; }
-.tag-withdrawal { background: #fff8e6; color: #e6a200; }
+.tag-new {
+  background: #e6f7f5;
+  color: #009688;
+}
+.tag-lost {
+  background: #fff0ec;
+  color: #ff5722;
+}
+.tag-deposit {
+  background: #e8f4ff;
+  color: #1e9fff;
+}
+.tag-withdrawal {
+  background: #fff8e6;
+  color: #e6a200;
+}
 
 .activity-agent {
   font-weight: 500;
@@ -1251,7 +1507,6 @@ async function openOnlineMembers(agentId: string, date: string) {
   text-align: right;
   word-break: break-all;
 }
-
 
 /* === SETTINGS PANEL === */
 .settings-panel {

@@ -13,7 +13,8 @@ import CookieBadge from "@/components/CookieBadge.vue";
 
 const { t } = useI18n();
 
-const { dateRange, dateQuickSelect, dateQuickOptions, dateQuickWidth, resetDateRange } = useDateRange("today");
+const { dateRange, dateQuickSelect, dateQuickOptions, dateQuickWidth, resetDateRange } =
+  useDateRange("today");
 const { dataSource, loading, page, setLoading, bindLoadData, guardStale } = useListPage();
 const { selectedAgentId, agentOptions, agentWidth } = useAgentFilter();
 const { defaultToolbar, canExport } = useToolbarPermission();
@@ -27,17 +28,11 @@ const searchForm = reactive({
   status: "",
 });
 
-const lotteryOptions = ref([
-  { label: t("common.all"), value: "" },
-]);
+const lotteryOptions = ref([{ label: t("common.all"), value: "" }]);
 
-const playTypeOptions = ref([
-  { label: t("common.all"), value: "" },
-]);
+const playTypeOptions = ref([{ label: t("common.all"), value: "" }]);
 
-const playOptions = ref([
-  { label: t("common.all"), value: "" },
-]);
+const playOptions = ref([{ label: t("common.all"), value: "" }]);
 
 const statusOptions = computed(() => [
   { label: t("betList.statusAll"), value: "" },
@@ -142,47 +137,65 @@ async function loadDropdownData() {
         ...items.lotteryData.map((l: any) => ({ label: l.name, value: String(l.id) })),
       ];
     }
-  } catch {}
+  } catch {
+    /* silent */
+  }
 }
 
 // When lottery changes → load playType options via POST /agent/bet {play_type:1, series_id, lottery_id}
-watch(() => searchForm.lotteryType, async (lotteryId) => {
-  searchForm.playType = "";
-  searchForm.play = "";
-  playTypeOptions.value = [{ label: t("common.all"), value: "" }];
-  playOptions.value = [{ label: t("common.all"), value: "" }];
-  if (!lotteryId) return;
-  const lottery = allLotteryData.value.find((l: any) => String(l.id) === lotteryId);
-  const seriesId = lottery ? String(lottery.series_id) : "";
-  if (!seriesId) return;
-  try {
-    const res = await fetchBetList({ page: 1, limit: 200, play_type: 1, series_id: seriesId, lottery_id: lotteryId });
-    const items = res.data.data.items;
-    if (Array.isArray(items) && items.length > 0) {
-      playTypeOptions.value = [
-        { label: t("common.all"), value: "" },
-        ...(items as any[]).map((p: any) => ({ label: p.name, value: String(p.id) })),
-      ];
+watch(
+  () => searchForm.lotteryType,
+  async (lotteryId) => {
+    searchForm.playType = "";
+    searchForm.play = "";
+    playTypeOptions.value = [{ label: t("common.all"), value: "" }];
+    playOptions.value = [{ label: t("common.all"), value: "" }];
+    if (!lotteryId) return;
+    const lottery = allLotteryData.value.find((l: any) => String(l.id) === lotteryId);
+    const seriesId = lottery ? String(lottery.series_id) : "";
+    if (!seriesId) return;
+    try {
+      const res = await fetchBetList({
+        page: 1,
+        limit: 200,
+        play_type: 1,
+        series_id: seriesId,
+        lottery_id: lotteryId,
+      });
+      const items = res.data.data.items;
+      if (Array.isArray(items) && items.length > 0) {
+        playTypeOptions.value = [
+          { label: t("common.all"), value: "" },
+          ...(items as any[]).map((p: any) => ({ label: p.name, value: String(p.id) })),
+        ];
+      }
+    } catch {
+      /* silent */
     }
-  } catch {}
-});
+  },
+);
 
 // When playType changes → load play options via POST /agent/bet {play_type:2, play_type_id}
-watch(() => searchForm.playType, async (playTypeId) => {
-  searchForm.play = "";
-  playOptions.value = [{ label: t("common.all"), value: "" }];
-  if (!playTypeId) return;
-  try {
-    const res = await fetchBetList({ page: 1, limit: 200, play_type: 2, play_type_id: playTypeId });
-    const items = res.data.data.items;
-    if (Array.isArray(items) && items.length > 0) {
-      playOptions.value = [
-        { label: t("common.all"), value: "" },
-        ...(items as any[]).map((p: any) => ({ label: p.name, value: String(p.id) })),
-      ];
+watch(
+  () => searchForm.playType,
+  async (playTypeId) => {
+    searchForm.play = "";
+    playOptions.value = [{ label: t("common.all"), value: "" }];
+    if (!playTypeId) return;
+    try {
+      const res = await fetchBetList({ page: 1, limit: 200, play_type: 2, play_type_id: playTypeId });
+      const items = res.data.data.items;
+      if (Array.isArray(items) && items.length > 0) {
+        playOptions.value = [
+          { label: t("common.all"), value: "" },
+          ...(items as any[]).map((p: any) => ({ label: p.name, value: String(p.id) })),
+        ];
+      }
+    } catch {
+      /* silent */
     }
-  } catch {}
-});
+  },
+);
 
 const columns = computed(() => [
   { title: t("common.agent"), key: "_agentName" },
@@ -253,7 +266,8 @@ const { handlePageChange, handleSearch } = bindLoadData(loadData, selectedAgentI
 
 const exportAllFn = createExportAllFn((p, limit) =>
   fetchBetList({
-    page: p, limit,
+    page: p,
+    limit,
     username: searchForm.username || undefined,
     serial_no: searchForm.serialNo || undefined,
     date: dateRange.value?.length === 2 ? `${dateRange.value[0]} - ${dateRange.value[1]}` : undefined,
@@ -262,7 +276,7 @@ const exportAllFn = createExportAllFn((p, limit) =>
     play_id: searchForm.play || undefined,
     status: searchForm.status || undefined,
     es: 1,
-  }).then(r => r.data.data),
+  }).then((r) => r.data.data),
 );
 
 function handleReset() {
@@ -282,63 +296,99 @@ onMounted(() => loadDropdownData());
   <div>
     <lay-card>
       <lay-field :title="t('betList.title')">
-      <div class="search-form-wrap">
-        <div class="layui-inline">
-          <span class="form-label">{{ t("common.agentLabel") }}</span>
-          <lay-select v-model="selectedAgentId" :style="{ width: agentWidth }">
-            <lay-select-option v-for="opt in agentOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
-          </lay-select>
+        <div class="search-form-wrap">
+          <div class="layui-inline">
+            <span class="form-label">{{ t("common.agentLabel") }}</span>
+            <lay-select v-model="selectedAgentId" :style="{ width: agentWidth }">
+              <lay-select-option
+                v-for="opt in agentOptions"
+                :key="opt.value"
+                :value="opt.value"
+                :label="opt.label"
+              />
+            </lay-select>
+          </div>
+          <div class="layui-inline">
+            <span class="form-label">{{ t("common.timeLabel") }}</span>
+            <lay-date-picker
+              v-model="dateRange"
+              range
+              single-panel
+              range-separator="-"
+              :placeholder="[t('common.dateStart'), t('common.dateEnd')]"
+            />
+          </div>
+          <div class="layui-inline">
+            <lay-select v-model="dateQuickSelect" :style="{ width: dateQuickWidth }">
+              <lay-select-option
+                v-for="opt in dateQuickOptions"
+                :key="opt.value"
+                :value="opt.value"
+                :label="opt.label"
+              />
+            </lay-select>
+          </div>
+          <div class="layui-inline">
+            <span class="form-label">{{ t("betList.userLabel") }} :</span>
+            <lay-input v-model="searchForm.username" :placeholder="t('betList.usernamePlaceholder')" />
+          </div>
+          <div class="layui-inline">
+            <span class="form-label">{{ t("betList.serialNoLabel") }}</span>
+            <lay-input v-model="searchForm.serialNo" :placeholder="t('betList.serialNoPlaceholder')" />
+          </div>
+          <div class="layui-inline">
+            <span class="form-label">{{ t("betList.gameLabel") }}</span>
+            <lay-select v-model="searchForm.lotteryType" :style="{ width: lotteryWidth }">
+              <lay-select-option
+                v-for="opt in lotteryOptions"
+                :key="opt.value"
+                :value="opt.value"
+                :label="opt.label"
+              />
+            </lay-select>
+          </div>
+          <div class="layui-inline">
+            <span class="form-label">{{ t("betList.gameTypeLabel") }}</span>
+            <lay-select v-model="searchForm.playType" :style="{ width: playTypeWidth }">
+              <lay-select-option
+                v-for="opt in playTypeOptions"
+                :key="opt.value"
+                :value="opt.value"
+                :label="opt.label"
+              />
+            </lay-select>
+          </div>
+          <div class="layui-inline">
+            <span class="form-label">{{ t("betList.playTypeLabel") }}</span>
+            <lay-select v-model="searchForm.play" :style="{ width: playWidth }">
+              <lay-select-option
+                v-for="opt in playOptions"
+                :key="opt.value"
+                :value="opt.value"
+                :label="opt.label"
+              />
+            </lay-select>
+          </div>
+          <div class="layui-inline">
+            <span class="form-label">{{ t("betList.statusLabel") }}</span>
+            <lay-select v-model="searchForm.status" :style="{ width: statusWidth }">
+              <lay-select-option
+                v-for="opt in statusOptions"
+                :key="opt.value"
+                :value="opt.value"
+                :label="opt.label"
+              />
+            </lay-select>
+          </div>
+          <div class="layui-inline">
+            <lay-button type="normal" @click="handleSearch">
+              <i class="layui-icon layui-icon-search" /> {{ t("common.search") }}
+            </lay-button>
+            <lay-button type="primary" @click="handleReset">
+              <i class="layui-icon layui-icon-refresh" /> {{ t("common.reset") }}
+            </lay-button>
+          </div>
         </div>
-        <div class="layui-inline">
-          <span class="form-label">{{ t("common.timeLabel") }}</span>
-          <lay-date-picker v-model="dateRange" range single-panel range-separator="-" :placeholder="[t('common.dateStart'), t('common.dateEnd')]" />
-        </div>
-        <div class="layui-inline">
-          <lay-select v-model="dateQuickSelect" :style="{ width: dateQuickWidth }">
-            <lay-select-option v-for="opt in dateQuickOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
-          </lay-select>
-        </div>
-        <div class="layui-inline">
-          <span class="form-label">{{ t("betList.userLabel") }} :</span>
-          <lay-input v-model="searchForm.username" :placeholder="t('betList.usernamePlaceholder')" />
-        </div>
-        <div class="layui-inline">
-          <span class="form-label">{{ t("betList.serialNoLabel") }}</span>
-          <lay-input v-model="searchForm.serialNo" :placeholder="t('betList.serialNoPlaceholder')" />
-        </div>
-        <div class="layui-inline">
-          <span class="form-label">{{ t("betList.gameLabel") }}</span>
-          <lay-select v-model="searchForm.lotteryType" :style="{ width: lotteryWidth }">
-            <lay-select-option v-for="opt in lotteryOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
-          </lay-select>
-        </div>
-        <div class="layui-inline">
-          <span class="form-label">{{ t("betList.gameTypeLabel") }}</span>
-          <lay-select v-model="searchForm.playType" :style="{ width: playTypeWidth }">
-            <lay-select-option v-for="opt in playTypeOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
-          </lay-select>
-        </div>
-        <div class="layui-inline">
-          <span class="form-label">{{ t("betList.playTypeLabel") }}</span>
-          <lay-select v-model="searchForm.play" :style="{ width: playWidth }">
-            <lay-select-option v-for="opt in playOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
-          </lay-select>
-        </div>
-        <div class="layui-inline">
-          <span class="form-label">{{ t("betList.statusLabel") }}</span>
-          <lay-select v-model="searchForm.status" :style="{ width: statusWidth }">
-            <lay-select-option v-for="opt in statusOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
-          </lay-select>
-        </div>
-        <div class="layui-inline">
-          <lay-button type="normal" @click="handleSearch">
-            <i class="layui-icon layui-icon-search"></i> {{ t("common.search") }}
-          </lay-button>
-          <lay-button type="primary" @click="handleReset">
-            <i class="layui-icon layui-icon-refresh"></i> {{ t("common.reset") }}
-          </lay-button>
-        </div>
-      </div>
       </lay-field>
 
       <div class="table-container">
@@ -352,19 +402,31 @@ onMounted(() => loadDropdownData());
           :export-all-fn="canExport ? exportAllFn : undefined"
           @change="handlePageChange"
         >
-          <template v-slot:toolbar>
+          <template #toolbar>
             <CookieBadge />
           </template>
           <template #num="{ row, column }">
-            <lay-count-up :end-val="Number(row[column.key]) || 0" :duration="0" :decimal-places="String(row[column.key]).includes('.') ? 2 : 0" :use-grouping="false" />
+            <lay-count-up
+              :end-val="Number(row[column.key]) || 0"
+              :duration="0"
+              :decimal-places="String(row[column.key]).includes('.') ? 2 : 0"
+              :use-grouping="false"
+            />
           </template>
         </lay-table>
         <lay-table :columns="summaryColumns" :data-source="summaryData" :default-toolbar="defaultToolbar">
-          <template v-slot:toolbar>
-            <lay-button size="xs" type="normal"><b>{{ t("common.summaryData") }}</b></lay-button>
+          <template #toolbar>
+            <lay-button size="xs" type="normal">
+              <b>{{ t("common.summaryData") }}</b>
+            </lay-button>
           </template>
           <template #sumNum="{ row, column }">
-            <lay-count-up :end-val="Number(row[column.key]) || 0" :duration="0" :decimal-places="String(row[column.key]).includes('.') ? 4 : 0" :use-grouping="false" />
+            <lay-count-up
+              :end-val="Number(row[column.key]) || 0"
+              :duration="0"
+              :decimal-places="String(row[column.key]).includes('.') ? 4 : 0"
+              :use-grouping="false"
+            />
           </template>
         </lay-table>
       </div>

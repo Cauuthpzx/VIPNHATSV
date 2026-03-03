@@ -1,5 +1,4 @@
 import Fastify from "fastify";
-import { appConfig } from "./config/app.js";
 
 // Plugins
 import prismaPlugin from "./plugins/prisma.js";

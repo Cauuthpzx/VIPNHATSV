@@ -123,23 +123,31 @@ const logoutAllLoading = ref(false);
 async function handleLogoutAll() {
   layer.confirm(t("profile.logoutAllConfirm"), {
     btn: [
-      { text: t("common.confirm"), callback: async (id: string) => {
-        layer.close(id);
-        logoutAllLoading.value = true;
-        try {
-          await logoutAllDevices();
-          layer.msg(t("profile.logoutAllSuccess"), { icon: 1 });
-          setTimeout(() => {
-            authStore.logout();
-            router.push("/login");
-          }, 1000);
-        } catch {
-          layer.msg(t("common.operationFailed"), { icon: 2 });
-        } finally {
-          logoutAllLoading.value = false;
-        }
-      }},
-      { text: t("common.cancel"), callback: (id: string) => { layer.close(id); } },
+      {
+        text: t("common.confirm"),
+        callback: async (id: string) => {
+          layer.close(id);
+          logoutAllLoading.value = true;
+          try {
+            await logoutAllDevices();
+            layer.msg(t("profile.logoutAllSuccess"), { icon: 1 });
+            setTimeout(() => {
+              authStore.logout();
+              router.push("/login");
+            }, 1000);
+          } catch {
+            layer.msg(t("common.operationFailed"), { icon: 2 });
+          } finally {
+            logoutAllLoading.value = false;
+          }
+        },
+      },
+      {
+        text: t("common.cancel"),
+        callback: (id: string) => {
+          layer.close(id);
+        },
+      },
     ],
   });
 }
@@ -201,17 +209,15 @@ onMounted(() => {
             {{ t("profile.accountInfo") }}
           </template>
           <div class="profile-card">
-            <div class="profile-avatar">{{ avatarLetter }}</div>
-
-            <div class="profile-name-row" v-if="!editing">
-              <span class="profile-name">{{ authStore.user?.name || "—" }}</span>
-              <lay-icon
-                type="layui-icon-edit"
-                class="profile-edit-icon"
-                @click="startEdit"
-              />
+            <div class="profile-avatar">
+              {{ avatarLetter }}
             </div>
-            <div class="profile-name-edit" v-else>
+
+            <div v-if="!editing" class="profile-name-row">
+              <span class="profile-name">{{ authStore.user?.name || "—" }}</span>
+              <lay-icon type="layui-icon-edit" class="profile-edit-icon" @click="startEdit" />
+            </div>
+            <div v-else class="profile-name-edit">
               <lay-input
                 v-model="editName"
                 :placeholder="t('profile.editNamePlaceholder')"
@@ -219,8 +225,12 @@ onMounted(() => {
                 style="width: 180px"
                 @keyup.enter="saveName"
               />
-              <lay-button type="normal" size="xs" :loading="saving" @click="saveName">{{ t("common.save") }}</lay-button>
-              <lay-button size="xs" @click="cancelEdit">{{ t("common.cancel") }}</lay-button>
+              <lay-button type="normal" size="xs" :loading="saving" @click="saveName">
+                {{ t("common.save") }}
+              </lay-button>
+              <lay-button size="xs" @click="cancelEdit">
+                {{ t("common.cancel") }}
+              </lay-button>
             </div>
 
             <lay-tag type="normal" color="#16baaa" style="margin-top: 8px">
@@ -232,7 +242,9 @@ onMounted(() => {
             <div class="profile-detail">
               <div class="detail-row">
                 <span class="detail-label">{{ t("profile.account") }}</span>
-                <span class="detail-value" style="font-weight: 600">{{ authStore.user?.username || "—" }}</span>
+                <span class="detail-value" style="font-weight: 600">{{
+                  authStore.user?.username || "—"
+                }}</span>
               </div>
               <div class="detail-row">
                 <span class="detail-label">{{ t("profile.email") }}</span>
@@ -244,13 +256,15 @@ onMounted(() => {
               </div>
               <div class="detail-row">
                 <span class="detail-label">{{ t("profile.status") }}</span>
-                <lay-tag type="normal" color="#16baaa" size="sm">{{ t("common.online") }}</lay-tag>
+                <lay-tag type="normal" color="#16baaa" size="sm">
+                  {{ t("common.online") }}
+                </lay-tag>
               </div>
-              <div class="detail-row" v-if="lastLoginAt">
+              <div v-if="lastLoginAt" class="detail-row">
                 <span class="detail-label">{{ t("profile.lastLogin") }}</span>
                 <span class="detail-value">{{ lastLoginAt }}</span>
               </div>
-              <div class="detail-row" v-if="lastLoginIp">
+              <div v-if="lastLoginIp" class="detail-row">
                 <span class="detail-label">{{ t("profile.loginIp") }}</span>
                 <span class="detail-value detail-id">{{ lastLoginIp }}</span>
               </div>
@@ -268,14 +282,21 @@ onMounted(() => {
             {{ t("profile.agentSettings") }}
           </template>
           <lay-row :space="12">
-            <lay-col :md="12" :xs="24" v-for="action in quickActions" :key="action.path">
+            <lay-col v-for="action in quickActions" :key="action.path" :md="12" :xs="24">
               <div class="quick-action" @click="router.push(action.path)">
-                <div class="quick-action-icon" :style="{ background: action.color + '15', color: action.color }">
+                <div
+                  class="quick-action-icon"
+                  :style="{ background: action.color + '15', color: action.color }"
+                >
                   <lay-icon :type="action.icon" :size="24" />
                 </div>
                 <div>
-                  <div class="quick-action-title">{{ action.title }}</div>
-                  <div class="quick-action-desc">{{ action.desc }}</div>
+                  <div class="quick-action-title">
+                    {{ action.title }}
+                  </div>
+                  <div class="quick-action-desc">
+                    {{ action.desc }}
+                  </div>
                 </div>
                 <lay-icon type="layui-icon-right" class="quick-action-arrow" />
               </div>
@@ -292,19 +313,37 @@ onMounted(() => {
           <div class="sys-pw-form">
             <div class="sys-pw-row">
               <lay-icon type="layui-icon-password" :size="18" class="sys-pw-icon" />
-              <lay-input v-model="sysForm.oldPassword" type="password" :placeholder="t('profile.currentPasswordPlaceholder')" />
+              <lay-input
+                v-model="sysForm.oldPassword"
+                type="password"
+                :placeholder="t('profile.currentPasswordPlaceholder')"
+              />
             </div>
             <div class="sys-pw-row">
               <lay-icon type="layui-icon-key" :size="18" class="sys-pw-icon" />
-              <lay-input v-model="sysForm.newPassword" type="password" :placeholder="t('profile.newPasswordPlaceholder')" />
+              <lay-input
+                v-model="sysForm.newPassword"
+                type="password"
+                :placeholder="t('profile.newPasswordPlaceholder')"
+              />
             </div>
             <div class="sys-pw-row">
               <lay-icon type="layui-icon-ok-circle" :size="18" class="sys-pw-icon" />
-              <lay-input v-model="sysForm.confirmPassword" type="password" :placeholder="t('profile.confirmPasswordPlaceholder')" />
+              <lay-input
+                v-model="sysForm.confirmPassword"
+                type="password"
+                :placeholder="t('profile.confirmPasswordPlaceholder')"
+              />
             </div>
             <div class="sys-pw-actions">
-              <lay-button type="normal" :loading="sysSubmitting" @click="handleSysPasswordChange">{{ t("profile.agree") }}</lay-button>
-              <lay-button @click="Object.assign(sysForm, { oldPassword: '', newPassword: '', confirmPassword: '' })">{{ t("profile.cancelBtn") }}</lay-button>
+              <lay-button type="normal" :loading="sysSubmitting" @click="handleSysPasswordChange">
+                {{ t("profile.agree") }}
+              </lay-button>
+              <lay-button
+                @click="Object.assign(sysForm, { oldPassword: '', newPassword: '', confirmPassword: '' })"
+              >
+                {{ t("profile.cancelBtn") }}
+              </lay-button>
             </div>
           </div>
         </lay-card>
@@ -314,33 +353,33 @@ onMounted(() => {
           <template #title>
             <lay-icon type="layui-icon-cellphone" style="margin-right: 6px" />
             {{ t("profile.activeSessions") }}
-            <lay-button
-              size="xs"
-              style="margin-left: 12px"
-              @click="loadSessions"
-              :loading="sessionsLoading"
-            >{{ t("profile.refreshBtn") }}</lay-button>
+            <lay-button size="xs" style="margin-left: 12px" :loading="sessionsLoading" @click="loadSessions">
+              {{ t("profile.refreshBtn") }}
+            </lay-button>
           </template>
           <div class="sessions-list">
-            <div v-if="sessionsLoading && !sessions.length" style="padding: 20px; text-align: center; color: #999;">
+            <div
+              v-if="sessionsLoading && !sessions.length"
+              style="padding: 20px; text-align: center; color: #999"
+            >
               {{ t("common.loading") }}
             </div>
-            <div v-else-if="!sessions.length" style="padding: 20px; text-align: center; color: #999;">
+            <div v-else-if="!sessions.length" style="padding: 20px; text-align: center; color: #999">
               {{ t("profile.noSessions") }}
             </div>
-            <div
-              v-for="session in sessions"
-              :key="session.id"
-              class="session-item"
-            >
+            <div v-for="session in sessions" :key="session.id" class="session-item">
               <div class="session-info">
-                <div class="session-browser">{{ parseUA(session.userAgent) }}</div>
+                <div class="session-browser">
+                  {{ parseUA(session.userAgent) }}
+                </div>
                 <div class="session-meta">
                   <span v-if="session.ipAddress">IP: {{ session.ipAddress }}</span>
                   <span>{{ formatDate(session.createdAt) }}</span>
                 </div>
               </div>
-              <lay-button size="xs" type="warm" @click="handleRevokeSession(session.id)">{{ t("profile.revokeSession") }}</lay-button>
+              <lay-button size="xs" type="warm" @click="handleRevokeSession(session.id)">
+                {{ t("profile.revokeSession") }}
+              </lay-button>
             </div>
           </div>
         </lay-card>
@@ -351,13 +390,19 @@ onMounted(() => {
             <lay-icon type="layui-icon-auz" style="margin-right: 6px" />
             {{ t("profile.security") }}
           </template>
-          <div style="padding: 12px 0;">
+          <div style="padding: 12px 0">
             <div class="security-row">
               <div>
-                <div class="security-title">{{ t("profile.logoutAllDevices") }}</div>
-                <div class="security-desc">{{ t("profile.logoutAllDesc") }}</div>
+                <div class="security-title">
+                  {{ t("profile.logoutAllDevices") }}
+                </div>
+                <div class="security-desc">
+                  {{ t("profile.logoutAllDesc") }}
+                </div>
               </div>
-              <lay-button type="danger" :loading="logoutAllLoading" @click="handleLogoutAll">{{ t("profile.logoutAllBtn") }}</lay-button>
+              <lay-button type="danger" :loading="logoutAllLoading" @click="handleLogoutAll">
+                {{ t("profile.logoutAllBtn") }}
+              </lay-button>
             </div>
           </div>
         </lay-card>

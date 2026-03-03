@@ -158,15 +158,25 @@ const panelTitle = computed(() => {
             <button
               class="hub-notify-filter-btn"
               :class="{ active: filter === 'all' && !showSettings }"
-              @click="filter = 'all'; showSettings = false"
-            >{{ t('notification.all') }}</button>
+              @click="
+                filter = 'all';
+                showSettings = false;
+              "
+            >
+              {{ t("notification.all") }}
+            </button>
             <button
               class="hub-notify-filter-btn"
               :class="{ active: filter === 'unread' && !showSettings }"
-              @click="filter = 'unread'; showSettings = false"
+              @click="
+                filter = 'unread';
+                showSettings = false;
+              "
             >
-              {{ t('notification.unread') }}
-              <span v-if="store.unreadCount > 0" class="hub-notify-filter-count">{{ store.unreadCount }}</span>
+              {{ t("notification.unread") }}
+              <span v-if="store.unreadCount > 0" class="hub-notify-filter-count">{{
+                store.unreadCount
+              }}</span>
             </button>
           </div>
           <div class="hub-notify-actions">
@@ -211,33 +221,34 @@ const panelTitle = computed(() => {
 
         <!-- Settings view -->
         <div v-if="showSettings" class="hub-notify-settings">
-          <div class="hub-notify-settings-title">{{ t('notification.typeSettings') }}</div>
-          <div
-            v-for="tc in NOTIF_TYPE_CONFIG"
-            :key="tc.type"
-            class="hub-notify-settings-row"
-          >
+          <div class="hub-notify-settings-title">
+            {{ t("notification.typeSettings") }}
+          </div>
+          <div v-for="tc in NOTIF_TYPE_CONFIG" :key="tc.type" class="hub-notify-settings-row">
             <span class="hub-notify-settings-dot" :style="{ background: tc.color }" />
             <span class="hub-notify-settings-icon">{{ tc.icon }}</span>
             <span class="hub-notify-settings-label">{{ t(tc.labelKey) }}</span>
             <lay-switch
               :model-value="store.enabledTypes[tc.type]"
-              @update:model-value="store.toggleType(tc.type)"
               size="xs"
+              @update:model-value="store.toggleType(tc.type)"
             />
           </div>
         </div>
 
         <!-- Loading -->
         <div v-else-if="store.loading && store.notifications.length === 0" class="hub-notify-empty">
-          <i class="layui-icon layui-icon-loading layui-anim layui-anim-rotate layui-anim-loop" style="font-size: 20px; color: #009688;" />
-          <span>{{ t('common.loading') }}</span>
+          <i
+            class="layui-icon layui-icon-loading layui-anim layui-anim-rotate layui-anim-loop"
+            style="font-size: 20px; color: #009688"
+          />
+          <span>{{ t("common.loading") }}</span>
         </div>
 
         <!-- Empty -->
         <div v-else-if="isEmpty" class="hub-notify-empty">
-          <i class="layui-icon layui-icon-face-surprised" style="font-size: 36px; color: #d9d9d9;" />
-          <span>{{ t('notification.noNotifications') }}</span>
+          <i class="layui-icon layui-icon-face-surprised" style="font-size: 36px; color: #d9d9d9" />
+          <span>{{ t("notification.noNotifications") }}</span>
         </div>
 
         <!-- Notification list -->
@@ -255,22 +266,36 @@ const panelTitle = computed(() => {
             <div class="hub-notify-item-body">
               <div class="hub-notify-item-line1">
                 <span class="hub-notify-item-agent-tag">{{ n.agentName || "—" }}</span>
-                <span class="hub-notify-item-dash">{{ t('notification.agentSuffix') }}</span>
-                <span class="hub-notify-item-verb">{{ n.type === "member_new" ? t('notification.justGot') : t('notification.justLost') }} {{ t('notification.customer') }}</span>
+                <span class="hub-notify-item-dash">{{ t("notification.agentSuffix") }}</span>
+                <span class="hub-notify-item-verb"
+                  >{{ n.type === "member_new" ? t("notification.justGot") : t("notification.justLost") }}
+                  {{ t("notification.customer") }}</span
+                >
               </div>
               <div class="hub-notify-item-line2">
                 <strong class="hub-notify-item-username">{{ n.username }}</strong>
-                <span v-if="n.money" class="hub-notify-item-money">{{ Number(n.money).toLocaleString("vi-VN") }} ₫</span>
+                <span v-if="n.money" class="hub-notify-item-money"
+                  >{{ Number(n.money).toLocaleString("vi-VN") }} ₫</span
+                >
                 <span class="hub-notify-item-time">{{ formatDateTime(n.createdAt) }}</span>
-                <a href="javascript:;" class="hub-notify-item-detail" @click="openDetail(n, $event)">{{ t('notification.memberDetailTitle') }}</a>
+                <a href="javascript:;" class="hub-notify-item-detail" @click="openDetail(n, $event)">{{
+                  t("notification.memberDetailTitle")
+                }}</a>
               </div>
             </div>
           </div>
 
           <!-- Load more -->
           <div v-if="store.hasMore" class="hub-notify-load-more">
-            <button @click.stop="store.loadMore()" :disabled="store.loadingMore">
-              {{ store.loadingMore ? t('common.loading') : t('notification.loadMore', { current: store.notifications.length, total: store.totalCount }) }}
+            <button :disabled="store.loadingMore" @click.stop="store.loadMore()">
+              {{
+                store.loadingMore
+                  ? t("common.loading")
+                  : t("notification.loadMore", {
+                      current: store.notifications.length,
+                      total: store.totalCount,
+                    })
+              }}
             </button>
           </div>
         </div>
@@ -280,7 +305,11 @@ const panelTitle = computed(() => {
     <!-- Member detail dialog -->
     <lay-layer
       v-model="detailVisible"
-      :title="detailNotif ? (detailNotif.agentName ? detailNotif.agentName + ' › ' : '') + detailNotif.username : t('notification.memberDetailTitle')"
+      :title="
+        detailNotif
+          ? (detailNotif.agentName ? detailNotif.agentName + ' › ' : '') + detailNotif.username
+          : t('notification.memberDetailTitle')
+      "
       :area="['440px', 'auto']"
       :shade-close="true"
       :move="true"
@@ -289,19 +318,27 @@ const panelTitle = computed(() => {
       <div v-if="detailNotif" class="hub-member-detail">
         <div v-if="memberLoading" class="hub-member-loading">
           <i class="layui-icon layui-icon-loading layui-anim layui-anim-rotate layui-anim-loop" />
-          {{ t('notification.memberDetailLoading') }}
+          {{ t("notification.memberDetailLoading") }}
         </div>
 
         <table v-if="memberInfo" class="hub-member-table">
           <tbody>
             <tr v-for="field in memberFields" :key="field.key">
-              <td class="hub-member-label">{{ t(field.labelKey) }}</td>
+              <td class="hub-member-label">
+                {{ t(field.labelKey) }}
+              </td>
               <td>
                 <template v-if="field.key === 'username'">
                   <strong>{{ memberInfo[field.key] ?? "-" }}</strong>
                 </template>
-                <template v-else-if="field.key === 'money' || field.key === 'depositAmount' || field.key === 'withdrawalAmount'">
-                  <span class="hub-member-money">{{ formatFieldValue(field.key, memberInfo[field.key]) }}</span>
+                <template
+                  v-else-if="
+                    field.key === 'money' || field.key === 'depositAmount' || field.key === 'withdrawalAmount'
+                  "
+                >
+                  <span class="hub-member-money">{{
+                    formatFieldValue(field.key, memberInfo[field.key])
+                  }}</span>
                 </template>
                 <template v-else>
                   {{ formatFieldValue(field.key, memberInfo[field.key]) }}
@@ -312,7 +349,7 @@ const panelTitle = computed(() => {
         </table>
 
         <div v-if="!memberLoading && !memberInfo" class="hub-member-empty">
-          {{ t('notification.memberDetailEmpty') }}
+          {{ t("notification.memberDetailEmpty") }}
         </div>
       </div>
     </lay-layer>
@@ -356,12 +393,24 @@ const panelTitle = computed(() => {
 }
 
 @keyframes bell-ring {
-  0% { transform: rotate(0); }
-  15% { transform: rotate(14deg); }
-  30% { transform: rotate(-12deg); }
-  45% { transform: rotate(8deg); }
-  60% { transform: rotate(-4deg); }
-  100% { transform: rotate(0); }
+  0% {
+    transform: rotate(0);
+  }
+  15% {
+    transform: rotate(14deg);
+  }
+  30% {
+    transform: rotate(-12deg);
+  }
+  45% {
+    transform: rotate(8deg);
+  }
+  60% {
+    transform: rotate(-4deg);
+  }
+  100% {
+    transform: rotate(0);
+  }
 }
 
 .hub-notify-badge {
@@ -399,7 +448,9 @@ const panelTitle = computed(() => {
 /* Fade transition */
 .hub-notify-fade-enter-active,
 .hub-notify-fade-leave-active {
-  transition: opacity 0.15s, transform 0.15s;
+  transition:
+    opacity 0.15s,
+    transform 0.15s;
 }
 .hub-notify-fade-enter-from,
 .hub-notify-fade-leave-to {

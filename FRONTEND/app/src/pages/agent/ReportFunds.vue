@@ -12,7 +12,8 @@ import CookieBadge from "@/components/CookieBadge.vue";
 
 const { t } = useI18n();
 
-const { dateRange, dateQuickSelect, dateQuickOptions, dateQuickWidth, resetDateRange } = useDateRange("today");
+const { dateRange, dateQuickSelect, dateQuickOptions, dateQuickWidth, resetDateRange } =
+  useDateRange("today");
 const { dataSource, loading, page, setLoading, bindLoadData, guardStale } = useListPage();
 const { selectedAgentId, agentOptions, agentWidth } = useAgentFilter();
 const { defaultToolbar, canExport } = useToolbarPermission();
@@ -75,7 +76,17 @@ async function loadData() {
     if (res.data.data.totalData) {
       summaryData.value = [res.data.data.totalData as any];
     } else {
-      summaryData.value = [{ total_deposit_amount: "0.0000", total_withdrawal_amount: "0.0000", total_charge_fee: "0.0000", total_agent_commission: "0.0000", total_promotion: "0.0000", total_third_rebate: "0.0000", total_third_activity_amount: "0.0000" }];
+      summaryData.value = [
+        {
+          total_deposit_amount: "0.0000",
+          total_withdrawal_amount: "0.0000",
+          total_charge_fee: "0.0000",
+          total_agent_commission: "0.0000",
+          total_promotion: "0.0000",
+          total_third_rebate: "0.0000",
+          total_third_activity_amount: "0.0000",
+        },
+      ];
     }
   } catch {
     if (!isStale()) layer.msg(t("common.errorLoad"), { icon: 2 });
@@ -88,10 +99,11 @@ const { handlePageChange, handleSearch } = bindLoadData(loadData, selectedAgentI
 
 const exportAllFn = createExportAllFn((p, limit) =>
   fetchReportFunds({
-    page: p, limit,
+    page: p,
+    limit,
     username: searchForm.username || undefined,
     date: dateRange.value?.length === 2 ? `${dateRange.value[0]} - ${dateRange.value[1]}` : undefined,
-  }).then(r => r.data.data),
+  }).then((r) => r.data.data),
 );
 
 function handleReset() {
@@ -104,35 +116,51 @@ function handleReset() {
   <div>
     <lay-card>
       <lay-field :title="t('reportFunds.title')">
-      <div class="search-form-wrap">
-        <div class="layui-inline">
-          <span class="form-label">{{ t("common.agentLabel") }}</span>
-          <lay-select v-model="selectedAgentId" :style="{ width: agentWidth }">
-            <lay-select-option v-for="opt in agentOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
-          </lay-select>
+        <div class="search-form-wrap">
+          <div class="layui-inline">
+            <span class="form-label">{{ t("common.agentLabel") }}</span>
+            <lay-select v-model="selectedAgentId" :style="{ width: agentWidth }">
+              <lay-select-option
+                v-for="opt in agentOptions"
+                :key="opt.value"
+                :value="opt.value"
+                :label="opt.label"
+              />
+            </lay-select>
+          </div>
+          <div class="layui-inline">
+            <span class="form-label">{{ t("common.timeLabel") }}</span>
+            <lay-date-picker
+              v-model="dateRange"
+              range
+              single-panel
+              range-separator="-"
+              :placeholder="[t('common.dateStart'), t('common.dateEnd')]"
+            />
+          </div>
+          <div class="layui-inline">
+            <lay-select v-model="dateQuickSelect" :style="{ width: dateQuickWidth }">
+              <lay-select-option
+                v-for="opt in dateQuickOptions"
+                :key="opt.value"
+                :value="opt.value"
+                :label="opt.label"
+              />
+            </lay-select>
+          </div>
+          <div class="layui-inline">
+            <span class="form-label">{{ t("reportFunds.accountLabel") }}</span>
+            <lay-input v-model="searchForm.username" :placeholder="t('reportFunds.accountPlaceholder')" />
+          </div>
+          <div class="layui-inline">
+            <lay-button type="normal" @click="handleSearch">
+              <i class="layui-icon layui-icon-search" /> {{ t("common.search") }}
+            </lay-button>
+            <lay-button type="primary" @click="handleReset">
+              <i class="layui-icon layui-icon-refresh" /> {{ t("common.reset") }}
+            </lay-button>
+          </div>
         </div>
-        <div class="layui-inline">
-          <span class="form-label">{{ t("common.timeLabel") }}</span>
-          <lay-date-picker v-model="dateRange" range single-panel range-separator="-" :placeholder="[t('common.dateStart'), t('common.dateEnd')]" />
-        </div>
-        <div class="layui-inline">
-          <lay-select v-model="dateQuickSelect" :style="{ width: dateQuickWidth }">
-            <lay-select-option v-for="opt in dateQuickOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
-          </lay-select>
-        </div>
-        <div class="layui-inline">
-          <span class="form-label">{{ t("reportFunds.accountLabel") }}</span>
-          <lay-input v-model="searchForm.username" :placeholder="t('reportFunds.accountPlaceholder')" />
-        </div>
-        <div class="layui-inline">
-          <lay-button type="normal" @click="handleSearch">
-            <i class="layui-icon layui-icon-search"></i> {{ t("common.search") }}
-          </lay-button>
-          <lay-button type="primary" @click="handleReset">
-            <i class="layui-icon layui-icon-refresh"></i> {{ t("common.reset") }}
-          </lay-button>
-        </div>
-      </div>
       </lay-field>
 
       <div class="table-container">
@@ -146,19 +174,31 @@ function handleReset() {
           :export-all-fn="canExport ? exportAllFn : undefined"
           @change="handlePageChange"
         >
-          <template v-slot:toolbar>
+          <template #toolbar>
             <CookieBadge />
           </template>
           <template #num="{ row, column }">
-            <lay-count-up :end-val="Number(row[column.key]) || 0" :duration="0" :decimal-places="String(row[column.key]).includes('.') ? 2 : 0" :use-grouping="false" />
+            <lay-count-up
+              :end-val="Number(row[column.key]) || 0"
+              :duration="0"
+              :decimal-places="String(row[column.key]).includes('.') ? 2 : 0"
+              :use-grouping="false"
+            />
           </template>
         </lay-table>
         <lay-table :columns="summaryColumns" :data-source="summaryData" :default-toolbar="defaultToolbar">
-          <template v-slot:toolbar>
-            <lay-button size="xs" type="normal"><b>{{ t("common.summaryData") }}</b></lay-button>
+          <template #toolbar>
+            <lay-button size="xs" type="normal">
+              <b>{{ t("common.summaryData") }}</b>
+            </lay-button>
           </template>
           <template #sumNum="{ row, column }">
-            <lay-count-up :end-val="Number(row[column.key]) || 0" :duration="0" :decimal-places="String(row[column.key]).includes('.') ? 4 : 0" :use-grouping="false" />
+            <lay-count-up
+              :end-val="Number(row[column.key]) || 0"
+              :duration="0"
+              :decimal-places="String(row[column.key]).includes('.') ? 4 : 0"
+              :use-grouping="false"
+            />
           </template>
         </lay-table>
       </div>

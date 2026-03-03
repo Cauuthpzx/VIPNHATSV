@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { Prisma } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
 import { LRUCache } from "../../utils/lruCache.js";
 
 // Dashboard L1 cache — 10s TTL, avoids re-querying DB on rapid refreshes
@@ -17,12 +17,6 @@ export function destroyDashboardL1Cache(): void {
 
 function toDateStr(d: Date): string {
   return d.toISOString().slice(0, 10);
-}
-
-function prevDay(dateStr: string): string {
-  const d = new Date(dateStr + "T00:00:00Z");
-  d.setUTCDate(d.getUTCDate() - 1);
-  return toDateStr(d);
 }
 
 function last7Days(): string[] {
@@ -200,7 +194,7 @@ export async function getDashboardSummary(
     agentList,
     // Combined: agent funds range — deposit+withdrawal (1 query, was 2)
     agentFundsRange,
-    agentWinLose,
+    _agentWinLose,
     recentNotifs,
     userInfo,
     agentStatuses,
@@ -305,7 +299,13 @@ export async function getDashboardSummary(
     app.prisma.refreshToken.findMany({
       take: 20,
       orderBy: { createdAt: "desc" },
-      select: { id: true, ipAddress: true, userAgent: true, createdAt: true, user: { select: { username: true } } },
+      select: {
+        id: true,
+        ipAddress: true,
+        userAgent: true,
+        createdAt: true,
+        user: { select: { username: true } },
+      },
     }),
     // Online member counts (10 days)
     app.prisma.$queryRaw<{ agent_id: string; report_date: string; cnt: bigint }[]>`
@@ -365,7 +365,7 @@ export async function getDashboardSummary(
   ]);
 
   // Build KPI cards — using combined query results
-  const toNum = (v: Prisma.Decimal | null | undefined): number => v ? Number(v) : 0;
+  const toNum = (v: Prisma.Decimal | null | undefined): number => (v ? Number(v) : 0);
   const toInt = (v: number | null | undefined): number => v ?? 0;
 
   // Parse combined notification counts

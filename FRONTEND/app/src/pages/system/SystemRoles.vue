@@ -6,13 +6,7 @@ import { useAuthStore } from "@/stores/auth";
 import { PERMISSIONS, PERMISSION_LABEL_KEYS, ALL_PERMISSIONS } from "@/constants/permissions";
 import { buildPermissionTreeData, extractPermissions } from "@/constants/permissionTree";
 import { useToolbarPermission } from "@/composables/useToolbarPermission";
-import {
-  fetchRoles,
-  createRole,
-  updateRole,
-  deleteRole,
-  type SystemRole,
-} from "@/api/services/system";
+import { fetchRoles, createRole, updateRole, deleteRole, type SystemRole } from "@/api/services/system";
 
 const { t } = useI18n();
 const authStore = useAuthStore();
@@ -230,19 +224,14 @@ onMounted(() => loadData());
             :default-toolbar="defaultToolbar"
             :data-source="dataSource"
           >
-            <template v-slot:toolbar>
+            <template #toolbar>
               <lay-button v-if="canWrite" type="normal" size="xs" @click="openCreate">
-                <i class="layui-icon layui-icon-addition"></i> {{ t('systemRoles.addNew') }}
+                <i class="layui-icon layui-icon-addition" /> {{ t("systemRoles.addNew") }}
               </lay-button>
             </template>
 
             <template #type="{ row }">
-              <lay-tag
-                :color="getTypeColor(row.type)"
-                variant="light"
-                size="sm"
-                bordered
-              >
+              <lay-tag :color="getTypeColor(row.type)" variant="light" size="sm" bordered>
                 {{ row.type }}
               </lay-tag>
             </template>
@@ -273,28 +262,20 @@ onMounted(() => loadData());
 
             <template #action="{ row }">
               <div class="action-btns">
-                <lay-button
-                  v-if="canWrite"
-                  size="xs"
-                  type="normal"
-                  @click="openEdit(row)"
-                >
-                  {{ t('common.edit') }}
+                <lay-button v-if="canWrite" size="xs" type="normal" @click="openEdit(row)">
+                  {{ t("common.edit") }}
                 </lay-button>
-                <lay-button
-                  v-if="canWrite"
-                  size="xs"
-                  type="warm"
-                  @click="openPermissions(row)"
-                >
-                  {{ t('systemRoles.assignPermissions') }}
+                <lay-button v-if="canWrite" size="xs" type="warm" @click="openPermissions(row)">
+                  {{ t("systemRoles.assignPermissions") }}
                 </lay-button>
                 <lay-popconfirm
                   v-if="canDelete"
                   :content="t('systemRoles.confirmDelete')"
                   @confirm="handleDelete(row)"
                 >
-                  <lay-button size="xs" type="danger">{{ t('common.delete') }}</lay-button>
+                  <lay-button size="xs" type="danger">
+                    {{ t("common.delete") }}
+                  </lay-button>
                 </lay-popconfirm>
               </div>
             </template>
@@ -311,16 +292,16 @@ onMounted(() => loadData());
       :shade-close="false"
       :move="true"
     >
-      <div style="padding: 20px 30px;">
+      <div style="padding: 20px 30px">
         <div class="layui-form-item">
-          <label class="layui-form-label">{{ t('systemRoles.name') }}</label>
+          <label class="layui-form-label">{{ t("systemRoles.name") }}</label>
           <div class="layui-input-block">
             <lay-input v-model="formData.name" :placeholder="t('systemRoles.rolePlaceholder')" />
           </div>
         </div>
 
         <div class="layui-form-item">
-          <label class="layui-form-label">{{ t('systemRoles.type') }}</label>
+          <label class="layui-form-label">{{ t("systemRoles.type") }}</label>
           <div class="layui-input-block">
             <lay-select v-model="formData.type" :placeholder="t('systemRoles.selectType')">
               <lay-select-option
@@ -334,16 +315,18 @@ onMounted(() => loadData());
         </div>
 
         <div class="layui-form-item">
-          <label class="layui-form-label">{{ t('systemRoles.level') }}</label>
+          <label class="layui-form-label">{{ t("systemRoles.level") }}</label>
           <div class="layui-input-block">
             <lay-slider v-model="formData.level" :min="0" :max="100" :step="1" />
           </div>
         </div>
 
-        <div class="layui-form-item" style="text-align: right; margin-bottom: 0;">
-          <lay-button @click="showModal = false">{{ t('common.cancel') }}</lay-button>
+        <div class="layui-form-item" style="text-align: right; margin-bottom: 0">
+          <lay-button @click="showModal = false">
+            {{ t("common.cancel") }}
+          </lay-button>
           <lay-button type="normal" :loading="submitting" @click="handleSubmit">
-            {{ isEdit ? t('common.update') : t('common.create') }}
+            {{ isEdit ? t("common.update") : t("common.create") }}
           </lay-button>
         </div>
       </div>
@@ -357,10 +340,10 @@ onMounted(() => loadData());
       :shade-close="false"
       :move="true"
     >
-      <div style="padding: 20px 24px;">
+      <div style="padding: 20px 24px">
         <div class="perm-header">
           <lay-checkbox
-            :modelValue="isAllChecked"
+            :model-value="isAllChecked"
             :is-indeterminate="isIndeterminate"
             skin="primary"
             :label="t('systemRoles.allPermissions')"
@@ -373,19 +356,15 @@ onMounted(() => loadData());
 
         <div class="perm-tree-wrapper">
           <lay-tree
+            v-model:checked-keys="treeCheckedKeys"
             :data="permissionTreeData"
             :show-checkbox="true"
             :show-line="false"
             :collapse-transition="true"
-            v-model:checked-keys="treeCheckedKeys"
           >
             <template #title="{ data }">
               <span class="perm-tree-node" :class="{ 'is-group': String(data.id).startsWith('group:') }">
-                <i
-                  v-if="data.icon"
-                  :class="['layui-icon', data.icon]"
-                  class="perm-tree-icon"
-                ></i>
+                <i v-if="data.icon" :class="['layui-icon', data.icon]" class="perm-tree-icon" />
                 <span>{{ data.title }}</span>
                 <lay-tag
                   v-if="!String(data.id).startsWith('group:')"
@@ -400,10 +379,12 @@ onMounted(() => loadData());
           </lay-tree>
         </div>
 
-        <div style="text-align: right; margin-top: 16px;">
-          <lay-button @click="showPermModal = false">{{ t('common.cancel') }}</lay-button>
+        <div style="text-align: right; margin-top: 16px">
+          <lay-button @click="showPermModal = false">
+            {{ t("common.cancel") }}
+          </lay-button>
           <lay-button type="normal" :loading="permSubmitting" @click="savePermissions">
-            {{ t('systemRoles.savePermissions') }}
+            {{ t("systemRoles.savePermissions") }}
           </lay-button>
         </div>
       </div>

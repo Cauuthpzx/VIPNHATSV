@@ -27,12 +27,14 @@ const props = withDefaults(
     successMsg: undefined,
     requireOldPassword: true,
     inline: false,
-  }
+  },
 );
 
 // Computed defaults with i18n
 const resolvedOldPasswordLabel = computed(() => props.oldPasswordLabel ?? t("password.oldPassword"));
-const resolvedOldPasswordPlaceholder = computed(() => props.oldPasswordPlaceholder ?? t("password.oldPasswordPlaceholder"));
+const resolvedOldPasswordPlaceholder = computed(
+  () => props.oldPasswordPlaceholder ?? t("password.oldPasswordPlaceholder"),
+);
 const resolvedConfirmLabel = computed(() => props.confirmLabel ?? t("password.confirmPassword"));
 const resolvedValidationMsgOld = computed(() => props.validationMsgOld ?? t("password.enterOld"));
 const resolvedSuccessMsg = computed(() => props.successMsg ?? t("password.changeSuccess"));
@@ -93,77 +95,123 @@ async function handleSubmit() {
 
 <template>
   <lay-card v-if="!inline">
-    <template #header>{{ title }}</template>
+    <template #header>
+      {{ title }}
+    </template>
     <div class="pw-form-body">
-      <div class="layui-form-item" v-if="requireOldPassword">
+      <div v-if="requireOldPassword" class="layui-form-item">
         <label class="layui-form-label">{{ resolvedOldPasswordLabel }}</label>
         <div class="layui-input-block">
-          <lay-input v-model="formData.oldPassword" type="password" :placeholder="resolvedOldPasswordPlaceholder" />
+          <lay-input
+            v-model="formData.oldPassword"
+            type="password"
+            :placeholder="resolvedOldPasswordPlaceholder"
+          />
         </div>
       </div>
       <div class="layui-form-item">
-        <label class="layui-form-label">{{ t('password.newPassword') }}</label>
+        <label class="layui-form-label">{{ t("password.newPassword") }}</label>
         <div class="layui-input-block">
-          <lay-input v-model="formData.newPassword" type="password" :placeholder="t('password.newPasswordPlaceholder')" />
+          <lay-input
+            v-model="formData.newPassword"
+            type="password"
+            :placeholder="t('password.newPasswordPlaceholder')"
+          />
         </div>
       </div>
-      <div class="pw-strength" v-if="formData.newPassword">
+      <div v-if="formData.newPassword" class="pw-strength">
         <div class="pw-strength-bar">
-          <div class="pw-strength-fill" :style="{ width: (passedCount / 5) * 100 + '%', background: strengthColor }" />
+          <div
+            class="pw-strength-fill"
+            :style="{ width: (passedCount / 5) * 100 + '%', background: strengthColor }"
+          />
         </div>
         <span class="pw-strength-label" :style="{ color: strengthColor }">{{ strengthLabel }}</span>
         <div class="pw-checks">
-          <span v-for="check in strengthChecks" :key="check.label" class="pw-check-item" :class="{ passed: check.pass }">
-            {{ check.pass ? '\u2713' : '\u2717' }} {{ check.label }}
+          <span
+            v-for="check in strengthChecks"
+            :key="check.label"
+            class="pw-check-item"
+            :class="{ passed: check.pass }"
+          >
+            {{ check.pass ? "\u2713" : "\u2717" }} {{ check.label }}
           </span>
         </div>
       </div>
       <div class="layui-form-item">
         <label class="layui-form-label">{{ resolvedConfirmLabel }}</label>
         <div class="layui-input-block">
-          <lay-input v-model="formData.confirmPassword" type="password" :placeholder="t('password.confirmPasswordPlaceholder')" />
+          <lay-input
+            v-model="formData.confirmPassword"
+            type="password"
+            :placeholder="t('password.confirmPasswordPlaceholder')"
+          />
         </div>
       </div>
       <div class="layui-form-item">
         <div class="layui-input-block">
-          <lay-button type="normal" :loading="submitting" @click="handleSubmit">{{ t('common.confirm') }}</lay-button>
+          <lay-button type="normal" :loading="submitting" @click="handleSubmit">
+            {{ t("common.confirm") }}
+          </lay-button>
         </div>
       </div>
     </div>
   </lay-card>
   <div v-else class="pw-form-body">
-    <div class="layui-form-item" v-if="requireOldPassword">
+    <div v-if="requireOldPassword" class="layui-form-item">
       <label class="layui-form-label">{{ resolvedOldPasswordLabel }}</label>
       <div class="layui-input-block">
-        <lay-input v-model="formData.oldPassword" type="password" :placeholder="resolvedOldPasswordPlaceholder" />
+        <lay-input
+          v-model="formData.oldPassword"
+          type="password"
+          :placeholder="resolvedOldPasswordPlaceholder"
+        />
       </div>
     </div>
     <div class="layui-form-item">
-      <label class="layui-form-label">{{ t('password.newPassword') }}</label>
+      <label class="layui-form-label">{{ t("password.newPassword") }}</label>
       <div class="layui-input-block">
-        <lay-input v-model="formData.newPassword" type="password" :placeholder="t('password.newPasswordPlaceholder')" />
+        <lay-input
+          v-model="formData.newPassword"
+          type="password"
+          :placeholder="t('password.newPasswordPlaceholder')"
+        />
       </div>
     </div>
-    <div class="pw-strength" v-if="formData.newPassword">
+    <div v-if="formData.newPassword" class="pw-strength">
       <div class="pw-strength-bar">
-        <div class="pw-strength-fill" :style="{ width: (passedCount / 5) * 100 + '%', background: strengthColor }" />
+        <div
+          class="pw-strength-fill"
+          :style="{ width: (passedCount / 5) * 100 + '%', background: strengthColor }"
+        />
       </div>
       <span class="pw-strength-label" :style="{ color: strengthColor }">{{ strengthLabel }}</span>
       <div class="pw-checks">
-        <span v-for="check in strengthChecks" :key="check.label" class="pw-check-item" :class="{ passed: check.pass }">
-          {{ check.pass ? '\u2713' : '\u2717' }} {{ check.label }}
+        <span
+          v-for="check in strengthChecks"
+          :key="check.label"
+          class="pw-check-item"
+          :class="{ passed: check.pass }"
+        >
+          {{ check.pass ? "\u2713" : "\u2717" }} {{ check.label }}
         </span>
       </div>
     </div>
     <div class="layui-form-item">
       <label class="layui-form-label">{{ resolvedConfirmLabel }}</label>
       <div class="layui-input-block">
-        <lay-input v-model="formData.confirmPassword" type="password" :placeholder="t('password.confirmPasswordPlaceholder')" />
+        <lay-input
+          v-model="formData.confirmPassword"
+          type="password"
+          :placeholder="t('password.confirmPasswordPlaceholder')"
+        />
       </div>
     </div>
     <div class="layui-form-item">
       <div class="layui-input-block">
-        <lay-button type="normal" :loading="submitting" @click="handleSubmit">{{ t('common.confirm') }}</lay-button>
+        <lay-button type="normal" :loading="submitting" @click="handleSubmit">
+          {{ t("common.confirm") }}
+        </lay-button>
       </div>
     </div>
   </div>
@@ -189,7 +237,9 @@ async function handleSubmit() {
 .pw-strength-fill {
   height: 100%;
   border-radius: 2px;
-  transition: width 0.3s, background 0.3s;
+  transition:
+    width 0.3s,
+    background 0.3s;
 }
 
 .pw-strength-label {

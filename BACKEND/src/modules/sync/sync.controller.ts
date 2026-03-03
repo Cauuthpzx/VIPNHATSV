@@ -1,9 +1,14 @@
 import type { FastifyRequest, FastifyReply } from "fastify";
-import { getIsSyncing, requestSyncAbort, runFullSync, runAgentSync, runAgentEndpointSync, purgeAllData, purgeAgentData } from "./sync.service.js";
 import {
-  SYNC_ENDPOINTS,
-  SYNC_PAGE_CONCURRENCY,
-} from "./sync.config.js";
+  getIsSyncing,
+  requestSyncAbort,
+  runFullSync,
+  runAgentSync,
+  runAgentEndpointSync,
+  purgeAllData,
+  purgeAgentData,
+} from "./sync.service.js";
+import { SYNC_ENDPOINTS, SYNC_PAGE_CONCURRENCY } from "./sync.config.js";
 import {
   getSyncIntervalMs,
   setSyncInterval,
@@ -67,14 +72,16 @@ export async function syncStatusHandler(request: FastifyRequest, reply: FastifyR
   // 1. Per-table totals
   const tableNames = Object.values(MODEL_TO_TABLE);
   const unionParts = tableNames.map(
-    (t) => `SELECT '${t}' as table_name, count(*)::int as row_count, max("synced_at") as last_synced_at FROM "${t}"`,
+    (t) =>
+      `SELECT '${t}' as table_name, count(*)::int as row_count, max("synced_at") as last_synced_at FROM "${t}"`,
   );
   const tableStats: Array<{ table_name: string; row_count: number; last_synced_at: Date | null }> =
     await prisma.$queryRawUnsafe(unionParts.join(" UNION ALL "));
 
   // 2. Per-agent-per-table breakdown
   const breakdownParts = TABLES_WITH_AGENT.map(
-    (t) => `SELECT '${t}' as table_name, "agent_id", count(*)::int as row_count, max("synced_at") as last_synced_at FROM "${t}" GROUP BY "agent_id"`,
+    (t) =>
+      `SELECT '${t}' as table_name, "agent_id", count(*)::int as row_count, max("synced_at") as last_synced_at FROM "${t}" GROUP BY "agent_id"`,
   );
   const breakdown: Array<{
     table_name: string;
@@ -98,13 +105,15 @@ export async function syncStatusHandler(request: FastifyRequest, reply: FastifyR
     FROM agents a ORDER BY a.name
   `);
 
-  const agentMap = new Map(agentsRaw.map((a) => [a.id, a]));
+  const _agentMap = new Map(agentsRaw.map((a) => [a.id, a]));
 
   // Build breakdown map: table_name -> agent_id -> { row_count, last_synced_at }
   const breakdownMap = new Map<string, Map<string, { row_count: number; last_synced_at: Date | null }>>();
   for (const b of breakdown) {
     if (!breakdownMap.has(b.table_name)) breakdownMap.set(b.table_name, new Map());
-    breakdownMap.get(b.table_name)!.set(b.agent_id, { row_count: b.row_count, last_synced_at: b.last_synced_at });
+    breakdownMap
+      .get(b.table_name)!
+      .set(b.agent_id, { row_count: b.row_count, last_synced_at: b.last_synced_at });
   }
 
   // 4. Build tree data: each table is a parent, agents are children
@@ -244,10 +253,7 @@ export async function syncTriggerHandler(request: FastifyRequest, reply: Fastify
 /**
  * POST /sync/trigger/:agentId — Trigger sync for a single agent (non-blocking)
  */
-export async function syncTriggerAgentHandler(
-  request: FastifyRequest,
-  reply: FastifyReply,
-) {
+export async function syncTriggerAgentHandler(request: FastifyRequest, reply: FastifyReply) {
   if (getIsSyncing()) {
     return reply.status(409).send({
       success: false,
@@ -274,10 +280,7 @@ export async function syncTriggerAgentHandler(
  * POST /sync/trigger/:agentId/:table — Trigger sync for a single agent + single endpoint (non-blocking)
  * :table is the Prisma model key, e.g. "proxyUser", "proxyBetOrder"
  */
-export async function syncTriggerAgentEndpointHandler(
-  request: FastifyRequest,
-  reply: FastifyReply,
-) {
+export async function syncTriggerAgentEndpointHandler(request: FastifyRequest, reply: FastifyReply) {
   if (getIsSyncing()) {
     return reply.status(409).send({
       success: false,
@@ -413,10 +416,7 @@ export async function syncPurgeAllHandler(request: FastifyRequest, reply: Fastif
 /**
  * DELETE /sync/purge/:agentId — Purge proxy data for a single agent
  */
-export async function syncPurgeAgentHandler(
-  request: FastifyRequest,
-  reply: FastifyReply,
-) {
+export async function syncPurgeAgentHandler(request: FastifyRequest, reply: FastifyReply) {
   if (getIsSyncing()) {
     return reply.status(409).send({
       success: false,

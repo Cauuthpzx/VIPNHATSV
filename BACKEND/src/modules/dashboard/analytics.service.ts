@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
-import { Prisma } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
 
-const toNum = (v: Prisma.Decimal | null | undefined): number => v ? Number(v) : 0;
+const toNum = (v: Prisma.Decimal | null | undefined): number => (v ? Number(v) : 0);
 const toInt = (v: number | null | undefined): number => v ?? 0;
 
 function toDateStr(d: Date): string {
@@ -27,7 +27,13 @@ export interface FinanceAnalytics {
   trend30d: { date: string; deposit: number; withdrawal: number; net: number }[];
   depositByAgent: { agentName: string; value: number }[];
   withdrawalByAgent: { agentName: string; value: number }[];
-  dailyFees: { date: string; chargeFee: number; commission: number; promotion: number; thirdRebate: number }[];
+  dailyFees: {
+    date: string;
+    chargeFee: number;
+    commission: number;
+    promotion: number;
+    thirdRebate: number;
+  }[];
   depositStatusBreakdown: { status: string; count: number; amount: number }[];
   withdrawalStatusBreakdown: { status: string; count: number; amount: number }[];
   topDepositors: { username: string; agentName: string; totalAmount: number; count: number }[];
@@ -39,7 +45,7 @@ export async function getFinanceAnalytics(
   days: number = 30,
 ): Promise<FinanceAnalytics> {
   const dateRange = lastNDays(days);
-  const dateSet = new Set(dateRange);
+  const _dateSet = new Set(dateRange);
 
   const [
     depositTrend,
@@ -139,7 +145,10 @@ export async function getFinanceAnalytics(
       .filter((d) => d.value > 0)
       .sort((a, b) => b.value - a.value),
     withdrawalByAgent: wdByAgent
-      .map((d) => ({ agentName: agentMap.get(d.agentId) ?? d.agentId, value: toNum(d._sum.withdrawalAmount) }))
+      .map((d) => ({
+        agentName: agentMap.get(d.agentId) ?? d.agentId,
+        value: toNum(d._sum.withdrawalAmount),
+      }))
       .filter((d) => d.value > 0)
       .sort((a, b) => b.value - a.value),
     dailyFees,
@@ -183,14 +192,7 @@ export async function getBettingAnalytics(
 ): Promise<BettingAnalytics> {
   const dateRange = lastNDays(days);
 
-  const [
-    lotteryByDate,
-    thirdByDate,
-    lotteryByName,
-    platformRank,
-    topBetRaw,
-    agents,
-  ] = await Promise.all([
+  const [lotteryByDate, thirdByDate, lotteryByName, platformRank, topBetRaw, agents] = await Promise.all([
     app.prisma.proxyReportLottery.groupBy({
       by: ["reportDate"],
       where: { reportDate: { in: dateRange } },
@@ -305,61 +307,51 @@ export interface MemberAnalytics {
 export async function getMemberAnalytics(app: FastifyInstance): Promise<MemberAnalytics> {
   const last30 = lastNDays(30);
 
-  const [
-    totalMembers,
-    membersByAgent,
-    statusDist,
-    typeDist,
-    churnData,
-    topBalance,
-    topDep,
-    agents,
-  ] = await Promise.all([
-    app.prisma.proxyUser.count(),
-    app.prisma.proxyUser.groupBy({
-      by: ["agentId"],
-      _count: true,
-    }),
-    app.prisma.proxyUser.groupBy({
-      by: ["statusFormat"],
-      _count: true,
-    }),
-    app.prisma.proxyUser.groupBy({
-      by: ["typeFormat"],
-      _count: true,
-    }),
-    // Notification churn: new vs lost over 30 days
-    app.prisma.notification.groupBy({
-      by: ["type"],
-      where: {
-        createdAt: { gte: new Date(last30[0] + "T00:00:00Z") },
-      },
-      _count: true,
-    }),
-    app.prisma.proxyUser.findMany({
-      orderBy: { money: "desc" },
-      where: { money: { not: null } },
-      take: 10,
-      select: { username: true, agentId: true, money: true },
-    }),
-    app.prisma.proxyUser.findMany({
-      orderBy: { depositAmount: "desc" },
-      where: { depositAmount: { not: null, gt: 0 } },
-      take: 10,
-      select: { username: true, agentId: true, depositAmount: true, depositCount: true },
-    }),
-    app.prisma.agent.findMany({
-      where: { isActive: true },
-      select: { id: true, name: true },
-    }),
-  ]);
+  const [totalMembers, membersByAgent, statusDist, typeDist, _churnData, topBalance, topDep, agents] =
+    await Promise.all([
+      app.prisma.proxyUser.count(),
+      app.prisma.proxyUser.groupBy({
+        by: ["agentId"],
+        _count: true,
+      }),
+      app.prisma.proxyUser.groupBy({
+        by: ["statusFormat"],
+        _count: true,
+      }),
+      app.prisma.proxyUser.groupBy({
+        by: ["typeFormat"],
+        _count: true,
+      }),
+      // Notification churn: new vs lost over 30 days
+      app.prisma.notification.groupBy({
+        by: ["type"],
+        where: {
+          createdAt: { gte: new Date(last30[0] + "T00:00:00Z") },
+        },
+        _count: true,
+      }),
+      app.prisma.proxyUser.findMany({
+        orderBy: { money: "desc" },
+        where: { money: { not: null } },
+        take: 10,
+        select: { username: true, agentId: true, money: true },
+      }),
+      app.prisma.proxyUser.findMany({
+        orderBy: { depositAmount: "desc" },
+        where: { depositAmount: { not: null, gt: 0 } },
+        take: 10,
+        select: { username: true, agentId: true, depositAmount: true, depositCount: true },
+      }),
+      app.prisma.agent.findMany({
+        where: { isActive: true },
+        select: { id: true, name: true },
+      }),
+    ]);
 
   const agentMap = new Map(agents.map((a) => [a.id, a.name]));
 
   // Churn by day (raw SQL for date grouping on timestamp)
-  const churnByDay = await app.prisma.$queryRaw<
-    { dt: string; type: string; cnt: bigint }[]
-  >`
+  const churnByDay = await app.prisma.$queryRaw<{ dt: string; type: string; cnt: bigint }[]>`
     SELECT to_char(created_at, 'YYYY-MM-DD') as dt, type, COUNT(*)::bigint as cnt
     FROM notifications
     WHERE created_at >= ${new Date(last30[0] + "T00:00:00Z")}
@@ -381,9 +373,7 @@ export async function getMemberAnalytics(app: FastifyInstance): Promise<MemberAn
   });
 
   // Registration by month (from registerTime string "YYYY-MM-DD HH:mm:ss")
-  const regByMonth = await app.prisma.$queryRaw<
-    { month: string; cnt: bigint }[]
-  >`
+  const regByMonth = await app.prisma.$queryRaw<{ month: string; cnt: bigint }[]>`
     SELECT LEFT(register_time, 7) as month, COUNT(*)::bigint as cnt
     FROM proxy_users
     WHERE register_time IS NOT NULL AND register_time != ''
@@ -527,8 +517,12 @@ export async function getAgentPerformance(
   const ucMap = new Map(userCounts.map((d) => [d.agentId, d._count]));
   const depMap = new Map(depByAgent.map((d) => [d.agentId, toNum(d._sum.depositAmount)]));
   const wdMap = new Map(wdByAgent.map((d) => [d.agentId, toNum(d._sum.withdrawalAmount)]));
-  const lotBetMap = new Map(lotteryByAgent.map((d) => [d.agentId, { bet: toNum(d._sum.betAmount), wl: toNum(d._sum.winLose) }]));
-  const thirdBetMap = new Map(thirdByAgent.map((d) => [d.agentId, { bet: toNum(d._sum.tBetAmount), wl: toNum(d._sum.tWinLose) }]));
+  const lotBetMap = new Map(
+    lotteryByAgent.map((d) => [d.agentId, { bet: toNum(d._sum.betAmount), wl: toNum(d._sum.winLose) }]),
+  );
+  const thirdBetMap = new Map(
+    thirdByAgent.map((d) => [d.agentId, { bet: toNum(d._sum.tBetAmount), wl: toNum(d._sum.tWinLose) }]),
+  );
   const commMap = new Map(commByAgent.map((d) => [d.agentId, toNum(d._sum.agentCommission)]));
 
   const agentOverview = agents.map((a) => {
@@ -549,7 +543,7 @@ export async function getAgentPerformance(
   });
 
   // Agent deposit trend (7d)
-  const agentNames = new Map(agents.map((a) => [a.id, a.name]));
+  const _agentNames = new Map(agents.map((a) => [a.id, a.name]));
   const days7 = lastNDays(7);
   const trendGrouped = new Map<string, Map<string, { deposit: number; withdrawal: number }>>();
   for (const r of depTrend) {

@@ -28,22 +28,30 @@ async function onAction(action: string) {
     <a href="javascript:;" class="header-account-trigger">
       <span class="header-avatar">{{ store.username?.charAt(0)?.toUpperCase() }}</span>
       <span>{{ store.username }}</span>
-      <svg class="header-account-arrow" xmlns="http://www.w3.org/2000/svg" width="25" height="25" viewBox="0 0 24 24"><path d="m7 10 5 5 5-5z" fill="currentColor"/></svg>
+      <svg
+        class="header-account-arrow"
+        xmlns="http://www.w3.org/2000/svg"
+        width="25"
+        height="25"
+        viewBox="0 0 24 24"
+      >
+        <path d="m7 10 5 5 5-5z" fill="currentColor" />
+      </svg>
     </a>
     <template #content>
       <div class="header-account-panel">
         <div class="header-account-item" @click="onAction('profile')">
-          <i class="layui-icon layui-icon-username"></i>
-          <span>{{ t('nav.profile') }}</span>
+          <i class="layui-icon layui-icon-username" />
+          <span>{{ t("nav.profile") }}</span>
         </div>
         <div class="header-account-item" @click="onAction('settings')">
-          <i class="layui-icon layui-icon-set"></i>
-          <span>{{ t('nav.settings') }}</span>
+          <i class="layui-icon layui-icon-set" />
+          <span>{{ t("nav.settings") }}</span>
         </div>
-        <div class="header-account-divider"></div>
+        <div class="header-account-divider" />
         <div class="header-account-item" @click="onAction('logout')">
-          <i class="layui-icon layui-icon-logout"></i>
-          <span>{{ t('nav.logout') }}</span>
+          <i class="layui-icon layui-icon-logout" />
+          <span>{{ t("nav.logout") }}</span>
         </div>
       </div>
     </template>

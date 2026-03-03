@@ -17,26 +17,18 @@ function switchLang(lang: string) {
 <template>
   <lay-dropdown trigger="hover" placement="bottom-end">
     <a href="javascript:;" class="lang-trigger">
-      <i class="layui-icon layui-icon-website"></i>
-      <span class="lang-label">{{ appLocale === 'vi' ? 'VI' : '中' }}</span>
+      <i class="layui-icon layui-icon-website" />
+      <span class="lang-label">{{ appLocale === "vi" ? "VI" : "中" }}</span>
     </a>
     <template #content>
       <div class="lang-panel">
-        <div
-          class="lang-item"
-          :class="{ active: appLocale === 'vi' }"
-          @click="switchLang('vi')"
-        >
-          <span>{{ t('language.vi') }}</span>
-          <i v-if="appLocale === 'vi'" class="layui-icon layui-icon-ok lang-check"></i>
+        <div class="lang-item" :class="{ active: appLocale === 'vi' }" @click="switchLang('vi')">
+          <span>{{ t("language.vi") }}</span>
+          <i v-if="appLocale === 'vi'" class="layui-icon layui-icon-ok lang-check" />
         </div>
-        <div
-          class="lang-item"
-          :class="{ active: appLocale === 'zh' }"
-          @click="switchLang('zh')"
-        >
-          <span>{{ t('language.zh') }}</span>
-          <i v-if="appLocale === 'zh'" class="layui-icon layui-icon-ok lang-check"></i>
+        <div class="lang-item" :class="{ active: appLocale === 'zh' }" @click="switchLang('zh')">
+          <span>{{ t("language.zh") }}</span>
+          <i v-if="appLocale === 'zh'" class="layui-icon layui-icon-ok lang-check" />
         </div>
       </div>
     </template>

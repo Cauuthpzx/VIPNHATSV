@@ -3,7 +3,7 @@ import { NotFoundError } from "../../errors/NotFoundError.js";
 import { AppError } from "../../errors/AppError.js";
 import { HTTP_STATUS } from "../../constants/http.js";
 import { ERROR_CODES } from "../../constants/error-codes.js";
-import { decryptSessionCookie, encryptAES, encryptSessionCookie } from "../../utils/crypto.js";
+import { decryptSessionCookie, encryptAES } from "../../utils/crypto.js";
 import { fetchUpstream } from "./proxy.client.js";
 import { logger } from "../../utils/logger.js";
 import type { CreateAgentInput, UpdateAgentInput } from "./proxy.schema.js";
@@ -16,10 +16,7 @@ function reloginCooldownKey(agentId: string): string {
   return `proxy:relogin:${agentId}`;
 }
 
-export async function getAgentCookie(
-  app: FastifyInstance,
-  agentId: string,
-): Promise<string> {
+export async function getAgentCookie(app: FastifyInstance, agentId: string): Promise<string> {
   const agent = await app.prisma.agent.findUnique({ where: { id: agentId } });
   if (!agent) throw new NotFoundError("Agent not found");
 
@@ -153,7 +150,11 @@ export async function updateAgentCookie(
   });
 
   // Invalidate caches when cookie changes
-  try { await app.redis.del(ACTIVE_AGENTS_CACHE_KEY); } catch { /* ignore */ }
+  try {
+    await app.redis.del(ACTIVE_AGENTS_CACHE_KEY);
+  } catch {
+    /* ignore */
+  }
   await invalidateAgentProxyCache(app, agentId);
 
   return result;
@@ -167,21 +168,14 @@ export async function updateAgentCookie(
  * Delete all proxy cache entries for a specific agent.
  * Uses SCAN (not KEYS) for production safety.
  */
-export async function invalidateAgentProxyCache(
-  app: FastifyInstance,
-  agentId: string,
-): Promise<number> {
+export async function invalidateAgentProxyCache(app: FastifyInstance, agentId: string): Promise<number> {
   try {
     const pattern = `proxy:${agentId}:*`;
     let cursor = "0";
     let deletedCount = 0;
 
     do {
-      const [nextCursor, keys] = await app.redis.scan(
-        cursor,
-        "MATCH", pattern,
-        "COUNT", 100,
-      );
+      const [nextCursor, keys] = await app.redis.scan(cursor, "MATCH", pattern, "COUNT", 100);
       cursor = nextCursor;
 
       if (keys.length > 0) {
@@ -212,10 +206,7 @@ export async function invalidateAgentProxyCache(
  * Returns the new decrypted cookie on success, null on failure.
  * Uses Redis cooldown to prevent stampede (multiple requests all trying to re-login).
  */
-export async function attemptAutoRelogin(
-  app: FastifyInstance,
-  agentId: string,
-): Promise<string | null> {
+export async function attemptAutoRelogin(app: FastifyInstance, agentId: string): Promise<string | null> {
   // Check cooldown
   try {
     const existing = await app.redis.get(reloginCooldownKey(agentId));
@@ -223,12 +214,16 @@ export async function attemptAutoRelogin(
       logger.debug("Auto re-login skipped (cooldown)", { agentId });
       return null;
     }
-  } catch { /* fail-open */ }
+  } catch {
+    /* fail-open */
+  }
 
   // Set cooldown BEFORE attempt (prevents parallel re-logins)
   try {
     await app.redis.set(reloginCooldownKey(agentId), "1", "EX", RELOGIN_COOLDOWN_SECONDS);
-  } catch { /* fail-open */ }
+  } catch {
+    /* fail-open */
+  }
 
   try {
     // Dynamic import to avoid circular dependency
@@ -338,7 +333,11 @@ export async function updateAgent(app: FastifyInstance, agentId: string, input: 
   });
 
   // Invalidate cache
-  try { await app.redis.del(ACTIVE_AGENTS_CACHE_KEY); } catch { /* ignore */ }
+  try {
+    await app.redis.del(ACTIVE_AGENTS_CACHE_KEY);
+  } catch {
+    /* ignore */
+  }
 
   logger.info({ agentId }, "Agent đã được cập nhật");
   return agent;
@@ -354,7 +353,11 @@ export async function deactivateAgent(app: FastifyInstance, agentId: string) {
   });
 
   // Invalidate cache
-  try { await app.redis.del(ACTIVE_AGENTS_CACHE_KEY); } catch { /* ignore */ }
+  try {
+    await app.redis.del(ACTIVE_AGENTS_CACHE_KEY);
+  } catch {
+    /* ignore */
+  }
 
   logger.info({ agentId }, "Agent đã bị vô hiệu hoá");
 }
@@ -366,7 +369,11 @@ export async function destroyAgent(app: FastifyInstance, agentId: string) {
   await app.prisma.agent.delete({ where: { id: agentId } });
 
   // Invalidate cache
-  try { await app.redis.del(ACTIVE_AGENTS_CACHE_KEY); } catch { /* ignore */ }
+  try {
+    await app.redis.del(ACTIVE_AGENTS_CACHE_KEY);
+  } catch {
+    /* ignore */
+  }
 
   logger.info({ agentId }, "Agent đã bị xoá vĩnh viễn");
 }

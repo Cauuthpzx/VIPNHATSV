@@ -1,10 +1,23 @@
 <script setup lang="ts">
 import { ref, reactive, computed, watch, onMounted, onUnmounted } from "vue";
 import { useI18n } from "vue-i18n";
-import { fetchSyncStatus, triggerSync, triggerAgentSync, triggerAgentEndpointSync, stopSync, setSyncIntervals, purgeAllData, purgeAgentData } from "@/api/services/sync";
 import {
-  loginAgentEE88, logoutAgentEE88, loginAllAgentsEE88,
-  createAgent, updateAgent, deleteAgent,
+  fetchSyncStatus,
+  triggerSync,
+  triggerAgentSync,
+  triggerAgentEndpointSync,
+  stopSync,
+  setSyncIntervals,
+  purgeAllData,
+  purgeAgentData,
+} from "@/api/services/sync";
+import {
+  loginAgentEE88,
+  logoutAgentEE88,
+  loginAllAgentsEE88,
+  createAgent,
+  updateAgent,
+  deleteAgent,
   editUpstreamPassword,
 } from "@/api/services/proxy";
 import { useAuthStore } from "@/stores/auth";
@@ -178,17 +191,25 @@ async function submitChangePassword() {
 }
 
 function confirmDeleteAgent(agentId: string, agentName: string) {
-  layer.confirm(
-    t("sync.confirmDisable", { name: agentName }),
-    {
-      title: t("sync.confirmDisableTitle"),
+  layer.confirm(t("sync.confirmDisable", { name: agentName }), {
+    title: t("sync.confirmDisableTitle"),
 
-      btn: [
-        { text: t("sync.confirmDisableBtn"), callback: (id: string) => { layer.close(id); doDeleteAgent(agentId); } },
-        { text: t("common.cancel"), callback: (id: string) => { layer.close(id); } },
-      ],
-    },
-  );
+    btn: [
+      {
+        text: t("sync.confirmDisableBtn"),
+        callback: (id: string) => {
+          layer.close(id);
+          doDeleteAgent(agentId);
+        },
+      },
+      {
+        text: t("common.cancel"),
+        callback: (id: string) => {
+          layer.close(id);
+        },
+      },
+    ],
+  });
 }
 
 async function doDeleteAgent(agentId: string) {
@@ -209,7 +230,17 @@ const agentColumns = computed(() => [
   { title: t("sync.overviewStatus"), key: "_status", customSlot: "agentStatus", width: "120px" },
   { title: t("sync.colRecords"), key: "totalRows", customSlot: "num", width: "80px" },
   { title: t("sync.colLastSync"), key: "lastSyncedAt", customSlot: "syncTime", width: "130px" },
-  ...(canWrite.value ? [{ title: t("common.actions"), key: "_actions", customSlot: "actions", width: "140px", align: "center" }] : []),
+  ...(canWrite.value
+    ? [
+        {
+          title: t("common.actions"),
+          key: "_actions",
+          customSlot: "actions",
+          width: "140px",
+          align: "center",
+        },
+      ]
+    : []),
 ]);
 
 const statusMap = computed<Record<string, { color: string; label: string }>>(() => ({
@@ -243,15 +274,19 @@ function getAgentStatusLabel(row: any): string {
 
 // Accordion: chỉ cho expand 1 agent tại 1 thời điểm
 let lastExpandKey: string | null = null;
-watch(expandKeys, (keys) => {
-  if (keys.length > 1) {
-    const newKey = keys.find((k) => k !== lastExpandKey) ?? keys[keys.length - 1];
-    expandKeys.value = [newKey];
-    lastExpandKey = newKey;
-  } else {
-    lastExpandKey = keys[0] ?? null;
-  }
-}, { deep: true });
+watch(
+  expandKeys,
+  (keys) => {
+    if (keys.length > 1) {
+      const newKey = keys.find((k) => k !== lastExpandKey) ?? keys[keys.length - 1];
+      expandKeys.value = [newKey];
+      lastExpandKey = newKey;
+    } else {
+      lastExpandKey = keys[0] ?? null;
+    }
+  },
+  { deep: true },
+);
 
 function getLatestSync(children: any[]): string | null {
   let latest: number | null = null;
@@ -269,10 +304,7 @@ let lastFingerprint = "";
 
 async function loadStatus() {
   try {
-    const [statusRes] = await Promise.all([
-      fetchSyncStatus(),
-      agentStore.loadCookieHealth(),
-    ]);
+    const [statusRes] = await Promise.all([fetchSyncStatus(), agentStore.loadCookieHealth()]);
     if (statusRes.data.success) {
       const d = statusRes.data.data;
 
@@ -422,17 +454,25 @@ async function handleSyncAgentEndpoint(agentId: string, table: string, label: st
 }
 
 function confirmPurgeAll() {
-  layer.confirm(
-    t("sync.confirmDeleteAll"),
-    {
-      title: t("sync.confirmDeleteAllTitle"),
+  layer.confirm(t("sync.confirmDeleteAll"), {
+    title: t("sync.confirmDeleteAllTitle"),
 
-      btn: [
-        { text: t("sync.confirmDeleteAllBtn"), callback: (id: string) => { layer.close(id); doPurgeAll(); } },
-        { text: t("common.cancel"), callback: (id: string) => { layer.close(id); } },
-      ],
-    },
-  );
+    btn: [
+      {
+        text: t("sync.confirmDeleteAllBtn"),
+        callback: (id: string) => {
+          layer.close(id);
+          doPurgeAll();
+        },
+      },
+      {
+        text: t("common.cancel"),
+        callback: (id: string) => {
+          layer.close(id);
+        },
+      },
+    ],
+  });
 }
 
 async function doPurgeAll() {
@@ -453,17 +493,25 @@ async function doPurgeAll() {
 }
 
 function confirmPurgeAgent(agentId: string, agentName: string) {
-  layer.confirm(
-    t("sync.confirmDeleteAgent", { name: agentName }),
-    {
-      title: t("sync.confirmDeleteAgentTitle"),
+  layer.confirm(t("sync.confirmDeleteAgent", { name: agentName }), {
+    title: t("sync.confirmDeleteAgentTitle"),
 
-      btn: [
-        { text: t("common.delete"), callback: (id: string) => { layer.close(id); doPurgeAgent(agentId); } },
-        { text: t("common.cancel"), callback: (id: string) => { layer.close(id); } },
-      ],
-    },
-  );
+    btn: [
+      {
+        text: t("common.delete"),
+        callback: (id: string) => {
+          layer.close(id);
+          doPurgeAgent(agentId);
+        },
+      },
+      {
+        text: t("common.cancel"),
+        callback: (id: string) => {
+          layer.close(id);
+        },
+      },
+    ],
+  });
 }
 
 async function doPurgeAgent(agentId: string) {
@@ -589,48 +637,73 @@ onUnmounted(() => {
       <div class="overview-stats">
         <div class="overview-item" :class="{ 'overview-item--syncing': isSyncing }">
           <div class="overview-icon" :class="isSyncing ? 'bg-yellow pulse' : 'bg-green'">
-            <i class="layui-icon" :class="isSyncing ? 'layui-icon-loading-1 spin' : 'layui-icon-ok-circle'"></i>
+            <i class="layui-icon" :class="isSyncing ? 'layui-icon-loading-1 spin' : 'layui-icon-ok-circle'" />
           </div>
           <div class="overview-text">
-            <div class="overview-label">{{ t('sync.overviewStatus') }}</div>
+            <div class="overview-label">
+              {{ t("sync.overviewStatus") }}
+            </div>
             <div class="overview-value">
               <lay-tag :color="isSyncing ? '#ffb800' : '#16baaa'" variant="light" size="sm" bordered>
-                {{ isSyncing ? t('sync.syncing') : t('sync.ready') }}
+                {{ isSyncing ? t("sync.syncing") : t("sync.ready") }}
               </lay-tag>
             </div>
           </div>
         </div>
-        <div class="overview-divider"></div>
+        <div class="overview-divider" />
         <div class="overview-item">
           <div class="overview-icon bg-teal">
-            <i class="layui-icon layui-icon-chart-screen"></i>
+            <i class="layui-icon layui-icon-chart-screen" />
           </div>
           <div class="overview-text">
-            <div class="overview-label">{{ t('sync.totalRecords') }}</div>
+            <div class="overview-label">
+              {{ t("sync.totalRecords") }}
+            </div>
             <div class="overview-value">
               <lay-count-up :end-val="totalRows" :duration="800" :use-grouping="true" />
             </div>
           </div>
         </div>
-        <div class="overview-divider"></div>
+        <div class="overview-divider" />
         <div class="overview-item">
           <div class="overview-icon bg-blue">
-            <i class="layui-icon layui-icon-group"></i>
+            <i class="layui-icon layui-icon-group" />
           </div>
           <div class="overview-text">
-            <div class="overview-label">{{ t('sync.activeAgents') }}</div>
-            <div class="overview-value">{{ activeAgents }}<span class="overview-sub">/{{ totalAgents }}</span></div>
+            <div class="overview-label">
+              {{ t("sync.activeAgents") }}
+            </div>
+            <div class="overview-value">
+              {{ activeAgents }}<span class="overview-sub">/{{ totalAgents }}</span>
+            </div>
           </div>
         </div>
-        <div class="overview-divider"></div>
+        <div class="overview-divider" />
         <div class="overview-item" :class="{ clickable: canWrite }" @click="canWrite && openIntervalEdit()">
           <div class="overview-icon bg-orange">
-            <svg xmlns="http://www.w3.org/2000/svg" height="20" viewBox="0 -960 960 960" width="20" fill="#fff"><path d="M360-860v-60h240v60H360Zm90 447h60v-230h-60v230ZM340.5-109.5Q275-138 226-187t-77.5-114.5Q120-367 120-441t28.5-139.5Q177-646 226-695t114.5-77.5Q406-801 480-801q67 0 126 22.5T711-716l51-51 42 42-51 51q36 40 61.5 97T840-441q0 74-28.5 139.5T734-187q-49 49-114.5 77.5T480-81q-74 0-139.5-28.5Zm352-119Q780-316 780-441t-87.5-212.5Q605-741 480-741t-212.5 87.5Q180-566 180-441t87.5 212.5Q355-141 480-141t212.5-87.5ZM480-440Z"/></svg>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              height="20"
+              viewBox="0 -960 960 960"
+              width="20"
+              fill="#fff"
+            >
+              <path
+                d="M360-860v-60h240v60H360Zm90 447h60v-230h-60v230ZM340.5-109.5Q275-138 226-187t-77.5-114.5Q120-367 120-441t28.5-139.5Q177-646 226-695t114.5-77.5Q406-801 480-801q67 0 126 22.5T711-716l51-51 42 42-51 51q36 40 61.5 97T840-441q0 74-28.5 139.5T734-187q-49 49-114.5 77.5T480-81q-74 0-139.5-28.5Zm352-119Q780-316 780-441t-87.5-212.5Q605-741 480-741t-212.5 87.5Q180-566 180-441t87.5 212.5Q355-141 480-141t212.5-87.5ZM480-440Z"
+              />
+            </svg>
           </div>
           <div class="overview-text">
-            <div class="overview-label">{{ t('sync.syncCycle') }}<template v-if="canWrite"> <i class="layui-icon layui-icon-edit" style="font-size: 11px; cursor: pointer; color: #999"></i></template></div>
+            <div class="overview-label">
+              {{ t("sync.syncCycle")
+              }}<template v-if="canWrite">
+                <i class="layui-icon layui-icon-edit" style="font-size: 11px; cursor: pointer; color: #999" />
+              </template>
+            </div>
             <div class="overview-value">
-              <lay-tag color="#ffb800" variant="light" size="sm" bordered>{{ t('sync.customize') }}</lay-tag>
+              <lay-tag color="#ffb800" variant="light" size="sm" bordered>
+                {{ t("sync.customize") }}
+              </lay-tag>
             </div>
           </div>
         </div>
@@ -642,29 +715,21 @@ onUnmounted(() => {
       <lay-field :title="t('sync.agentStatus')">
         <div class="table-container">
           <lay-table
+            v-model:expand-keys="expandKeys"
             :columns="agentColumns"
             :data-source="agents"
             :loading="loading"
             :default-toolbar="defaultToolbar"
-            childrenColumnName="children"
-            :indentSize="20"
-            v-model:expandKeys="expandKeys"
+            children-column-name="children"
+            :indent-size="20"
           >
-            <template v-slot:toolbar>
+            <template #toolbar>
               <template v-if="canWrite">
-                <lay-button
-                  size="sm"
-                  type="primary"
-                  @click="openCreateAgent"
-                >
-                  <i class="layui-icon layui-icon-add-1"></i> {{ t('sync.addAgent') }}
+                <lay-button size="sm" type="primary" @click="openCreateAgent">
+                  <i class="layui-icon layui-icon-add-1" /> {{ t("sync.addAgent") }}
                 </lay-button>
-                <lay-button
-                  size="sm"
-                  :loading="loggingInAll"
-                  @click="handleLoginAll"
-                >
-                  <i class="layui-icon layui-icon-key"></i> {{ t('sync.loginAll') }}
+                <lay-button size="sm" :loading="loggingInAll" @click="handleLoginAll">
+                  <i class="layui-icon layui-icon-key" /> {{ t("sync.loginAll") }}
                 </lay-button>
                 <lay-button
                   v-if="!isSyncing"
@@ -673,43 +738,42 @@ onUnmounted(() => {
                   :loading="triggering"
                   @click="handleSyncAll"
                 >
-                  <i class="layui-icon layui-icon-play"></i> {{ t('sync.syncAll') }}
+                  <i class="layui-icon layui-icon-play" /> {{ t("sync.syncAll") }}
                 </lay-button>
-                <lay-button
-                  v-else
-                  size="sm"
-                  type="danger"
-                  :loading="stopping"
-                  @click="handleStopSync"
-                >
-                  <i class="layui-icon layui-icon-pause"></i> {{ t('sync.stopSync') }}
+                <lay-button v-else size="sm" type="danger" :loading="stopping" @click="handleStopSync">
+                  <i class="layui-icon layui-icon-pause" /> {{ t("sync.stopSync") }}
                 </lay-button>
               </template>
             </template>
 
             <template #agentName="{ row }">
               <span v-if="row.icon" class="agent-name-cell" style="color: #666">
-                <i class="layui-icon" :class="row.icon" style="margin-right: 6px; font-size: 14px; color: #999"></i>
+                <i
+                  class="layui-icon"
+                  :class="row.icon"
+                  style="margin-right: 6px; font-size: 14px; color: #999"
+                />
                 {{ row.name }}
               </span>
               <span v-else class="agent-name-cell">
                 <i
                   class="layui-icon"
-                  :class="row.status === 'logging_in' ? 'layui-icon-loading-1 spin' : (row.isActive && row.status === 'active' ? 'layui-icon-ok-circle' : 'layui-icon-close-fill')"
+                  :class="
+                    row.status === 'logging_in'
+                      ? 'layui-icon-loading-1 spin'
+                      : row.isActive && row.status === 'active'
+                        ? 'layui-icon-ok-circle'
+                        : 'layui-icon-close-fill'
+                  "
                   :style="{ color: getAgentStatusColor(row), marginRight: '6px', fontSize: '14px' }"
-                ></i>
+                />
                 <b>{{ row.name }}</b>
               </span>
             </template>
 
             <template #agentStatus="{ row }">
               <template v-if="!row.icon">
-                <lay-tag
-                  :color="getAgentStatusColor(row)"
-                  variant="light"
-                  size="sm"
-                  bordered
-                >
+                <lay-tag :color="getAgentStatusColor(row)" variant="light" size="sm" bordered>
                   {{ getAgentStatusLabel(row) }}
                 </lay-tag>
                 <div v-if="row.loginError" class="login-error-text">
@@ -728,10 +792,15 @@ onUnmounted(() => {
 
             <template #syncTime="{ row }">
               <span v-if="row.lastSyncedAt" style="font-size: 12px; color: #666">
-                {{ new Date(row.lastSyncedAt).toLocaleString("vi-VN", {
-                  month: "2-digit", day: "2-digit",
-                  hour: "2-digit", minute: "2-digit", second: "2-digit",
-                }) }}
+                {{
+                  new Date(row.lastSyncedAt).toLocaleString("vi-VN", {
+                    month: "2-digit",
+                    day: "2-digit",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    second: "2-digit",
+                  })
+                }}
               </span>
               <span v-else style="color: #ccc">—</span>
             </template>
@@ -746,7 +815,19 @@ onUnmounted(() => {
                   :disabled="isSyncing"
                   @click="handleSyncAgentEndpoint(row.agentId, row.table, row.name)"
                 >
-                  <svg class="sync-icon" xmlns="http://www.w3.org/2000/svg" height="14" viewBox="0 -960 960 960" width="14" fill="currentColor"><path d="M238-211q-57-53-87.5-122.5T120-480q0-150 105-255t255-105v-80l183 140-183 140v-80q-100 0-170 70t-70 170q0 57 25 107.5t67 88.5l-94 73ZM480-40 297-180l183-140v80q100 0 170-70t70-170q0-57-25-108t-70-88l95-71q58 51 89 120.5T840-480q0 150-105 255T480-120v80Z"/></svg> Sync
+                  <svg
+                    class="sync-icon"
+                    xmlns="http://www.w3.org/2000/svg"
+                    height="14"
+                    viewBox="0 -960 960 960"
+                    width="14"
+                    fill="currentColor"
+                  >
+                    <path
+                      d="M238-211q-57-53-87.5-122.5T120-480q0-150 105-255t255-105v-80l183 140-183 140v-80q-100 0-170 70t-70 170q0 57 25 107.5t67 88.5l-94 73ZM480-40 297-180l183-140v80q100 0 170-70t70-170q0-57-25-108t-70-88l95-71q58 51 89 120.5T840-480q0 150-105 255T480-120v80Z"
+                    />
+                  </svg>
+                  Sync
                 </lay-button>
               </template>
               <!-- Parent row: Sync + dropdown menu -->
@@ -759,41 +840,71 @@ onUnmounted(() => {
                     :disabled="isSyncing || agentStore.cookieHealthMap[row.id] !== true"
                     @click="handleSyncAgent(row.id)"
                   >
-                    <svg class="sync-icon" xmlns="http://www.w3.org/2000/svg" height="14" viewBox="0 -960 960 960" width="14" fill="currentColor"><path d="M238-211q-57-53-87.5-122.5T120-480q0-150 105-255t255-105v-80l183 140-183 140v-80q-100 0-170 70t-70 170q0 57 25 107.5t67 88.5l-94 73ZM480-40 297-180l183-140v80q100 0 170-70t70-170q0-57-25-108t-70-88l95-71q58 51 89 120.5T840-480q0 150-105 255T480-120v80Z"/></svg> Sync
+                    <svg
+                      class="sync-icon"
+                      xmlns="http://www.w3.org/2000/svg"
+                      height="14"
+                      viewBox="0 -960 960 960"
+                      width="14"
+                      fill="currentColor"
+                    >
+                      <path
+                        d="M238-211q-57-53-87.5-122.5T120-480q0-150 105-255t255-105v-80l183 140-183 140v-80q-100 0-170 70t-70 170q0 57 25 107.5t67 88.5l-94 73ZM480-40 297-180l183-140v80q100 0 170-70t70-170q0-57-25-108t-70-88l95-71q58 51 89 120.5T840-480q0 150-105 255T480-120v80Z"
+                      />
+                    </svg>
+                    Sync
                   </lay-button>
                   <lay-dropdown>
                     <lay-button size="xs">
-                      <i class="layui-icon layui-icon-more-vertical"></i>
+                      <i class="layui-icon layui-icon-more-vertical" />
                     </lay-button>
                     <template #content>
                       <lay-dropdown-menu>
                         <lay-dropdown-menu-item @click="openEditAgent(row)">
-                          <i class="layui-icon layui-icon-edit" style="margin-right: 6px"></i>{{ t('sync.editInfo') }}
+                          <i class="layui-icon layui-icon-edit" style="margin-right: 6px" />{{
+                            t("sync.editInfo")
+                          }}
                         </lay-dropdown-menu-item>
                         <lay-dropdown-menu-item
-                          @click="loggingInAgentId !== row.id && handleLoginAgent(row.id)"
                           :disabled="loggingInAgentId === row.id"
+                          @click="loggingInAgentId !== row.id && handleLoginAgent(row.id)"
                         >
-                          <i class="layui-icon layui-icon-key" style="margin-right: 6px"></i>{{ loggingInAgentId === row.id ? t('sync.loggingIn') : t('sync.loginEE88') }}
+                          <i class="layui-icon layui-icon-key" style="margin-right: 6px" />{{
+                            loggingInAgentId === row.id ? t("sync.loggingIn") : t("sync.loginEE88")
+                          }}
                         </lay-dropdown-menu-item>
                         <lay-dropdown-menu-item
-                          @click="loggingOutAgentId !== row.id && handleLogoutAgent(row.id)"
                           :disabled="loggingOutAgentId === row.id"
+                          @click="loggingOutAgentId !== row.id && handleLogoutAgent(row.id)"
                         >
-                          <i class="layui-icon layui-icon-release" style="margin-right: 6px"></i>{{ loggingOutAgentId === row.id ? t('sync.loggingOut') : t('sync.logoutEE88') }}
+                          <i class="layui-icon layui-icon-release" style="margin-right: 6px" />{{
+                            loggingOutAgentId === row.id ? t("sync.loggingOut") : t("sync.logoutEE88")
+                          }}
                         </lay-dropdown-menu-item>
                         <lay-dropdown-menu-item @click="openChangePassword(row)">
-                          <i class="layui-icon layui-icon-password" style="margin-right: 6px"></i>{{ t('sync.changePassword') }}
+                          <i class="layui-icon layui-icon-password" style="margin-right: 6px" />{{
+                            t("sync.changePassword")
+                          }}
                         </lay-dropdown-menu-item>
-                        <li style="border-top: 1px solid #eee; margin: 4px 0"></li>
+                        <li style="border-top: 1px solid #eee; margin: 4px 0" />
                         <lay-dropdown-menu-item
-                          @click="!isSyncing && purgingAgentId !== row.id && confirmPurgeAgent(row.id, row.name)"
                           :disabled="isSyncing || purgingAgentId === row.id"
+                          @click="
+                            !isSyncing && purgingAgentId !== row.id && confirmPurgeAgent(row.id, row.name)
+                          "
                         >
-                          <span style="color: #ff9900"><i class="layui-icon layui-icon-delete" style="margin-right: 6px"></i>{{ t('sync.deleteData') }}</span>
+                          <span style="color: #ff9900"
+                            ><i class="layui-icon layui-icon-delete" style="margin-right: 6px" />{{
+                              t("sync.deleteData")
+                            }}</span
+                          >
                         </lay-dropdown-menu-item>
                         <lay-dropdown-menu-item @click="confirmDeleteAgent(row.id, row.name)">
-                          <span style="color: #ff4d4f"><i class="layui-icon layui-icon-close" style="margin-right: 6px"></i>{{ t('sync.disable') }}</span>
+                          <span style="color: #ff4d4f"
+                            ><i class="layui-icon layui-icon-close" style="margin-right: 6px" />{{
+                              t("sync.disable")
+                            }}</span
+                          >
                         </lay-dropdown-menu-item>
                       </lay-dropdown-menu>
                     </template>
@@ -806,7 +917,6 @@ onUnmounted(() => {
       </lay-field>
     </lay-card>
 
-
     <!-- ===== MODAL THÊM/SỬA AGENT ===== -->
     <lay-layer
       v-model="agentModalVisible"
@@ -815,7 +925,12 @@ onUnmounted(() => {
       :shade-close="false"
       :btn="[
         { text: t('common.save'), callback: () => saveAgent() },
-        { text: t('common.cancel'), callback: (id: string) => { agentModalVisible = false; } },
+        {
+          text: t('common.cancel'),
+          callback: (id: string) => {
+            agentModalVisible = false;
+          },
+        },
       ]"
     >
       <div style="padding: 16px 20px">
@@ -830,11 +945,16 @@ onUnmounted(() => {
               :disabled="!!editingAgentId"
             />
           </lay-form-item>
-          <lay-form-item :label="editingAgentId ? t('sync.passwordNew') : t('sync.passwordEE88')" :required="!editingAgentId">
+          <lay-form-item
+            :label="editingAgentId ? t('sync.passwordNew') : t('sync.passwordEE88')"
+            :required="!editingAgentId"
+          >
             <lay-input
               v-model="agentForm.extPassword"
               type="password"
-              :placeholder="editingAgentId ? t('sync.passwordNewPlaceholder') : t('sync.passwordEE88Placeholder')"
+              :placeholder="
+                editingAgentId ? t('sync.passwordNewPlaceholder') : t('sync.passwordEE88Placeholder')
+              "
             />
           </lay-form-item>
           <lay-form-item :label="t('sync.baseUrl')">
@@ -850,14 +970,37 @@ onUnmounted(() => {
       :area="['420px', 'auto']"
       :shade-close="false"
       :btn="[
-        { text: pwSaving ? t('sync.changingPassword') : t('sync.changePassword'), callback: () => submitChangePassword() },
-        { text: t('common.cancel'), callback: () => { pwModalVisible = false; } },
+        {
+          text: pwSaving ? t('sync.changingPassword') : t('sync.changePassword'),
+          callback: () => submitChangePassword(),
+        },
+        {
+          text: t('common.cancel'),
+          callback: () => {
+            pwModalVisible = false;
+          },
+        },
       ]"
     >
       <div style="padding: 16px 20px; display: flex; flex-direction: column; gap: 10px">
-        <lay-input v-model="pwForm.old_password" type="password" :placeholder="t('sync.oldPasswordPlaceholder')" prefix-icon="layui-icon-password" />
-        <lay-input v-model="pwForm.new_password" type="password" :placeholder="t('sync.newPasswordPlaceholder')" prefix-icon="layui-icon-key" />
-        <lay-input v-model="pwForm.confirm_password" type="password" :placeholder="t('sync.confirmPasswordPlaceholder')" prefix-icon="layui-icon-key" />
+        <lay-input
+          v-model="pwForm.old_password"
+          type="password"
+          :placeholder="t('sync.oldPasswordPlaceholder')"
+          prefix-icon="layui-icon-password"
+        />
+        <lay-input
+          v-model="pwForm.new_password"
+          type="password"
+          :placeholder="t('sync.newPasswordPlaceholder')"
+          prefix-icon="layui-icon-key"
+        />
+        <lay-input
+          v-model="pwForm.confirm_password"
+          type="password"
+          :placeholder="t('sync.confirmPasswordPlaceholder')"
+          prefix-icon="layui-icon-key"
+        />
       </div>
     </lay-layer>
 
@@ -869,18 +1012,25 @@ onUnmounted(() => {
       :shade-close="true"
       :btn="[
         { text: intervalSaving ? t('sync.saving') : t('sync.saveAll'), callback: () => saveIntervals() },
-        { text: t('common.cancel'), callback: () => { intervalEditing = false; } },
+        {
+          text: t('common.cancel'),
+          callback: () => {
+            intervalEditing = false;
+          },
+        },
       ]"
     >
       <div style="padding: 16px 20px">
         <div style="margin-bottom: 12px; color: #666; font-size: 13px">
-          {{ t('sync.syncIntervalDesc') }}
+          {{ t("sync.syncIntervalDesc") }}
         </div>
         <table class="interval-table">
           <thead>
             <tr>
-              <th>{{ t('sync.dataType') }}</th>
-              <th style="width: 120px; text-align: center">{{ t('sync.cycleMinutes') }}</th>
+              <th>{{ t("sync.dataType") }}</th>
+              <th style="width: 120px; text-align: center">
+                {{ t("sync.cycleMinutes") }}
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -954,11 +1104,21 @@ onUnmounted(() => {
   color: #fff;
 }
 
-.bg-teal { background: linear-gradient(135deg, #16baaa, #1cc7b6); }
-.bg-blue { background: linear-gradient(135deg, #1e9fff, #4db8ff); }
-.bg-orange { background: linear-gradient(135deg, #ffb800, #ffc833); }
-.bg-green { background: linear-gradient(135deg, #16baaa, #5cd7ca); }
-.bg-yellow { background: linear-gradient(135deg, #ffb800, #ffe066); }
+.bg-teal {
+  background: linear-gradient(135deg, #16baaa, #1cc7b6);
+}
+.bg-blue {
+  background: linear-gradient(135deg, #1e9fff, #4db8ff);
+}
+.bg-orange {
+  background: linear-gradient(135deg, #ffb800, #ffc833);
+}
+.bg-green {
+  background: linear-gradient(135deg, #16baaa, #5cd7ca);
+}
+.bg-yellow {
+  background: linear-gradient(135deg, #ffb800, #ffe066);
+}
 
 .overview-text {
   min-width: 0;
@@ -989,9 +1149,15 @@ onUnmounted(() => {
 }
 
 @keyframes pulse-ring {
-  0% { box-shadow: 0 0 0 0 rgba(255, 184, 0, 0.4); }
-  70% { box-shadow: 0 0 0 8px rgba(255, 184, 0, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(255, 184, 0, 0); }
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 184, 0, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(255, 184, 0, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 184, 0, 0);
+  }
 }
 
 .spin {
@@ -999,8 +1165,12 @@ onUnmounted(() => {
 }
 
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* ===== TABLE ===== */

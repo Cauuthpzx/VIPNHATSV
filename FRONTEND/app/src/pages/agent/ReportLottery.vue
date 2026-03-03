@@ -12,7 +12,8 @@ import CookieBadge from "@/components/CookieBadge.vue";
 
 const { t } = useI18n();
 
-const { dateRange, dateQuickSelect, dateQuickOptions, dateQuickWidth, resetDateRange } = useDateRange("today");
+const { dateRange, dateQuickSelect, dateQuickOptions, dateQuickWidth, resetDateRange } =
+  useDateRange("today");
 const { dataSource, loading, page, setLoading, bindLoadData, guardStale } = useListPage();
 const { selectedAgentId, agentOptions, agentWidth } = useAgentFilter();
 
@@ -21,9 +22,7 @@ const searchForm = reactive({
   username: "",
 });
 
-const lotteryOptions = ref([
-  { label: t("common.all"), value: "" },
-]);
+const lotteryOptions = ref([{ label: t("common.all"), value: "" }]);
 
 const { selectWidth: lotteryWidth } = useAutoFitSelect(lotteryOptions);
 
@@ -37,7 +36,9 @@ async function loadLotteryOptions() {
         ...items.lotteryData.map((l: any) => ({ label: l.name, value: String(l.id) })),
       ];
     }
-  } catch {}
+  } catch {
+    /* silent */
+  }
 }
 
 const columns = computed(() => [
@@ -95,7 +96,18 @@ async function loadData() {
     if (res.data.data.totalData) {
       summaryData.value = [res.data.data.totalData as any];
     } else {
-      summaryData.value = [{ total_bet_number: 0, total_bet_count: 0, total_bet_amount: "0.0000", total_valid_amount: "0.0000", total_rebate_amount: "0.0000", total_result: "0.0000", total_win_lose: "0.0000", total_prize: "0.0000" }];
+      summaryData.value = [
+        {
+          total_bet_number: 0,
+          total_bet_count: 0,
+          total_bet_amount: "0.0000",
+          total_valid_amount: "0.0000",
+          total_rebate_amount: "0.0000",
+          total_result: "0.0000",
+          total_win_lose: "0.0000",
+          total_prize: "0.0000",
+        },
+      ];
     }
   } catch {
     if (!isStale()) layer.msg(t("common.errorLoad"), { icon: 2 });
@@ -108,11 +120,12 @@ const { handlePageChange, handleSearch } = bindLoadData(loadData, selectedAgentI
 
 const exportAllFn = createExportAllFn((p, limit) =>
   fetchReportLottery({
-    page: p, limit,
+    page: p,
+    limit,
     username: searchForm.username || undefined,
     lottery_id: searchForm.lotteryType || undefined,
     date: dateRange.value?.length === 2 ? `${dateRange.value[0]} - ${dateRange.value[1]}` : undefined,
-  }).then(r => r.data.data),
+  }).then((r) => r.data.data),
 );
 
 function handleReset() {
@@ -128,41 +141,62 @@ onMounted(() => loadLotteryOptions());
   <div>
     <lay-card>
       <lay-field :title="t('reportLottery.title')">
-      <div class="search-form-wrap">
-        <div class="layui-inline">
-          <span class="form-label">{{ t("common.agentLabel") }}</span>
-          <lay-select v-model="selectedAgentId" :style="{ width: agentWidth }">
-            <lay-select-option v-for="opt in agentOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
-          </lay-select>
+        <div class="search-form-wrap">
+          <div class="layui-inline">
+            <span class="form-label">{{ t("common.agentLabel") }}</span>
+            <lay-select v-model="selectedAgentId" :style="{ width: agentWidth }">
+              <lay-select-option
+                v-for="opt in agentOptions"
+                :key="opt.value"
+                :value="opt.value"
+                :label="opt.label"
+              />
+            </lay-select>
+          </div>
+          <div class="layui-inline">
+            <span class="form-label">{{ t("common.timeLabel") }}</span>
+            <lay-date-picker
+              v-model="dateRange"
+              range
+              single-panel
+              range-separator="-"
+              :placeholder="[t('common.dateStart'), t('common.dateEnd')]"
+            />
+          </div>
+          <div class="layui-inline">
+            <lay-select v-model="dateQuickSelect" :style="{ width: dateQuickWidth }">
+              <lay-select-option
+                v-for="opt in dateQuickOptions"
+                :key="opt.value"
+                :value="opt.value"
+                :label="opt.label"
+              />
+            </lay-select>
+          </div>
+          <div class="layui-inline">
+            <span class="form-label">{{ t("reportLottery.lotteryNameLabel") }}</span>
+            <lay-select v-model="searchForm.lotteryType" :style="{ width: lotteryWidth }">
+              <lay-select-option
+                v-for="opt in lotteryOptions"
+                :key="opt.value"
+                :value="opt.value"
+                :label="opt.label"
+              />
+            </lay-select>
+          </div>
+          <div class="layui-inline">
+            <span class="form-label">{{ t("reportLottery.accountLabel") }}</span>
+            <lay-input v-model="searchForm.username" :placeholder="t('reportLottery.accountPlaceholder')" />
+          </div>
+          <div class="layui-inline">
+            <lay-button type="normal" @click="handleSearch">
+              <i class="layui-icon layui-icon-search" /> {{ t("common.search") }}
+            </lay-button>
+            <lay-button type="primary" @click="handleReset">
+              <i class="layui-icon layui-icon-refresh" /> {{ t("common.reset") }}
+            </lay-button>
+          </div>
         </div>
-        <div class="layui-inline">
-          <span class="form-label">{{ t("common.timeLabel") }}</span>
-          <lay-date-picker v-model="dateRange" range single-panel range-separator="-" :placeholder="[t('common.dateStart'), t('common.dateEnd')]" />
-        </div>
-        <div class="layui-inline">
-          <lay-select v-model="dateQuickSelect" :style="{ width: dateQuickWidth }">
-            <lay-select-option v-for="opt in dateQuickOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
-          </lay-select>
-        </div>
-        <div class="layui-inline">
-          <span class="form-label">{{ t("reportLottery.lotteryNameLabel") }}</span>
-          <lay-select v-model="searchForm.lotteryType" :style="{ width: lotteryWidth }">
-            <lay-select-option v-for="opt in lotteryOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
-          </lay-select>
-        </div>
-        <div class="layui-inline">
-          <span class="form-label">{{ t("reportLottery.accountLabel") }}</span>
-          <lay-input v-model="searchForm.username" :placeholder="t('reportLottery.accountPlaceholder')" />
-        </div>
-        <div class="layui-inline">
-          <lay-button type="normal" @click="handleSearch">
-            <i class="layui-icon layui-icon-search"></i> {{ t("common.search") }}
-          </lay-button>
-          <lay-button type="primary" @click="handleReset">
-            <i class="layui-icon layui-icon-refresh"></i> {{ t("common.reset") }}
-          </lay-button>
-        </div>
-      </div>
       </lay-field>
 
       <div class="table-container">
@@ -176,19 +210,31 @@ onMounted(() => loadLotteryOptions());
           :export-all-fn="exportAllFn"
           @change="handlePageChange"
         >
-          <template v-slot:toolbar>
+          <template #toolbar>
             <CookieBadge />
           </template>
           <template #num="{ row, column }">
-            <lay-count-up :end-val="Number(row[column.key]) || 0" :duration="0" :decimal-places="String(row[column.key]).includes('.') ? 2 : 0" :use-grouping="false" />
+            <lay-count-up
+              :end-val="Number(row[column.key]) || 0"
+              :duration="0"
+              :decimal-places="String(row[column.key]).includes('.') ? 2 : 0"
+              :use-grouping="false"
+            />
           </template>
         </lay-table>
         <lay-table :columns="summaryColumns" :data-source="summaryData" :default-toolbar="true">
-          <template v-slot:toolbar>
-            <lay-button size="xs" type="normal"><b>{{ t("common.summaryData") }}</b></lay-button>
+          <template #toolbar>
+            <lay-button size="xs" type="normal">
+              <b>{{ t("common.summaryData") }}</b>
+            </lay-button>
           </template>
           <template #sumNum="{ row, column }">
-            <lay-count-up :end-val="Number(row[column.key]) || 0" :duration="0" :decimal-places="String(row[column.key]).includes('.') ? 4 : 0" :use-grouping="false" />
+            <lay-count-up
+              :end-val="Number(row[column.key]) || 0"
+              :duration="0"
+              :decimal-places="String(row[column.key]).includes('.') ? 4 : 0"
+              :use-grouping="false"
+            />
           </template>
         </lay-table>
       </div>

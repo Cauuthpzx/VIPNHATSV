@@ -25,7 +25,11 @@ export const useAuthStore = defineStore("auth", () => {
 
   // Sync access token to localStorage
   watch(accessToken, (val) => {
-    val ? localStorage.setItem(TOKEN_KEY, val) : localStorage.removeItem(TOKEN_KEY);
+    if (val) {
+      localStorage.setItem(TOKEN_KEY, val);
+    } else {
+      localStorage.removeItem(TOKEN_KEY);
+    }
   });
   // Refresh token is managed via httpOnly cookie — no localStorage needed
 

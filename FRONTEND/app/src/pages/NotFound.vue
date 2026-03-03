@@ -8,9 +8,11 @@ const { t } = useI18n();
   <div class="not-found-page">
     <div class="not-found-content">
       <h1 class="not-found-code">404</h1>
-      <p class="not-found-text">{{ t('notFound.title') }}</p>
+      <p class="not-found-text">
+        {{ t("notFound.title") }}
+      </p>
       <lay-button type="primary" @click="$router.push('/agent/welcome')">
-        {{ t('notFound.backHome') }}
+        {{ t("notFound.backHome") }}
       </lay-button>
     </div>
   </div>

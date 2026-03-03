@@ -19,9 +19,7 @@ const loading = ref(false);
 const stopping = ref(false);
 const agents = ref<AgentRow[]>([]);
 
-const columns = computed(() => [
-  { title: t("syncV2.agentCol"), key: "display", ellipsisTooltip: true },
-]);
+const columns = computed(() => [{ title: t("syncV2.agentCol"), key: "display", ellipsisTooltip: true }]);
 
 async function loadAgents() {
   loading.value = true;
@@ -65,24 +63,19 @@ onMounted(() => loadAgents());
       <lay-field :title="t('syncV2.title')" />
 
       <div class="table-container">
-          <lay-table
-            :columns="columns"
-            :loading="loading"
-            :data-source="agents"
-            :default-toolbar="defaultToolbar"
-          >
-            <template v-slot:toolbar>
-              <lay-button
-                size="sm"
-                type="danger"
-                :loading="stopping"
-                @click="handleStopSync"
-              >
-                <i class="layui-icon layui-icon-pause"></i> {{ t('syncV2.stopSync') }}
-              </lay-button>
-            </template>
-          </lay-table>
-        </div>
+        <lay-table
+          :columns="columns"
+          :loading="loading"
+          :data-source="agents"
+          :default-toolbar="defaultToolbar"
+        >
+          <template #toolbar>
+            <lay-button size="sm" type="danger" :loading="stopping" @click="handleStopSync">
+              <i class="layui-icon layui-icon-pause" /> {{ t("syncV2.stopSync") }}
+            </lay-button>
+          </template>
+        </lay-table>
+      </div>
     </lay-card>
   </div>
 </template>

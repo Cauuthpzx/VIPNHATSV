@@ -106,10 +106,10 @@ async function handleSubmit() {
   try {
     const res = await addNoteCustomers(parsedList.value);
     const d = res.data.data;
-    layer.msg(
-      t("noteCustomer.addSuccess", { inserted: d.insertedCount, skipped: d.skippedCount }),
-      { icon: 1, time: 3000 },
-    );
+    layer.msg(t("noteCustomer.addSuccess", { inserted: d.insertedCount, skipped: d.skippedCount }), {
+      icon: 1,
+      time: 3000,
+    });
     close();
     emit("added");
   } catch {
@@ -137,14 +137,10 @@ defineExpose({ open });
         <div class="note-left-header">
           <span>{{ t("noteCustomer.pasteLabel") }}</span>
         </div>
-        <textarea
-          v-model="rawText"
-          class="note-textarea"
-          :placeholder="t('noteCustomer.pastePlaceholder')"
-        ></textarea>
+        <textarea v-model="rawText" class="note-textarea" :placeholder="t('noteCustomer.pastePlaceholder')" />
         <div class="note-left-footer">
           <lay-button type="normal" size="sm" @click="handleParse">
-            <i class="layui-icon layui-icon-right"></i> {{ t("noteCustomer.parseBtn") }}
+            <i class="layui-icon layui-icon-right" /> {{ t("noteCustomer.parseBtn") }}
           </lay-button>
         </div>
       </div>
@@ -152,12 +148,13 @@ defineExpose({ open });
       <!-- Right: preview table -->
       <div class="note-right">
         <div class="note-right-header">
-          <span>{{ t("noteCustomer.previewLabel") }}
+          <span
+            >{{ t("noteCustomer.previewLabel") }}
             <template v-if="hasData"> ({{ parsedList.length }})</template>
           </span>
           <div class="note-right-actions">
             <lay-button size="xs" type="primary" @click="addManualRow">
-              <i class="layui-icon layui-icon-addition"></i> {{ t("noteCustomer.addRow") }}
+              <i class="layui-icon layui-icon-addition" /> {{ t("noteCustomer.addRow") }}
             </lay-button>
             <lay-button v-if="hasData" size="xs" @click="clearAll">
               {{ t("noteCustomer.clearAll") }}
@@ -176,18 +173,32 @@ defineExpose({ open });
                 <th>{{ t("oldCustomers.colContact") }}</th>
                 <th>{{ t("oldCustomers.colSource") }}</th>
                 <th>{{ t("oldCustomers.colFirstDeposit") }}</th>
-                <th></th>
+                <th />
               </tr>
             </thead>
             <tbody>
               <tr v-for="(item, idx) in parsedList" :key="idx">
-                <td class="center">{{ idx + 1 }}</td>
-                <td><input v-model="item.assignedDate" class="cell-input cell-date" placeholder="YYYY-MM-DD" /></td>
-                <td><input v-model="item.employeeName" class="cell-input" /></td>
-                <td><input v-model="item.agentCode" class="cell-input cell-sm" /></td>
-                <td><input v-model="item.username" class="cell-input cell-user" placeholder="username" /></td>
-                <td><input v-model="item.contactInfo" class="cell-input" /></td>
-                <td><input v-model="item.source" class="cell-input cell-sm" /></td>
+                <td class="center">
+                  {{ idx + 1 }}
+                </td>
+                <td>
+                  <input v-model="item.assignedDate" class="cell-input cell-date" placeholder="YYYY-MM-DD" />
+                </td>
+                <td>
+                  <input v-model="item.employeeName" class="cell-input" />
+                </td>
+                <td>
+                  <input v-model="item.agentCode" class="cell-input cell-sm" />
+                </td>
+                <td>
+                  <input v-model="item.username" class="cell-input cell-user" placeholder="username" />
+                </td>
+                <td>
+                  <input v-model="item.contactInfo" class="cell-input" />
+                </td>
+                <td>
+                  <input v-model="item.source" class="cell-input cell-sm" />
+                </td>
                 <td class="right">
                   <input
                     :value="getDepositDisplay(item, idx)"
@@ -197,7 +208,7 @@ defineExpose({ open });
                   />
                 </td>
                 <td class="center">
-                  <i class="layui-icon layui-icon-close note-remove-btn" @click="removeRow(idx)"></i>
+                  <i class="layui-icon layui-icon-close note-remove-btn" @click="removeRow(idx)" />
                 </td>
               </tr>
             </tbody>
@@ -209,7 +220,9 @@ defineExpose({ open });
 
         <!-- Footer buttons -->
         <div class="note-footer">
-          <lay-button @click="close">{{ t("common.cancel") }}</lay-button>
+          <lay-button @click="close">
+            {{ t("common.cancel") }}
+          </lay-button>
           <lay-button type="normal" :loading="submitting" :disabled="!hasData" @click="handleSubmit">
             {{ t("noteCustomer.addBtn") }}
           </lay-button>
@@ -299,8 +312,12 @@ defineExpose({ open });
 .note-table tr:hover {
   background: #f9f9f9;
 }
-.center { text-align: center; }
-.right { text-align: right; }
+.center {
+  text-align: center;
+}
+.right {
+  text-align: right;
+}
 .cell-input {
   border: 1px solid #e8e8e8;
   background: transparent;
@@ -315,10 +332,19 @@ defineExpose({ open });
   background: #fff;
   outline: none;
 }
-.cell-date { width: 90px; }
-.cell-sm { width: 70px; }
-.cell-user { width: 100px; }
-.cell-deposit { width: 70px; text-align: right; }
+.cell-date {
+  width: 90px;
+}
+.cell-sm {
+  width: 70px;
+}
+.cell-user {
+  width: 100px;
+}
+.cell-deposit {
+  width: 70px;
+  text-align: right;
+}
 .note-remove-btn {
   cursor: pointer;
   color: #999;

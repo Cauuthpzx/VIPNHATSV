@@ -16,30 +16,38 @@ const info = ref({
 
 <template>
   <div class="welcome-page">
-    <lay-quote>{{ t('welcome.greeting') }}</lay-quote>
+    <lay-quote>{{ t("welcome.greeting") }}</lay-quote>
 
     <lay-row :space="15">
       <lay-col :md="14">
         <lay-card>
-          <div class="section-title">{{ t('welcome.basicInfo') }}</div>
+          <div class="section-title">
+            {{ t("welcome.basicInfo") }}
+          </div>
           <lay-line theme="green" />
           <div class="info-row">
-            {{ t('welcome.lastLoginTime') }}{{ info.lastLoginTime }}，{{ t('welcome.lastLoginIp') }}
+            {{ t("welcome.lastLoginTime") }}{{ info.lastLoginTime }}，{{ t("welcome.lastLoginIp") }}
           </div>
-          <div class="info-row">{{ info.lastLoginIp }}</div>
+          <div class="info-row">
+            {{ info.lastLoginIp }}
+          </div>
           <br />
           <div class="info-row">
-            {{ t('welcome.currentLoginTime') }}{{ info.currentLoginTime }}，{{ t('welcome.currentLoginIp') }}
+            {{ t("welcome.currentLoginTime") }}{{ info.currentLoginTime }}，{{ t("welcome.currentLoginIp") }}
           </div>
-          <div class="info-row">{{ info.currentLoginIp }}</div>
+          <div class="info-row">
+            {{ info.currentLoginIp }}
+          </div>
         </lay-card>
       </lay-col>
       <lay-col :md="10">
         <lay-card>
-          <div class="section-title">{{ t('welcome.fundOverview') }}</div>
+          <div class="section-title">
+            {{ t("welcome.fundOverview") }}
+          </div>
           <lay-line theme="green" />
-          <div class="info-row">{{ t('welcome.agentWallet') }}{{ info.agentBalance }}</div>
-          <div class="info-row">{{ t('welcome.frozenAmount') }}{{ info.frozenAmount }}</div>
+          <div class="info-row">{{ t("welcome.agentWallet") }}{{ info.agentBalance }}</div>
+          <div class="info-row">{{ t("welcome.frozenAmount") }}{{ info.frozenAmount }}</div>
         </lay-card>
       </lay-col>
     </lay-row>

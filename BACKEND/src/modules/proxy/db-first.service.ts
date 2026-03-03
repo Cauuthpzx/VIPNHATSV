@@ -74,7 +74,9 @@ const DB_FIRST_ENDPOINTS: Record<string, DbFirstConfig> = {
     mode: "locked",
     buildFilters: (params) => ({
       ...(params.serial_no ? { serialNo: params.serial_no } : {}),
-      ...(params.platform_username ? { platformUsername: { contains: params.platform_username, mode: "insensitive" } } : {}),
+      ...(params.platform_username
+        ? { platformUsername: { contains: params.platform_username, mode: "insensitive" } }
+        : {}),
     }),
   },
   "/agent/reportLottery.html": {
@@ -175,12 +177,12 @@ async function computeDbTotalData(
   // Collect numeric fields for _sum
   const sumFields: Record<string, true> = {};
   let needDistinct = false;
-  let distinctKey = "";
+  let _distinctKey = "";
 
   for (const [outputKey, prismaField] of Object.entries(fieldMap)) {
     if (prismaField === "COUNT_DISTINCT") {
       needDistinct = true;
-      distinctKey = outputKey;
+      _distinctKey = outputKey;
     } else {
       sumFields[prismaField] = true;
     }
@@ -192,9 +194,11 @@ async function computeDbTotalData(
       ? prismaModel.aggregate({ where, _sum: sumFields })
       : Promise.resolve({ _sum: {} }),
     needDistinct
-      ? app.prisma.$queryRawUnsafe<[{ cnt: bigint }]>(
-          `SELECT COUNT(DISTINCT username) as cnt FROM "${config.table}" WHERE ${buildRawWhereClause(where, config)}`,
-        ).then((rows: [{ cnt: bigint }]) => Number(rows[0]?.cnt ?? 0))
+      ? app.prisma
+          .$queryRawUnsafe<
+            [{ cnt: bigint }]
+          >(`SELECT COUNT(DISTINCT username) as cnt FROM "${config.table}" WHERE ${buildRawWhereClause(where, config)}`)
+          .then((rows: [{ cnt: bigint }]) => Number(rows[0]?.cnt ?? 0))
       : Promise.resolve(0),
   ]);
 
@@ -215,7 +219,7 @@ async function computeDbTotalData(
  * Build a raw SQL WHERE clause from the Prisma-style where object.
  * Supports: equals, in, gte, lte, contains+insensitive.
  */
-function buildRawWhereClause(where: Record<string, unknown>, config: DbFirstConfig): string {
+function buildRawWhereClause(where: Record<string, unknown>, _config: DbFirstConfig): string {
   const clauses: string[] = [];
 
   for (const [field, condition] of Object.entries(where)) {

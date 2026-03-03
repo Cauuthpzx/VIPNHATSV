@@ -73,7 +73,9 @@ onMounted(() => {
   notificationStore.startPolling();
   connectWs();
   // Bật transition sau frame đầu tiên — lần đầu render không animate
-  nextTick(() => { transitionReady.value = true; });
+  nextTick(() => {
+    transitionReady.value = true;
+  });
 });
 
 onBeforeUnmount(() => {
@@ -93,11 +95,18 @@ onBeforeUnmount(() => {
     <!-- ===== HEADER ===== -->
     <lay-header class="admin-header" :style="{ left: sideWidth + 'px' }">
       <div class="admin-header-left">
-        <a href="javascript:;" @click="store.toggleCollapse()" :title="store.collapsed ? t('nav.expand') : t('nav.collapse')">
-          <i class="layui-icon" :class="store.collapsed ? 'layui-icon-spread-left' : 'layui-icon-shrink-right'"></i>
+        <a
+          href="javascript:;"
+          :title="store.collapsed ? t('nav.expand') : t('nav.collapse')"
+          @click="store.toggleCollapse()"
+        >
+          <i
+            class="layui-icon"
+            :class="store.collapsed ? 'layui-icon-spread-left' : 'layui-icon-shrink-right'"
+          />
         </a>
-        <a href="javascript:;" @click="handleRefresh" :title="t('nav.refresh')">
-          <i class="layui-icon layui-icon-refresh-3"></i>
+        <a href="javascript:;" :title="t('nav.refresh')" @click="handleRefresh">
+          <i class="layui-icon layui-icon-refresh-3" />
         </a>
       </div>
       <div class="admin-header-right">

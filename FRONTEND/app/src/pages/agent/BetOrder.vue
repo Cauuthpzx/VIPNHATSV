@@ -44,7 +44,10 @@ async function loadData() {
       limit: page.limit,
       serial_no: searchForm.serialNo || undefined,
       platform_username: searchForm.platformUsername || undefined,
-      bet_time: searchForm.dateRange?.length === 2 ? `${searchForm.dateRange[0]} - ${searchForm.dateRange[1]}` : undefined,
+      bet_time:
+        searchForm.dateRange?.length === 2
+          ? `${searchForm.dateRange[0]} - ${searchForm.dateRange[1]}`
+          : undefined,
       es: 1,
     });
     if (isStale()) return;
@@ -61,12 +64,16 @@ const { handlePageChange, handleSearch } = bindLoadData(loadData, selectedAgentI
 
 const exportAllFn = createExportAllFn((p, limit) =>
   fetchBetOrder({
-    page: p, limit,
+    page: p,
+    limit,
     serial_no: searchForm.serialNo || undefined,
     platform_username: searchForm.platformUsername || undefined,
-    bet_time: searchForm.dateRange?.length === 2 ? `${searchForm.dateRange[0]} - ${searchForm.dateRange[1]}` : undefined,
+    bet_time:
+      searchForm.dateRange?.length === 2
+        ? `${searchForm.dateRange[0]} - ${searchForm.dateRange[1]}`
+        : undefined,
     es: 1,
-  }).then(r => r.data.data),
+  }).then((r) => r.data.data),
 );
 
 function handleReset() {
@@ -80,34 +87,49 @@ function handleReset() {
   <div>
     <lay-card>
       <lay-field :title="t('betOrder.title')">
-      <div class="search-form-wrap">
-        <div class="layui-inline">
-          <span class="form-label">{{ t("common.agentLabel") }}</span>
-          <lay-select v-model="selectedAgentId" :style="{ width: agentWidth }">
-            <lay-select-option v-for="opt in agentOptions" :key="opt.value" :value="opt.value" :label="opt.label" />
-          </lay-select>
+        <div class="search-form-wrap">
+          <div class="layui-inline">
+            <span class="form-label">{{ t("common.agentLabel") }}</span>
+            <lay-select v-model="selectedAgentId" :style="{ width: agentWidth }">
+              <lay-select-option
+                v-for="opt in agentOptions"
+                :key="opt.value"
+                :value="opt.value"
+                :label="opt.label"
+              />
+            </lay-select>
+          </div>
+          <div class="layui-inline">
+            <span class="form-label">{{ t("common.timeLabel") }}</span>
+            <lay-date-picker
+              v-model="searchForm.dateRange"
+              range
+              single-panel
+              range-separator="-"
+              :placeholder="[t('common.dateStart'), t('common.dateEnd')]"
+              :allow-clear="true"
+            />
+          </div>
+          <div class="layui-inline">
+            <span class="form-label">{{ t("betOrder.serialNoLabel") }}</span>
+            <lay-input v-model="searchForm.serialNo" :placeholder="t('betOrder.serialNoPlaceholder')" />
+          </div>
+          <div class="layui-inline">
+            <span class="form-label">{{ t("betOrder.platformUsernameLabel") }}</span>
+            <lay-input
+              v-model="searchForm.platformUsername"
+              :placeholder="t('betOrder.platformUsernamePlaceholder')"
+            />
+          </div>
+          <div class="layui-inline">
+            <lay-button type="normal" @click="handleSearch">
+              <i class="layui-icon layui-icon-search" /> {{ t("common.search") }}
+            </lay-button>
+            <lay-button type="primary" @click="handleReset">
+              <i class="layui-icon layui-icon-refresh" /> {{ t("common.reset") }}
+            </lay-button>
+          </div>
         </div>
-        <div class="layui-inline">
-          <span class="form-label">{{ t("common.timeLabel") }}</span>
-          <lay-date-picker v-model="searchForm.dateRange" range single-panel range-separator="-" :placeholder="[t('common.dateStart'), t('common.dateEnd')]" :allow-clear="true" />
-        </div>
-        <div class="layui-inline">
-          <span class="form-label">{{ t("betOrder.serialNoLabel") }}</span>
-          <lay-input v-model="searchForm.serialNo" :placeholder="t('betOrder.serialNoPlaceholder')" />
-        </div>
-        <div class="layui-inline">
-          <span class="form-label">{{ t("betOrder.platformUsernameLabel") }}</span>
-          <lay-input v-model="searchForm.platformUsername" :placeholder="t('betOrder.platformUsernamePlaceholder')" />
-        </div>
-        <div class="layui-inline">
-          <lay-button type="normal" @click="handleSearch">
-            <i class="layui-icon layui-icon-search"></i> {{ t("common.search") }}
-          </lay-button>
-          <lay-button type="primary" @click="handleReset">
-            <i class="layui-icon layui-icon-refresh"></i> {{ t("common.reset") }}
-          </lay-button>
-        </div>
-      </div>
       </lay-field>
 
       <div class="table-container">
@@ -121,11 +143,16 @@ function handleReset() {
           :export-all-fn="canExport ? exportAllFn : undefined"
           @change="handlePageChange"
         >
-          <template v-slot:toolbar>
+          <template #toolbar>
             <CookieBadge />
           </template>
           <template #num="{ row, column }">
-            <lay-count-up :end-val="Number(row[column.key]) || 0" :duration="0" :decimal-places="String(row[column.key]).includes('.') ? 2 : 0" :use-grouping="false" />
+            <lay-count-up
+              :end-val="Number(row[column.key]) || 0"
+              :duration="0"
+              :decimal-places="String(row[column.key]).includes('.') ? 2 : 0"
+              :use-grouping="false"
+            />
           </template>
         </lay-table>
       </div>

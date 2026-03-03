@@ -9,15 +9,16 @@
 import type { FastifyInstance } from "fastify";
 import { listActiveAgents } from "../proxy/agent.service.js";
 import { decryptSessionCookie } from "../../utils/crypto.js";
-import { SYNC_ENDPOINTS, type SyncEndpointConfig } from "./sync.config.js";
+import { SYNC_ENDPOINTS } from "./sync.config.js";
 import { UPSERT_REGISTRY } from "./sync.upsert.js";
 import { markEndpointRan } from "./sync.scheduler.js";
 import { logger } from "../../utils/logger.js";
 
-// Re-export từ sync.service.ts (sẽ import sau khi export)
 // Import lazy để tránh circular dependency
-let _syncAgentEndpoint: typeof import("./sync.service.js").syncAgentEndpoint | null = null;
-let _syncAgentSingleDay: typeof import("./sync.service.js").syncAgentSingleDay | null = null;
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+type SyncServiceModule = typeof import("./sync.service.js");
+let _syncAgentEndpoint: SyncServiceModule["syncAgentEndpoint"] | null = null;
+let _syncAgentSingleDay: SyncServiceModule["syncAgentSingleDay"] | null = null;
 
 async function getSyncFns() {
   if (!_syncAgentEndpoint || !_syncAgentSingleDay) {
@@ -62,7 +63,7 @@ export function unlockEndpoint(table: string): void {
 // ---------------------------------------------------------------------------
 
 const DEMAND_COOLDOWN_MS = 30_000; // 30s cooldown per endpoint
-const DEMAND_DEBOUNCE_MS = 2_000;  // 2s debounce window
+const DEMAND_DEBOUNCE_MS = 2_000; // 2s debounce window
 
 const lastDemandAt = new Map<string, number>();
 const pendingDemands = new Map<string, ReturnType<typeof setTimeout>>();
