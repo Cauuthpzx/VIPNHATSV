@@ -57,6 +57,7 @@ interface AgentOverviewRow {
   depositToday: number;
   totalDepositMonth: number;
   totalBetLotteryMonth: number;
+  totalBetThirdMonth: number;
   winLoseLotteryMonth: number;
 }
 
@@ -205,6 +206,7 @@ export async function getDashboardSummary(
     agentBetThirdToday,
     agentDepositMonth,
     agentLotteryMonth,
+    agentThirdMonth,
     // Combined: notification counts (1 query for all 4 counters, was 4)
     notifCounts,
   ] = await Promise.all([
@@ -350,6 +352,12 @@ export async function getDashboardSummary(
       where: { reportDate: { gte: monthStart, lte: today } },
       _sum: { betAmount: true, winLose: true },
     }),
+    // Monthly 3rd game bet (per agent)
+    app.prisma.proxyReportThirdGame.groupBy({
+      by: ["agentId"],
+      where: { reportDate: { gte: monthStart, lte: today } },
+      _sum: { tBetAmount: true },
+    }),
     // Notification counts COMBINED (1 query, was 4)
     app.prisma.$queryRaw<{ type: string; period: string; cnt: bigint }[]>`
       SELECT type, period, COUNT(*)::bigint as cnt FROM (
@@ -469,6 +477,7 @@ export async function getDashboardSummary(
   const betThirdTodayMap = new Map(agentBetThirdToday.map((d) => [d.agentId, toNum(d._sum.tBetAmount)]));
   const depMonthMap = new Map(agentDepositMonth.map((d) => [d.agentId, toNum(d._sum.depositAmount)]));
   const betLotMonthMap = new Map(agentLotteryMonth.map((d) => [d.agentId, toNum(d._sum.betAmount)]));
+  const betThirdMonthMap = new Map(agentThirdMonth.map((d) => [d.agentId, toNum(d._sum.tBetAmount)]));
   const wlMonthMap = new Map(agentLotteryMonth.map((d) => [d.agentId, toNum(d._sum.winLose)]));
 
   // Build online counts: Map<agentId, Record<date, count>>
@@ -490,6 +499,7 @@ export async function getDashboardSummary(
     depositToday: depMap.get(a.id) ?? 0,
     totalDepositMonth: depMonthMap.get(a.id) ?? 0,
     totalBetLotteryMonth: betLotMonthMap.get(a.id) ?? 0,
+    totalBetThirdMonth: betThirdMonthMap.get(a.id) ?? 0,
     winLoseLotteryMonth: wlMonthMap.get(a.id) ?? 0,
   }));
 

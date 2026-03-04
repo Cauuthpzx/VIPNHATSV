@@ -237,8 +237,12 @@ export async function syncTriggerHandler(request: FastifyRequest, reply: Fastify
     });
   }
 
+  const body = (request.body as { startDate?: string; endDate?: string }) || {};
+  const dateOverride =
+    body.startDate && body.endDate ? { start: body.startDate, end: body.endDate } : undefined;
+
   // Fire and forget — don't await
-  runFullSync(request.server).catch((err) => {
+  runFullSync(request.server, dateOverride).catch((err) => {
     logger.error("[Sync] Manual trigger failed", {
       error: err instanceof Error ? err.message : String(err),
     });
@@ -262,8 +266,11 @@ export async function syncTriggerAgentHandler(request: FastifyRequest, reply: Fa
   }
 
   const { agentId } = request.params as { agentId: string };
+  const body = (request.body as { startDate?: string; endDate?: string }) || {};
+  const dateOverride =
+    body.startDate && body.endDate ? { start: body.startDate, end: body.endDate } : undefined;
 
-  runAgentSync(request.server, agentId).catch((err) => {
+  runAgentSync(request.server, agentId, dateOverride).catch((err) => {
     logger.error("[Sync] Single-agent trigger failed", {
       agentId,
       error: err instanceof Error ? err.message : String(err),
@@ -299,7 +306,11 @@ export async function syncTriggerAgentEndpointHandler(request: FastifyRequest, r
     });
   }
 
-  runAgentEndpointSync(request.server, agentId, table).catch((err) => {
+  const body = (request.body as { startDate?: string; endDate?: string }) || {};
+  const dateOverride =
+    body.startDate && body.endDate ? { start: body.startDate, end: body.endDate } : undefined;
+
+  runAgentEndpointSync(request.server, agentId, table, dateOverride).catch((err) => {
     logger.error("[Sync] Single-agent-endpoint trigger failed", {
       agentId,
       table,

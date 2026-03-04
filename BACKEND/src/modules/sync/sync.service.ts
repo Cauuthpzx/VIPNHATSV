@@ -365,7 +365,10 @@ type UpsertFn = (typeof UPSERT_REGISTRY)[string];
  * isDateDone skip ngày đã xong (Redis GET nhanh) → hiệu quả như recurring.
  * Đảm bảo phải sync hết tới hôm nay, không bỏ sót ngày nào.
  */
-export async function runFullSync(app: FastifyInstance): Promise<void> {
+export async function runFullSync(
+  app: FastifyInstance,
+  dateOverride?: { start: string; end: string },
+): Promise<void> {
   if (isSyncing) {
     logger.warn("[Sync] Already in progress, skipping");
     return;
@@ -406,7 +409,7 @@ export async function runFullSync(app: FastifyInstance): Promise<void> {
 
     // Mỗi agent là 1 stream độc lập, chạy song song tất cả
     const agentPromises = agents.map((agent) =>
-      runAgentStream(app, agent, endpointsToRun).catch((err) => {
+      runAgentStream(app, agent, endpointsToRun, dateOverride).catch((err) => {
         logger.error(`[Sync] Agent stream fatal error: ${agent.name}`, {
           agentId: agent.id,
           error: err instanceof Error ? err.message : String(err),
@@ -449,6 +452,7 @@ async function runAgentStream(
   app: FastifyInstance,
   agent: Agent,
   endpointsToRun?: Set<string>,
+  dateOverride?: { start: string; end: string },
 ): Promise<void> {
   const cookie = decryptSessionCookie(agent.sessionCookie);
   const today = formatDate(new Date());
@@ -540,7 +544,7 @@ async function runAgentStream(
         if (!upsertFn) return;
 
         try {
-          await syncAgentDateRange(app, agent, cookie, endpoint, upsertFn, today);
+          await syncAgentDateRange(app, agent, cookie, endpoint, upsertFn, today, dateOverride);
           logger.info(`[Sync] ${agent.name} → ${endpoint.table} done (date-range)`);
         } catch (err) {
           // Session expired → let it propagate to abort agent
@@ -640,13 +644,16 @@ async function syncAgentDateRange(
   endpoint: SyncEndpointConfig,
   upsertFn: UpsertFn,
   today: string,
+  dateOverride?: { start: string; end: string },
 ): Promise<void> {
   let timeoutStrikes = 0;
   let consecutiveErrors = 0;
   const MAX_CONSECUTIVE_ERRORS = 10; // Dừng endpoint nếu lỗi liên tục 10 ngày
 
-  // Từng ngày từ SYNC_DATE_START → today (isDateDone skip ngày đã xong)
-  const dates = generateDateRange(SYNC_DATE_START, today);
+  // Nếu có dateOverride → chỉ sync range đó, không dùng SYNC_DATE_START
+  const startDate = dateOverride?.start ?? SYNC_DATE_START;
+  const endDate = dateOverride?.end ?? today;
+  const dates = generateDateRange(startDate, endDate);
 
   // ── Batch load tất cả locks cho agent+endpoint 1 lần (1 query thay vì N queries) ──
   const doneDates = await batchGetDoneDates(app, endpoint.table, agent.id, dates);
@@ -895,7 +902,11 @@ function formatDate(d: Date): string {
  * Run sync for a single agent across ALL endpoints.
  * Always runs in "full" mode.
  */
-export async function runAgentSync(app: FastifyInstance, agentId: string): Promise<void> {
+export async function runAgentSync(
+  app: FastifyInstance,
+  agentId: string,
+  dateOverride?: { start: string; end: string },
+): Promise<void> {
   if (isSyncing) {
     logger.warn("[Sync] Already in progress, skipping single-agent sync");
     return;
@@ -915,7 +926,7 @@ export async function runAgentSync(app: FastifyInstance, agentId: string): Promi
     wsManager.broadcast({ type: "sync_status", status: "started" });
 
     // Reuse the stream logic for a single agent
-    await runAgentStream(app, agent as Agent);
+    await runAgentStream(app, agent as Agent, undefined, dateOverride);
 
     logger.info(`[Sync] Single-agent sync completed: ${agent.name} in ${Date.now() - startTime}ms`);
     wsManager.broadcast({ type: "sync_status", status: "completed", durationMs: Date.now() - startTime });
@@ -937,6 +948,7 @@ export async function runAgentEndpointSync(
   app: FastifyInstance,
   agentId: string,
   endpointTable: string,
+  dateOverride?: { start: string; end: string },
 ): Promise<void> {
   if (isSyncing) {
     logger.warn("[Sync] Already in progress, skipping single-agent-endpoint sync");
@@ -977,7 +989,7 @@ export async function runAgentEndpointSync(
     } else if (!endpoint.needsDateRange) {
       await syncAgentEndpoint(app, agent as Agent, cookie, endpoint, upsertFn);
     } else {
-      await syncAgentDateRange(app, agent as Agent, cookie, endpoint, upsertFn, today);
+      await syncAgentDateRange(app, agent as Agent, cookie, endpoint, upsertFn, today, dateOverride);
     }
 
     logger.info(

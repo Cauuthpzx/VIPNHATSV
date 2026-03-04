@@ -529,6 +529,17 @@ const agentColumns = computed(() => {
         },
         {
           title: "",
+          exportTitle: t("dashboard.betThird"),
+          exportHeaderColor: "FFE0B2",
+          exportCellColor: "FFF8E1",
+          titleSlot: () => h("span", { class: "bg-month" }, t("dashboard.betThird")),
+          key: "totalBetThirdMonth",
+          width: "72px",
+          align: "center",
+          customSlot: "monthMoney",
+        },
+        {
+          title: "",
           exportTitle: t("dashboard.winLose"),
           exportHeaderColor: "FFE0B2",
           exportCellColor: "FFF8E1",

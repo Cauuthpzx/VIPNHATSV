@@ -13,19 +13,27 @@ export function stopSync() {
   return api.post("/sync/stop");
 }
 
-/** Trigger full sync (all agents) */
-export function triggerSync() {
-  return api.post("/sync/trigger");
+/** Trigger full sync (all agents), optionally with date range */
+export function triggerSync(startDate?: string, endDate?: string) {
+  const body = startDate && endDate ? { startDate, endDate } : undefined;
+  return api.post("/sync/trigger", body);
 }
 
-/** Trigger sync for a single agent */
-export function triggerAgentSync(agentId: string) {
-  return api.post(`/sync/trigger/${agentId}`);
+/** Trigger sync for a single agent, optionally with date range */
+export function triggerAgentSync(agentId: string, startDate?: string, endDate?: string) {
+  const body = startDate && endDate ? { startDate, endDate } : undefined;
+  return api.post(`/sync/trigger/${agentId}`, body);
 }
 
-/** Trigger sync for a single agent + single endpoint (table) */
-export function triggerAgentEndpointSync(agentId: string, table: string) {
-  return api.post(`/sync/trigger/${agentId}/${table}`);
+/** Trigger sync for a single agent + single endpoint (table), optionally with date range */
+export function triggerAgentEndpointSync(
+  agentId: string,
+  table: string,
+  startDate?: string,
+  endDate?: string,
+) {
+  const body = startDate && endDate ? { startDate, endDate } : undefined;
+  return api.post(`/sync/trigger/${agentId}/${table}`, body);
 }
 
 /** Purge ALL proxy data from all tables */

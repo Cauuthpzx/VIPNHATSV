@@ -30,6 +30,7 @@ export interface AgentOverviewRow {
   depositToday: number;
   totalDepositMonth: number;
   totalBetLotteryMonth: number;
+  totalBetThirdMonth: number;
   winLoseLotteryMonth: number;
 }
 
@@ -88,7 +89,9 @@ export function fetchDashboardSummary(startDate?: string, endDate?: string) {
 }
 
 export function fetchOnlineMembers(agentId: string, date: string) {
-  return api.get<{ success: boolean; data: string[] }>("/dashboard/online-members", { params: { agentId, date } });
+  return api.get<{ success: boolean; data: string[] }>("/dashboard/online-members", {
+    params: { agentId, date },
+  });
 }
 
 // --- Activity Feed (separate from bell notifications) ---

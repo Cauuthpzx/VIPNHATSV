@@ -26,12 +26,25 @@ import { useWsBus } from "@/composables/useWsBus";
 import { useToolbarPermission } from "@/composables/useToolbarPermission";
 import { PERMISSIONS } from "@/constants/permissions";
 import { layer } from "@layui/layui-vue";
+import { useDateRange } from "@/composables/useDateRange";
 
 const { t } = useI18n();
 const authStore = useAuthStore();
 const agentStore = useAgentStore();
 const { defaultToolbar } = useToolbarPermission();
 const canWrite = computed(() => authStore.hasPermission(PERMISSIONS.SYNC_WRITE));
+
+// Date range picker cho sync
+const {
+  dateRange: syncDateRange,
+  dateQuickSelect,
+  dateQuickOptions,
+  dateQuickWidth,
+} = useDateRange("thisMonth");
+
+/** Parsed start/end dates from date range picker — undefined if not set */
+const syncStartDate = computed(() => syncDateRange.value?.[0] || undefined);
+const syncEndDate = computed(() => syncDateRange.value?.[1] || undefined);
 
 const loading = ref(true);
 const triggering = ref(false);
@@ -342,7 +355,7 @@ async function loadStatus() {
 async function handleSyncAll() {
   triggering.value = true;
   try {
-    const res = await triggerSync();
+    const res = await triggerSync(syncStartDate.value, syncEndDate.value);
     if (res.data.success) {
       layer.msg(t("sync.syncAllTriggered"), { icon: 1 });
       isSyncing.value = true;
@@ -421,7 +434,7 @@ async function saveIntervals() {
 async function handleSyncAgent(agentId: string) {
   syncingAgentId.value = agentId;
   try {
-    const res = await triggerAgentSync(agentId);
+    const res = await triggerAgentSync(agentId, syncStartDate.value, syncEndDate.value);
     if (res.data.success) {
       layer.msg(t("sync.syncAgentTriggered"), { icon: 1 });
       isSyncing.value = true;
@@ -439,7 +452,7 @@ async function handleSyncAgentEndpoint(agentId: string, table: string, label: st
   const key = `${agentId}__${table}`;
   syncingEndpointKey.value = key;
   try {
-    const res = await triggerAgentEndpointSync(agentId, table);
+    const res = await triggerAgentEndpointSync(agentId, table, syncStartDate.value, syncEndDate.value);
     if (res.data.success) {
       layer.msg(t("sync.syncEndpointTriggered", { label }), { icon: 1 });
       isSyncing.value = true;
@@ -724,26 +737,39 @@ onUnmounted(() => {
             :indent-size="20"
           >
             <template #toolbar>
-              <template v-if="canWrite">
-                <lay-button size="sm" type="primary" @click="openCreateAgent">
-                  <i class="layui-icon layui-icon-add-1" /> {{ t("sync.addAgent") }}
-                </lay-button>
-                <lay-button size="sm" :loading="loggingInAll" @click="handleLoginAll">
-                  <i class="layui-icon layui-icon-key" /> {{ t("sync.loginAll") }}
-                </lay-button>
-                <lay-button
-                  v-if="!isSyncing"
-                  size="sm"
-                  type="normal"
-                  :loading="triggering"
-                  @click="handleSyncAll"
-                >
-                  <i class="layui-icon layui-icon-play" /> {{ t("sync.syncAll") }}
-                </lay-button>
-                <lay-button v-else size="sm" type="danger" :loading="stopping" @click="handleStopSync">
-                  <i class="layui-icon layui-icon-pause" /> {{ t("sync.stopSync") }}
-                </lay-button>
-              </template>
+              <div class="toolbar-row">
+                <div class="toolbar-date">
+                  <lay-select v-model="dateQuickSelect" size="sm" :style="{ width: dateQuickWidth }">
+                    <lay-select-option
+                      v-for="opt in dateQuickOptions"
+                      :key="opt.value"
+                      :value="opt.value"
+                      :label="opt.label"
+                    />
+                  </lay-select>
+                  <lay-date-picker v-model="syncDateRange" type="date" range size="sm" style="width: 220px" />
+                </div>
+                <template v-if="canWrite">
+                  <lay-button size="sm" type="primary" @click="openCreateAgent">
+                    <i class="layui-icon layui-icon-add-1" /> {{ t("sync.addAgent") }}
+                  </lay-button>
+                  <lay-button size="sm" :loading="loggingInAll" @click="handleLoginAll">
+                    <i class="layui-icon layui-icon-key" /> {{ t("sync.loginAll") }}
+                  </lay-button>
+                  <lay-button
+                    v-if="!isSyncing"
+                    size="sm"
+                    type="normal"
+                    :loading="triggering"
+                    @click="handleSyncAll"
+                  >
+                    <i class="layui-icon layui-icon-play" /> {{ t("sync.syncAll") }}
+                  </lay-button>
+                  <lay-button v-else size="sm" type="danger" :loading="stopping" @click="handleStopSync">
+                    <i class="layui-icon layui-icon-pause" /> {{ t("sync.stopSync") }}
+                  </lay-button>
+                </template>
+              </div>
             </template>
 
             <template #agentName="{ row }">
@@ -1171,6 +1197,20 @@ onUnmounted(() => {
   to {
     transform: rotate(360deg);
   }
+}
+
+/* ===== TOOLBAR ===== */
+.toolbar-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.toolbar-date {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 /* ===== TABLE ===== */
