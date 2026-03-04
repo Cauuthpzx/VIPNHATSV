@@ -7,7 +7,7 @@ import { logger } from "../../utils/logger.js";
 import { AppError } from "../../errors/AppError.js";
 import { ERROR_CODES } from "../../constants/error-codes.js";
 import { tryDbFirst, tryDbFallbackForAgent } from "./db-first.service.js";
-import { SYNC_ENDPOINTS } from "../sync/sync.config.js";
+import { SYNC_ENDPOINTS, SYNC_DATE_START } from "../sync/sync.config.js";
 import { UPSERT_REGISTRY, upsertUsersSimple } from "../sync/sync.upsert.js";
 import { signalDemandSync } from "../sync/sync.demand.js";
 import { LRUCache, dedup } from "../../utils/lruCache.js";
@@ -854,13 +854,13 @@ const PREFETCH_ENDPOINTS: Array<{
   { path: "/agent/bankList.html", needsDate: false, dateParam: "", separator: "" },
 ];
 
-/** Debounce: chỉ prefetch 1 username mỗi 10s */
+/** Debounce: chỉ prefetch 1 username mỗi 30s */
 let lastPrefetchUser = "";
 let lastPrefetchTime = 0;
 
 async function prefetchUserAcrossEndpoints(app: FastifyInstance, username: string): Promise<void> {
   const now = Date.now();
-  if (username === lastPrefetchUser && now - lastPrefetchTime < 10_000) return;
+  if (username === lastPrefetchUser && now - lastPrefetchTime < 30_000) return;
   lastPrefetchUser = username;
   lastPrefetchTime = now;
 
@@ -868,11 +868,13 @@ async function prefetchUserAcrossEndpoints(app: FastifyInstance, username: strin
   if (agents.length === 0) return;
 
   const today = new Date().toISOString().slice(0, 10);
+  const startDate = SYNC_DATE_START; // Fetch từ ngày bắt đầu sync (2026-01-01)
 
   logger.info("[Prefetch] Starting background prefetch for user across all endpoints", {
     username,
     endpoints: PREFETCH_ENDPOINTS.length,
     agents: agents.length,
+    dateRange: `${startDate} → ${today}`,
   });
 
   // Fire all endpoints × all agents in parallel (fire-and-forget)
@@ -890,9 +892,9 @@ async function prefetchUserAcrossEndpoints(app: FastifyInstance, username: strin
               limit: "5000",
             };
 
-            // Date-range endpoints: fetch hôm nay
+            // Date-range endpoints: fetch TOÀN BỘ từ SYNC_DATE_START → hôm nay
             if (ep.needsDate) {
-              params[ep.dateParam] = `${today}${ep.separator}${today}`;
+              params[ep.dateParam] = `${startDate}${ep.separator}${today}`;
             }
 
             // Extra params từ sync config (es, is_summary...)
