@@ -309,27 +309,35 @@ export async function tryDbFirst<T>(
   const endDate = params.end_date;
   if (!startDate || !endDate) return null;
 
-  // Don't serve today from DB — it's still being synced
   const today = new Date().toISOString().slice(0, 10);
-  if (endDate >= today) return null;
 
-  // Check all dates in range are locked
+  // For past dates: require all dates locked (fast path)
+  // For ranges including today: check past dates locked, allow today (may be incomplete)
   const allDates = generateDateRange(startDate, endDate);
+  const pastDates = allDates.filter((d) => d < today);
   const lockTable = config.prismaModel;
 
-  const locks = await app.prisma.syncDateLock.findMany({
-    where: {
-      tableName: lockTable,
-      syncDate: { in: allDates },
-    },
-    select: { syncDate: true },
-  });
+  if (pastDates.length > 0) {
+    // Batch check: all past dates must be locked for ALL agents
+    const locks = await app.prisma.syncDateLock.findMany({
+      where: {
+        tableName: lockTable,
+        syncDate: { in: pastDates },
+        agentId: agentIds.length === 1 ? agentIds[0] : { in: agentIds },
+      },
+      select: { syncDate: true, agentId: true },
+    });
 
-  if (locks.length < allDates.length) {
-    // Not all dates locked — fallback to upstream
-    return null;
+    // Count unique locked (date, agentId) pairs — need pastDates.length × agentIds.length
+    const lockSet = new Set(locks.map((l) => `${l.syncDate}:${l.agentId}`));
+    const requiredCount = pastDates.length * agentIds.length;
+    if (lockSet.size < requiredCount) {
+      // Not all past dates locked for all agents — fallback to upstream
+      return null;
+    }
   }
 
+  // All past dates locked (or no past dates) — serve from DB (includes today's partial data)
   return queryDb<T>(app, config, params, agentIds, page, limit, requestId, startDate, endDate, path);
 }
 
@@ -403,6 +411,80 @@ async function queryDb<T>(
   } catch (err) {
     logger.warn("DB-first query failed, falling back to upstream", {
       table: config.table,
+      requestId,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// DB Fallback — dùng khi upstream fail (cookie hết hạn, timeout, lỗi mạng)
+// Không check lock, không check hôm nay — trả data đã sync dù chưa đầy đủ
+// ---------------------------------------------------------------------------
+
+/**
+ * Fallback to DB when upstream fails for a single agent.
+ * No lock checks — serves whatever data exists in DB.
+ * Used when fetchUpstream + auto-relogin both fail.
+ */
+export async function tryDbFallbackForAgent<T>(
+  app: FastifyInstance,
+  path: string,
+  params: Record<string, string>,
+  agentId: string,
+  agentName: string,
+  requestId?: string,
+): Promise<{ items: T[]; total: number; totalData?: Record<string, unknown> } | null> {
+  const config = DB_FIRST_ENDPOINTS[path];
+  if (!config) return null;
+
+  try {
+    const prismaModel = (app.prisma as any)[config.prismaModel];
+    if (!prismaModel) return null;
+
+    const where: Record<string, unknown> = {
+      agentId,
+      ...config.buildFilters(params),
+    };
+
+    // Add date filter if provided
+    const startDate = params.start_date;
+    const endDate = params.end_date;
+    if (startDate && endDate && config.dateColumn) {
+      const dateField = config.dateColumn === "sync_date" ? "syncDate" : "reportDate";
+      where[dateField] = { gte: startDate, lte: endDate };
+    }
+
+    const [rows, total] = await Promise.all([
+      prismaModel.findMany({
+        where,
+        orderBy: { [toPrismaField(config.sortColumn)]: "desc" },
+        take: 500, // Lấy tối đa 500 rows (sẽ merge + paginate ở caller)
+        select: { raw: true, agentId: true },
+      }),
+      prismaModel.count({ where }),
+    ]);
+
+    if (total === 0) return null;
+
+    const items = rows.map((row: any) => ({
+      _agentName: agentName,
+      ...(typeof row.raw === "object" ? row.raw : {}),
+    })) as T[];
+
+    logger.info("[DB-Fallback] Served from DB after upstream failure", {
+      path,
+      agentId,
+      total,
+      requestId,
+    });
+
+    return { items, total };
+  } catch (err) {
+    logger.warn("[DB-Fallback] Query failed", {
+      path,
+      agentId,
       requestId,
       error: err instanceof Error ? err.message : String(err),
     });

@@ -84,13 +84,90 @@ function syncOnceKey(table: string, agentId: string): string {
 
 const REDIS_DATE_TTL = 90 * 86400; // 90 days
 
+/**
+ * Batch load all done dates for a specific agent+endpoint in 1 query.
+ * Returns a Set<date> for O(1) lookup. Much faster than N individual isDateDone() calls.
+ *
+ * Strategy: Redis MGET first → DB query for misses → populate Redis cache for future runs.
+ */
+async function batchGetDoneDates(
+  app: FastifyInstance,
+  table: string,
+  agentId: string,
+  dates: string[],
+): Promise<Set<string>> {
+  const result = new Set<string>();
+  const pastDates = dates.filter((d) => d < new Date().toISOString().slice(0, 10));
+  if (pastDates.length === 0) return result;
+
+  // 1. Redis MGET — single round-trip for all dates
+  let redisHits: (string | null)[] = [];
+  try {
+    const keys = pastDates.map((d) => syncedDateKey(table, agentId, d));
+    redisHits = await app.redis.mget(...keys);
+  } catch {
+    /* fall through to DB */
+  }
+
+  const redisMisses: string[] = [];
+  for (let i = 0; i < pastDates.length; i++) {
+    if (redisHits[i]) {
+      result.add(pastDates[i]);
+    } else {
+      redisMisses.push(pastDates[i]);
+    }
+  }
+
+  // 2. DB batch query for Redis misses — single query
+  if (redisMisses.length > 0) {
+    try {
+      const locks = await app.prisma.syncDateLock.findMany({
+        where: {
+          tableName: table,
+          agentId,
+          syncDate: { in: redisMisses },
+          hash: { not: null },
+        },
+        select: { syncDate: true },
+      });
+
+      // Populate Redis cache for future runs (fire-and-forget pipeline)
+      if (locks.length > 0) {
+        const pipeline = app.redis.pipeline();
+        for (const lock of locks) {
+          result.add(lock.syncDate);
+          pipeline.set(syncedDateKey(table, agentId, lock.syncDate), "1", "EX", REDIS_DATE_TTL);
+        }
+        pipeline.exec().catch(() => {
+          /* ignore */
+        });
+      }
+    } catch (err) {
+      logger.warn("[Sync] batchGetDoneDates DB query failed", {
+        table,
+        agentId,
+        error: (err as Error).message,
+      });
+    }
+  }
+
+  return result;
+}
+
 /** Check if a date has been synced for a specific agent — Redis first, DB fallback. */
-async function isDateDone(app: FastifyInstance, table: string, agentId: string, date: string): Promise<boolean> {
+async function isDateDone(
+  app: FastifyInstance,
+  table: string,
+  agentId: string,
+  date: string,
+): Promise<boolean> {
   // Redis first (fast)
   try {
     const cached = await app.redis.get(syncedDateKey(table, agentId, date));
     if (cached) return true;
-  } catch { /* fall through */ }
+  } catch {
+    /* fall through */
+  }
 
   // DB fallback (durable)
   const lock = await app.prisma.syncDateLock.findUnique({
@@ -99,7 +176,11 @@ async function isDateDone(app: FastifyInstance, table: string, agentId: string, 
 
   if (lock?.hash) {
     // Có hash = verified done → re-populate Redis cache
-    try { await app.redis.set(syncedDateKey(table, agentId, date), "1", "EX", REDIS_DATE_TTL); } catch { /* ignore */ }
+    try {
+      await app.redis.set(syncedDateKey(table, agentId, date), "1", "EX", REDIS_DATE_TTL);
+    } catch {
+      /* ignore */
+    }
     return true;
   }
 
@@ -123,11 +204,20 @@ async function markDateDone(
       update: { itemCount, hash, lockedAt: new Date() },
     });
   } catch (err) {
-    logger.warn("[Sync] Failed to write SyncDateLock", { table, agentId, date, error: (err as Error).message });
+    logger.warn("[Sync] Failed to write SyncDateLock", {
+      table,
+      agentId,
+      date,
+      error: (err as Error).message,
+    });
   }
 
   // Redis cache
-  try { await app.redis.set(syncedDateKey(table, agentId, date), "1", "EX", REDIS_DATE_TTL); } catch { /* ignore */ }
+  try {
+    await app.redis.set(syncedDateKey(table, agentId, date), "1", "EX", REDIS_DATE_TTL);
+  } catch {
+    /* ignore */
+  }
 }
 
 /** Check if a syncOnce endpoint has been done for a specific agent. */
@@ -135,14 +225,20 @@ async function isSyncOnceDone(app: FastifyInstance, table: string, agentId: stri
   try {
     const cached = await app.redis.get(syncOnceKey(table, agentId));
     if (cached) return true;
-  } catch { /* fall through */ }
+  } catch {
+    /* fall through */
+  }
 
   const lock = await app.prisma.syncDateLock.findUnique({
     where: { uq_sync_date_lock: { tableName: table, syncDate: "__once__", agentId } },
   });
 
   if (lock) {
-    try { await app.redis.set(syncOnceKey(table, agentId), "1"); } catch { /* ignore */ }
+    try {
+      await app.redis.set(syncOnceKey(table, agentId), "1");
+    } catch {
+      /* ignore */
+    }
     return true;
   }
 
@@ -158,10 +254,18 @@ async function markSyncOnceDone(app: FastifyInstance, table: string, agentId: st
       update: { lockedAt: new Date() },
     });
   } catch (err) {
-    logger.warn("[Sync] Failed to write SyncDateLock (once)", { table, agentId, error: (err as Error).message });
+    logger.warn("[Sync] Failed to write SyncDateLock (once)", {
+      table,
+      agentId,
+      error: (err as Error).message,
+    });
   }
 
-  try { await app.redis.set(syncOnceKey(table, agentId), "1"); } catch { /* ignore */ }
+  try {
+    await app.redis.set(syncOnceKey(table, agentId), "1");
+  } catch {
+    /* ignore */
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -353,11 +457,12 @@ async function runAgentStream(
   const agentStart = Date.now();
 
   // Phân nhóm endpoints — filter theo endpointsToRun nếu có
-  const shouldInclude = (ep: SyncEndpointConfig) =>
-    !endpointsToRun || endpointsToRun.has(ep.table);
+  const shouldInclude = (ep: SyncEndpointConfig) => !endpointsToRun || endpointsToRun.has(ep.table);
 
   const syncOnceEndpoints = SYNC_ENDPOINTS.filter((ep) => ep.syncOnce && shouldInclude(ep));
-  const noDateEndpoints = SYNC_ENDPOINTS.filter((ep) => !ep.syncOnce && !ep.needsDateRange && shouldInclude(ep));
+  const noDateEndpoints = SYNC_ENDPOINTS.filter(
+    (ep) => !ep.syncOnce && !ep.needsDateRange && shouldInclude(ep),
+  );
   const dateRangeEndpoints = SYNC_ENDPOINTS.filter((ep) => ep.needsDateRange && shouldInclude(ep));
 
   // Helper: nếu lỗi là session expired → throw AgentSessionExpiredError để dừng agent ngay
@@ -393,7 +498,7 @@ async function runAgentStream(
     // ── Nhóm 2: Member/User (no date-range) ──
     // Catch-up phase: member chỉ sync 1 lần đầu (chưa có data).
     // Sau khi tất cả date-range đã sync hết tới hôm nay → sync member mỗi chu kỳ.
-    const memberHasData = await app.prisma.proxyUser.count({ where: { agentId: agent.id } }) > 0;
+    const memberHasData = (await app.prisma.proxyUser.count({ where: { agentId: agent.id } })) > 0;
     const caughtUp = memberHasData ? await isAgentCaughtUp(app, agent.id, today) : true;
 
     if (caughtUp) {
@@ -495,7 +600,13 @@ export async function syncAgentEndpoint(
   const upserted = await upsertFn(app.prisma, agent.id, items);
 
   // Verify
-  const { verified, dbCount } = await verifyUpsert(app.prisma, endpoint.table, agent.id, undefined, items.length);
+  const { verified, dbCount } = await verifyUpsert(
+    app.prisma,
+    endpoint.table,
+    agent.id,
+    undefined,
+    items.length,
+  );
 
   logger.debug("[Sync] Upserted", {
     agent: agent.name,
@@ -536,17 +647,22 @@ async function syncAgentDateRange(
 
   // Từng ngày từ SYNC_DATE_START → today (isDateDone skip ngày đã xong)
   const dates = generateDateRange(SYNC_DATE_START, today);
-  logger.debug(`[Sync] ${agent.name} → ${endpoint.table}: ${dates.length} days`);
+
+  // ── Batch load tất cả locks cho agent+endpoint 1 lần (1 query thay vì N queries) ──
+  const doneDates = await batchGetDoneDates(app, endpoint.table, agent.id, dates);
+  const skipped = doneDates.size;
+  const remaining = dates.length - skipped - 1; // -1 vì today luôn sync
+  logger.debug(
+    `[Sync] ${agent.name} → ${endpoint.table}: ${dates.length} days, ${skipped} locked, ${remaining} to sync`,
+  );
 
   for (const date of dates) {
     if (abortRequested) break;
 
     const isToday = date === today;
 
-    if (!isToday) {
-      // Check hash — có rồi thì skip
-      const done = await isDateDone(app, endpoint.table, agent.id, date);
-      if (done) continue;
+    if (!isToday && doneDates.has(date)) {
+      continue; // Đã lock — skip ngay (O(1) Set lookup, không I/O)
     }
 
     try {
@@ -563,12 +679,18 @@ async function syncAgentDateRange(
       if (err instanceof AppError && err.code === ERROR_CODES.UPSTREAM_TIMEOUT) {
         timeoutStrikes++;
         logger.warn(`[Sync] Timeout strike ${timeoutStrikes}/${MAX_TIMEOUT_STRIKES}`, {
-          agent: agent.name, table: endpoint.table, date,
+          agent: agent.name,
+          table: endpoint.table,
+          date,
         });
         if (timeoutStrikes >= MAX_TIMEOUT_STRIKES) {
-          logger.error(`[Sync] ${agent.name} → ${endpoint.table}: ${MAX_TIMEOUT_STRIKES} timeouts liên tiếp, DỪNG`, {
-            agent: agent.name, table: endpoint.table,
-          });
+          logger.error(
+            `[Sync] ${agent.name} → ${endpoint.table}: ${MAX_TIMEOUT_STRIKES} timeouts liên tiếp, DỪNG`,
+            {
+              agent: agent.name,
+              table: endpoint.table,
+            },
+          );
           wsManager.broadcast({
             type: "sync_progress",
             table: endpoint.table,
@@ -580,14 +702,21 @@ async function syncAgentDateRange(
         }
       } else {
         consecutiveErrors++;
-        logger.error(`[Sync] ${agent.name} → ${endpoint.table} error on ${date} (${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS})`, {
-          error: err instanceof Error ? err.message : String(err),
-        });
+        logger.error(
+          `[Sync] ${agent.name} → ${endpoint.table} error on ${date} (${consecutiveErrors}/${MAX_CONSECUTIVE_ERRORS})`,
+          {
+            error: err instanceof Error ? err.message : String(err),
+          },
+        );
 
         if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
-          logger.error(`[Sync] ${agent.name} → ${endpoint.table}: ${MAX_CONSECUTIVE_ERRORS} lỗi liên tiếp, DỪNG`, {
-            agent: agent.name, table: endpoint.table,
-          });
+          logger.error(
+            `[Sync] ${agent.name} → ${endpoint.table}: ${MAX_CONSECUTIVE_ERRORS} lỗi liên tiếp, DỪNG`,
+            {
+              agent: agent.name,
+              table: endpoint.table,
+            },
+          );
           return;
         }
       }
@@ -615,9 +744,7 @@ export async function syncAgentSingleDay(
   const firstParams = { ...params, page: "1", limit: String(endpoint.pageSize) };
   const first = await fetchUpstream({ path: endpoint.path, cookie, params: firstParams });
 
-  const firstItems = Array.isArray(first.data)
-    ? (first.data as Record<string, unknown>[])
-    : [];
+  const firstItems = Array.isArray(first.data) ? (first.data as Record<string, unknown>[]) : [];
   const totalCount = first.count ?? firstItems.length;
   const totalPages = Math.ceil(totalCount / endpoint.pageSize);
 
@@ -646,9 +773,7 @@ export async function syncAgentSingleDay(
       try {
         const pageParams = { ...params, page: String(page), limit: String(endpoint.pageSize) };
         const res = await fetchUpstream({ path: endpoint.path, cookie, params: pageParams });
-        const pageItems = Array.isArray(res.data)
-          ? (res.data as Record<string, unknown>[])
-          : [];
+        const pageItems = Array.isArray(res.data) ? (res.data as Record<string, unknown>[]) : [];
 
         if (pageItems.length > 0) {
           totalUpserted += await upsertFn(app.prisma, agent.id, pageItems, date);
@@ -656,10 +781,10 @@ export async function syncAgentSingleDay(
         totalFetched += pageItems.length;
       } catch (err) {
         // Session expired / timeout → bubble up
-        if (err instanceof AppError && (
-          err.code === ERROR_CODES.AGENT_SESSION_EXPIRED ||
-          err.code === ERROR_CODES.UPSTREAM_TIMEOUT
-        )) {
+        if (
+          err instanceof AppError &&
+          (err.code === ERROR_CODES.AGENT_SESSION_EXPIRED || err.code === ERROR_CODES.UPSTREAM_TIMEOUT)
+        ) {
           throw err;
         }
         // Non-critical page error → log, continue
@@ -724,13 +849,13 @@ export async function syncAgentSingleDay(
  * betOrder uses "bet_time", bets uses "date" (same as deposit/withdrawal).
  */
 const DATE_PARAM_MAP: Record<string, { param: string; isReport: boolean }> = {
-  "/agent/bet.html":                  { param: "date",        isReport: false },
-  "/agent/depositAndWithdrawal.html": { param: "date",        isReport: false },
-  "/agent/withdrawalsRecord.html":    { param: "date",        isReport: false },
-  "/agent/betOrder.html":             { param: "bet_time",    isReport: false },
-  "/agent/reportLottery.html":        { param: "date",        isReport: true },
-  "/agent/reportFunds.html":          { param: "date",        isReport: true },
-  "/agent/reportThirdGame.html":      { param: "date",        isReport: true },
+  "/agent/bet.html": { param: "date", isReport: false },
+  "/agent/depositAndWithdrawal.html": { param: "date", isReport: false },
+  "/agent/withdrawalsRecord.html": { param: "date", isReport: false },
+  "/agent/betOrder.html": { param: "bet_time", isReport: false },
+  "/agent/reportLottery.html": { param: "date", isReport: true },
+  "/agent/reportFunds.html": { param: "date", isReport: true },
+  "/agent/reportThirdGame.html": { param: "date", isReport: true },
 };
 
 /** Build date params for a single day (start = end = date). */
@@ -855,7 +980,9 @@ export async function runAgentEndpointSync(
       await syncAgentDateRange(app, agent as Agent, cookie, endpoint, upsertFn, today);
     }
 
-    logger.info(`[Sync] Single-agent-endpoint sync completed: ${agent.name} → ${endpoint.table} in ${Date.now() - startTime}ms`);
+    logger.info(
+      `[Sync] Single-agent-endpoint sync completed: ${agent.name} → ${endpoint.table} in ${Date.now() - startTime}ms`,
+    );
     wsManager.broadcast({ type: "sync_status", status: "completed", durationMs: Date.now() - startTime });
   } catch (err) {
     logger.error("[Sync] Single-agent-endpoint sync fatal error", {
@@ -905,7 +1032,9 @@ export async function purgeAllData(app: FastifyInstance): Promise<Record<string,
         }
       } while (cursor !== "0");
     }
-  } catch { /* Redis fail-open */ }
+  } catch {
+    /* Redis fail-open */
+  }
 
   const totalDeleted = Object.values(result).reduce((a, b) => a + b, 0);
   logger.info(`[Sync] Purged ALL data: ${totalDeleted} rows across ${PROXY_TABLES.length} tables`);

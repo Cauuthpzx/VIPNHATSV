@@ -53,18 +53,6 @@ export const menuData: MenuItem[] = [
         path: "/analytics/agents",
         permission: PERMISSIONS.ANALYTICS_READ,
       },
-      {
-        id: "analyticsRevenue",
-        titleKey: "menu.analyticsRevenue",
-        path: "/analytics/revenue",
-        permission: PERMISSIONS.ANALYTICS_READ,
-      },
-      {
-        id: "oldCustomers",
-        titleKey: "menu.oldCustomers",
-        path: "/system/old-customers",
-        permission: PERMISSIONS.ANALYTICS_READ,
-      },
     ],
   },
   {
@@ -170,6 +158,18 @@ export const menuData: MenuItem[] = [
     titleKey: "menu.system",
     icon: "layui-icon-set",
     children: [
+      {
+        id: "analyticsRevenue",
+        titleKey: "menu.analyticsRevenue",
+        path: "/analytics/revenue",
+        permission: PERMISSIONS.ANALYTICS_READ,
+      },
+      {
+        id: "oldCustomers",
+        titleKey: "menu.oldCustomers",
+        path: "/system/old-customers",
+        permission: PERMISSIONS.ANALYTICS_READ,
+      },
       {
         id: "systemUsers",
         titleKey: "menu.systemUsers",

@@ -6,7 +6,7 @@ import { promisePool } from "../../utils/concurrency.js";
 import { logger } from "../../utils/logger.js";
 import { AppError } from "../../errors/AppError.js";
 import { ERROR_CODES } from "../../constants/error-codes.js";
-import { tryDbFirst } from "./db-first.service.js";
+import { tryDbFirst, tryDbFallbackForAgent } from "./db-first.service.js";
 import { SYNC_ENDPOINTS } from "../sync/sync.config.js";
 import { UPSERT_REGISTRY, upsertUsersSimple } from "../sync/sync.upsert.js";
 import { signalDemandSync } from "../sync/sync.demand.js";
@@ -342,6 +342,9 @@ async function fetchSingleAgent<T = unknown>(
           activeCookie = newCookie;
           upstream = await fetchUpstream<T>({ path, cookie: activeCookie, params, requestId });
         } else {
+          // Re-login failed → try DB fallback before giving up
+          const dbFallback = await tryDbFallbackForAgent<T>(app, path, params, agentId, agentName, requestId);
+          if (dbFallback) return dbFallback as SingleResult<T>;
           throw err;
         }
       } else {
@@ -506,7 +509,20 @@ async function fetchMultiAgentWithPipeline<T = unknown>(
           }
         }
 
-        logger.warn("Agent fetch failed, skipping", {
+        // Upstream + re-login both failed → try DB fallback
+        const dbFallback = await tryDbFallbackForAgent<T>(
+          app,
+          path,
+          params,
+          meta.agent.id,
+          meta.agent.name,
+          requestId,
+        );
+        if (dbFallback) {
+          return { idx, result: dbFallback as SingleResult<T>, cacheKey: null };
+        }
+
+        logger.warn("Agent fetch failed, no DB fallback available", {
           agentId: meta.agent.id,
           name: meta.agent.name,
           requestId,
