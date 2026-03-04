@@ -808,6 +808,11 @@ export default {
     loginAll: "全部登录",
     syncAll: "同步",
     stopSync: "停止",
+    autoSyncOn: "自动: 开启",
+    autoSyncOff: "自动: 关闭",
+    autoSyncEnabled: "已启用自动同步",
+    autoSyncDisabled: "已停用自动同步",
+    autoSyncError: "更改自动同步状态失败",
     // Dropdown
     editInfo: "编辑信息",
     loggingIn: "登录中...",

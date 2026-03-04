@@ -809,6 +809,11 @@ export default {
     loginAll: "Login tất cả",
     syncAll: "Đồng bộ",
     stopSync: "Dừng",
+    autoSyncOn: "Tự động: BẬT",
+    autoSyncOff: "Tự động: TẮT",
+    autoSyncEnabled: "Đã bật đồng bộ tự động",
+    autoSyncDisabled: "Đã tắt đồng bộ tự động",
+    autoSyncError: "Lỗi thay đổi trạng thái đồng bộ tự động",
     // Dropdown
     editInfo: "Sửa thông tin",
     loggingIn: "Đang login...",

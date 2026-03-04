@@ -8,6 +8,7 @@ import {
   triggerAgentEndpointSync,
   stopSync,
   setSyncIntervals,
+  setAutoSync,
   purgeAllData,
   purgeAgentData,
 } from "@/api/services/sync";
@@ -61,6 +62,8 @@ const totalRows = ref(0);
 const activeAgents = ref(0);
 const totalAgents = ref(0);
 const isSyncing = ref(false);
+const autoSyncEnabled = ref(true);
+const togglingAutoSync = ref(false);
 const intervalMs = ref(300000);
 const intervals = ref<Record<string, number>>({});
 const tables = ref<any[]>([]);
@@ -326,6 +329,7 @@ async function loadStatus() {
 
       // Luôn cập nhật trạng thái syncing (nhẹ, không gây re-render bảng)
       isSyncing.value = d.isSyncing;
+      if (d.autoSyncEnabled !== undefined) autoSyncEnabled.value = d.autoSyncEnabled;
       intervalMs.value = d.intervalMs;
       if (d.intervals) intervals.value = d.intervals;
 
@@ -382,6 +386,24 @@ async function handleStopSync() {
     layer.msg(t("sync.syncStopError"), { icon: 2 });
   } finally {
     stopping.value = false;
+  }
+}
+
+async function handleToggleAutoSync() {
+  const newState = !autoSyncEnabled.value;
+  togglingAutoSync.value = true;
+  try {
+    const res = await setAutoSync(newState);
+    if (res.data.success) {
+      autoSyncEnabled.value = newState;
+      layer.msg(newState ? t("sync.autoSyncEnabled") : t("sync.autoSyncDisabled"), { icon: 1 });
+    } else {
+      layer.msg(res.data.message || t("common.errorLoad"), { icon: 2 });
+    }
+  } catch {
+    layer.msg(t("sync.autoSyncError"), { icon: 2 });
+  } finally {
+    togglingAutoSync.value = false;
   }
 }
 
@@ -648,17 +670,44 @@ onUnmounted(() => {
     <!-- ===== OVERVIEW: 1 CARD GỘP 4 THỐNG KÊ ===== -->
     <lay-card class="overview-card">
       <div class="overview-stats">
-        <div class="overview-item" :class="{ 'overview-item--syncing': isSyncing }">
-          <div class="overview-icon" :class="isSyncing ? 'bg-yellow pulse' : 'bg-green'">
-            <i class="layui-icon" :class="isSyncing ? 'layui-icon-loading-1 spin' : 'layui-icon-ok-circle'" />
+        <div
+          class="overview-item"
+          :class="{ 'overview-item--syncing': isSyncing, clickable: canWrite }"
+          @click="canWrite && handleToggleAutoSync()"
+        >
+          <div
+            class="overview-icon"
+            :class="isSyncing ? 'bg-yellow pulse' : autoSyncEnabled ? 'bg-green' : 'bg-gray'"
+          >
+            <i
+              class="layui-icon"
+              :class="
+                togglingAutoSync
+                  ? 'layui-icon-loading-1 spin'
+                  : isSyncing
+                    ? 'layui-icon-loading-1 spin'
+                    : autoSyncEnabled
+                      ? 'layui-icon-ok-circle'
+                      : 'layui-icon-pause'
+              "
+            />
           </div>
           <div class="overview-text">
             <div class="overview-label">
               {{ t("sync.overviewStatus") }}
             </div>
             <div class="overview-value">
-              <lay-tag :color="isSyncing ? '#ffb800' : '#16baaa'" variant="light" size="sm" bordered>
-                {{ isSyncing ? t("sync.syncing") : t("sync.ready") }}
+              <lay-tag v-if="isSyncing" color="#ffb800" variant="light" size="sm" bordered>
+                {{ t("sync.syncing") }}
+              </lay-tag>
+              <lay-tag
+                v-else
+                :color="autoSyncEnabled ? '#16baaa' : '#999'"
+                variant="light"
+                size="sm"
+                bordered
+              >
+                {{ autoSyncEnabled ? t("sync.autoSyncOn") : t("sync.autoSyncOff") }}
               </lay-tag>
             </div>
           </div>
@@ -1149,6 +1198,9 @@ onUnmounted(() => {
 }
 .bg-green {
   background: linear-gradient(135deg, #16baaa, #5cd7ca);
+}
+.bg-gray {
+  background: linear-gradient(135deg, #999, #bbb);
 }
 .bg-yellow {
   background: linear-gradient(135deg, #ffb800, #ffe066);

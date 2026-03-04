@@ -55,3 +55,13 @@ export function setSyncInterval(intervalMs: number) {
 export function setSyncIntervals(intervals: Record<string, number>) {
   return api.put("/sync/intervals", { intervals });
 }
+
+/** Get auto sync status */
+export function getAutoSync() {
+  return api.get("/sync/auto");
+}
+
+/** Toggle auto sync on/off */
+export function setAutoSync(enabled: boolean) {
+  return api.put("/sync/auto", { enabled });
+}

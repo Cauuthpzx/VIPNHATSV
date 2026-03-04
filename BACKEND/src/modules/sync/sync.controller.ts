@@ -14,6 +14,9 @@ import {
   setSyncInterval,
   getAllIntervals,
   setEndpointIntervals,
+  isSchedulerRunning,
+  getAutoSyncEnabled,
+  setAutoSyncEnabled,
 } from "./sync.scheduler.js";
 import { logger } from "../../utils/logger.js";
 
@@ -200,6 +203,7 @@ export async function syncStatusHandler(request: FastifyRequest, reply: FastifyR
       activeAgents,
       totalAgents: agentList.length,
       isSyncing: getIsSyncing(),
+      autoSyncEnabled: isSchedulerRunning(),
       intervalMs: getSyncIntervalMs(),
       intervals: getAllIntervals(),
       tables,
@@ -402,6 +406,42 @@ export async function syncSetIntervalsHandler(request: FastifyRequest, reply: Fa
     success: true,
     message: "Đã cập nhật chu kỳ đồng bộ theo endpoint",
     data: { intervals: getAllIntervals() },
+  });
+}
+
+/**
+ * GET /sync/auto — Trạng thái auto sync
+ */
+export async function syncAutoStatusHandler(request: FastifyRequest, reply: FastifyReply) {
+  const enabled = await getAutoSyncEnabled(request.server);
+  return reply.send({
+    success: true,
+    data: { autoSyncEnabled: enabled, schedulerRunning: isSchedulerRunning() },
+  });
+}
+
+/**
+ * PUT /sync/auto — Bật/tắt auto sync
+ * Body: { enabled: boolean }
+ */
+export async function syncAutoToggleHandler(request: FastifyRequest, reply: FastifyReply) {
+  const { enabled } = request.body as { enabled: boolean };
+
+  if (typeof enabled !== "boolean") {
+    return reply.status(400).send({
+      success: false,
+      message: "enabled phải là boolean",
+    });
+  }
+
+  await setAutoSyncEnabled(request.server, enabled);
+
+  logger.info(`[Sync] Auto sync ${enabled ? "enabled" : "disabled"} by user`);
+
+  return reply.send({
+    success: true,
+    message: enabled ? "Đã bật đồng bộ tự động" : "Đã tắt đồng bộ tự động",
+    data: { autoSyncEnabled: enabled, schedulerRunning: isSchedulerRunning() },
   });
 }
 

@@ -9,6 +9,7 @@ import { logger } from "../../utils/logger.js";
 // ---------------------------------------------------------------------------
 const REDIS_INTERVAL_PREFIX = "sync:interval:"; // per-endpoint: sync:interval:proxyDeposit
 const REDIS_GLOBAL_INTERVAL_KEY = "sync:interval_ms"; // legacy global (fallback)
+const REDIS_AUTO_SYNC_KEY = "sync:auto_enabled"; // auto sync on/off toggle
 const MIN_INTERVAL_MS = 30000; // 30 giây tối thiểu
 const DEFAULT_GLOBAL_INTERVAL_MS = 60000; // 1 phút — scheduler tick frequency
 
@@ -35,7 +36,9 @@ async function getEndpointIntervalMs(app: FastifyInstance, table: string): Promi
       const n = parseInt(cached, 10);
       if (!isNaN(n) && n >= MIN_INTERVAL_MS) return n;
     }
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 
   // Fallback: config default
   const ep = SYNC_ENDPOINTS.find((e) => e.table === table);
@@ -56,7 +59,9 @@ export async function setEndpointInterval(app: FastifyInstance, table: string, m
   const clamped = Math.max(MIN_INTERVAL_MS, ms);
   try {
     await app.redis.set(REDIS_INTERVAL_PREFIX + table, String(clamped));
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 
   endpointIntervals.set(table, clamped);
   logger.info(`[Sync] Interval updated: ${table} = ${clamped / 1000}s`);
@@ -137,7 +142,11 @@ export async function setSyncInterval(app: FastifyInstance, ms: number): Promise
   const clamped = Math.max(MIN_INTERVAL_MS, ms);
 
   // Lưu global key (legacy)
-  try { await app.redis.set(REDIS_GLOBAL_INTERVAL_KEY, String(clamped)); } catch { /* ignore */ }
+  try {
+    await app.redis.set(REDIS_GLOBAL_INTERVAL_KEY, String(clamped));
+  } catch {
+    /* ignore */
+  }
 
   // Set tất cả recurring endpoints
   for (const ep of SYNC_ENDPOINTS) {
@@ -182,6 +191,14 @@ function scheduleNextRun(): void {
  */
 export async function startSyncScheduler(app: FastifyInstance): Promise<void> {
   appRef = app;
+
+  // Kiểm tra trạng thái auto sync từ Redis (persist qua restart)
+  const autoEnabled = await getAutoSyncEnabled(app);
+  if (!autoEnabled) {
+    logger.info("[Sync] Auto sync disabled in Redis — scheduler NOT started");
+    return;
+  }
+
   schedulerRunning = true;
 
   await loadAllIntervals(app);
@@ -190,13 +207,15 @@ export async function startSyncScheduler(app: FastifyInstance): Promise<void> {
   logger.info(`[Sync] Scheduler started (interval: ${tickMs / 1000}s)`);
 
   initialTimer = setTimeout(() => {
-    runFullSync(app).catch((err) => {
-      logger.error("[Sync] Initial run failed", {
-        error: err instanceof Error ? err.message : String(err),
+    runFullSync(app)
+      .catch((err) => {
+        logger.error("[Sync] Initial run failed", {
+          error: err instanceof Error ? err.message : String(err),
+        });
+      })
+      .finally(() => {
+        if (schedulerRunning) scheduleNextRun();
       });
-    }).finally(() => {
-      if (schedulerRunning) scheduleNextRun();
-    });
   }, 10_000);
 }
 
@@ -209,4 +228,50 @@ export function stopSyncScheduler(): void {
   initialTimer = null;
   syncTimer = null;
   appRef = null;
+}
+
+// ---------------------------------------------------------------------------
+// Auto Sync toggle — lưu trạng thái bật/tắt vào Redis (persist qua restart)
+// ---------------------------------------------------------------------------
+
+/** Kiểm tra auto sync có đang bật không. */
+export function isSchedulerRunning(): boolean {
+  return schedulerRunning;
+}
+
+/** Đọc trạng thái auto sync từ Redis (mặc định true nếu chưa set). */
+export async function getAutoSyncEnabled(app: FastifyInstance): Promise<boolean> {
+  try {
+    const val = await app.redis.get(REDIS_AUTO_SYNC_KEY);
+    if (val === "false") return false;
+  } catch {
+    /* ignore — default true */
+  }
+  return true;
+}
+
+/**
+ * Bật/tắt auto sync.
+ * - enabled=true: lưu Redis + start scheduler nếu chưa chạy
+ * - enabled=false: lưu Redis + stop scheduler
+ */
+export async function setAutoSyncEnabled(app: FastifyInstance, enabled: boolean): Promise<void> {
+  try {
+    await app.redis.set(REDIS_AUTO_SYNC_KEY, String(enabled));
+  } catch {
+    /* ignore */
+  }
+
+  if (enabled && !schedulerRunning) {
+    logger.info("[Sync] Auto sync enabled — starting scheduler");
+    await startSyncScheduler(app);
+  } else if (!enabled && schedulerRunning) {
+    logger.info("[Sync] Auto sync disabled — stopping scheduler");
+    schedulerRunning = false;
+    if (initialTimer) clearTimeout(initialTimer);
+    if (syncTimer) clearTimeout(syncTimer);
+    initialTimer = null;
+    syncTimer = null;
+    // Giữ appRef để có thể restart lại
+  }
 }
