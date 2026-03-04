@@ -772,8 +772,18 @@ async function writeThroughToDb(
 // Per-endpoint proxy functions (public API)
 // ---------------------------------------------------------------------------
 
-export function fetchUserList(app: FastifyInstance, input: Record<string, unknown>) {
-  return cachedProxyCall(app, "/agent/user.html", input);
+export async function fetchUserList(app: FastifyInstance, input: Record<string, unknown>) {
+  const result = await cachedProxyCall(app, "/agent/user.html", input);
+
+  // Khi search theo username cụ thể và có kết quả → background prefetch tất cả endpoint khác
+  const username = input.username as string | undefined;
+  if (username && username.trim() && Array.isArray(result.items) && result.items.length > 0) {
+    prefetchUserAcrossEndpoints(app, username.trim()).catch((err) => {
+      logger.warn("[Prefetch] Background prefetch failed", { username, error: (err as Error).message });
+    });
+  }
+
+  return result;
 }
 
 export function fetchInviteList(app: FastifyInstance, input: Record<string, unknown>) {
@@ -818,6 +828,113 @@ export function fetchRebateOdds(app: FastifyInstance, input: Record<string, unkn
 
 export function fetchLotteryDropdown(app: FastifyInstance, input: Record<string, unknown>) {
   return cachedProxyCall(app, "/agent/getLottery", input);
+}
+
+// ---------------------------------------------------------------------------
+// Prefetch: search username → background fetch across ALL endpoints
+// ---------------------------------------------------------------------------
+
+/**
+ * Endpoints hỗ trợ filter theo username (trừ user.html — đã fetch rồi).
+ * Với date-range endpoints: fetch ngày hôm nay (data mới nhất).
+ * Với non-date endpoints (bankList): fetch trực tiếp.
+ */
+const PREFETCH_ENDPOINTS: Array<{
+  path: string;
+  needsDate: boolean;
+  dateParam: string;
+  separator: string;
+}> = [
+  { path: "/agent/reportLottery.html", needsDate: true, dateParam: "date", separator: " | " },
+  { path: "/agent/reportFunds.html", needsDate: true, dateParam: "date", separator: " | " },
+  { path: "/agent/reportThirdGame.html", needsDate: true, dateParam: "date", separator: " | " },
+  { path: "/agent/depositAndWithdrawal.html", needsDate: true, dateParam: "date", separator: "|" },
+  { path: "/agent/withdrawalsRecord.html", needsDate: true, dateParam: "date", separator: "|" },
+  { path: "/agent/bet.html", needsDate: true, dateParam: "date", separator: "|" },
+  { path: "/agent/bankList.html", needsDate: false, dateParam: "", separator: "" },
+];
+
+/** Debounce: chỉ prefetch 1 username mỗi 10s */
+let lastPrefetchUser = "";
+let lastPrefetchTime = 0;
+
+async function prefetchUserAcrossEndpoints(app: FastifyInstance, username: string): Promise<void> {
+  const now = Date.now();
+  if (username === lastPrefetchUser && now - lastPrefetchTime < 10_000) return;
+  lastPrefetchUser = username;
+  lastPrefetchTime = now;
+
+  const agents = await agentService.listActiveAgents(app);
+  if (agents.length === 0) return;
+
+  const today = new Date().toISOString().slice(0, 10);
+
+  logger.info("[Prefetch] Starting background prefetch for user across all endpoints", {
+    username,
+    endpoints: PREFETCH_ENDPOINTS.length,
+    agents: agents.length,
+  });
+
+  // Fire all endpoints × all agents in parallel (fire-and-forget)
+  const tasks: Promise<void>[] = [];
+
+  for (const ep of PREFETCH_ENDPOINTS) {
+    for (const agent of agents) {
+      tasks.push(
+        (async () => {
+          try {
+            const cookie = decryptSessionCookie(agent.sessionCookie);
+            const params: Record<string, string> = {
+              username,
+              page: "1",
+              limit: "5000",
+            };
+
+            // Date-range endpoints: fetch hôm nay
+            if (ep.needsDate) {
+              params[ep.dateParam] = `${today}${ep.separator}${today}`;
+            }
+
+            // Extra params từ sync config (es, is_summary...)
+            const syncCfg = SYNC_ENDPOINTS.find((s) => s.path === ep.path);
+            if (syncCfg?.extraParams) {
+              for (const [k, v] of Object.entries(syncCfg.extraParams)) {
+                if (k !== "username") params[k] = v; // username đã set ở trên
+              }
+            }
+
+            const upstream = await fetchUpstream({ path: ep.path, cookie, params });
+
+            // Write-through to DB
+            if (upstream.data && Array.isArray(upstream.data) && upstream.data.length > 0) {
+              const items = upstream.data.map((item: any) => ({
+                _agentName: agent.name,
+                ...item,
+              }));
+              await writeThroughToDb(app, ep.path, agent.id, items as Record<string, unknown>[]);
+              logger.debug("[Prefetch] Saved", {
+                path: ep.path,
+                agentId: agent.id,
+                username,
+                count: items.length,
+              });
+            }
+          } catch (err) {
+            // Non-blocking — log and continue
+            logger.debug("[Prefetch] Endpoint failed (non-blocking)", {
+              path: ep.path,
+              agentId: agent.id,
+              username,
+              error: err instanceof Error ? err.message : String(err),
+            });
+          }
+        })(),
+      );
+    }
+  }
+
+  await Promise.allSettled(tasks);
+  logger.info("[Prefetch] Completed background prefetch", { username });
 }
 
 // ---------------------------------------------------------------------------
