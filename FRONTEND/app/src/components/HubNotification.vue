@@ -120,7 +120,7 @@ function formatFieldValue(key: string, val: unknown): string {
   if (key === "syncedAt") return new Date(String(val)).toLocaleString("vi-VN");
   if (key === "depositCount" || key === "withdrawalCount") return `${val}${t("notification.times")}`;
   if (key === "money" || key === "depositAmount" || key === "withdrawalAmount") {
-    return Number(val).toLocaleString("vi-VN") + " ₫";
+    return Number(val).toLocaleString("en-US") + " ₫";
   }
   return String(val);
 }
@@ -275,7 +275,7 @@ const panelTitle = computed(() => {
               <div class="hub-notify-item-line2">
                 <strong class="hub-notify-item-username">{{ n.username }}</strong>
                 <span v-if="n.money" class="hub-notify-item-money"
-                  >{{ Number(n.money).toLocaleString("vi-VN") }} ₫</span
+                  >{{ Number(n.money).toLocaleString("en-US") }} ₫</span
                 >
                 <span class="hub-notify-item-time">{{ formatDateTime(n.createdAt) }}</span>
                 <a href="javascript:;" class="hub-notify-item-detail" @click="openDetail(n, $event)">{{

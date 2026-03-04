@@ -198,6 +198,22 @@ async function markDateDone(
 ): Promise<void> {
   // DB primary (durable)
   try {
+    // Không downgrade lock: nếu đã có lock với data (count:N), không ghi đè bằng "empty"
+    if (hash === "empty") {
+      const existing = await app.prisma.syncDateLock.findUnique({
+        where: { uq_sync_date_lock: { tableName: table, syncDate: date, agentId } },
+      });
+      if (existing && existing.hash && existing.hash !== "empty") {
+        logger.debug("[Sync] Skipping empty lock — existing lock has data", {
+          table,
+          date,
+          agentId,
+          existingHash: existing.hash,
+        });
+        return; // Giữ lock cũ có data
+      }
+    }
+
     await app.prisma.syncDateLock.upsert({
       where: { uq_sync_date_lock: { tableName: table, syncDate: date, agentId } },
       create: { tableName: table, syncDate: date, agentId, itemCount, hash },
@@ -756,9 +772,23 @@ export async function syncAgentSingleDay(
   const totalPages = Math.ceil(totalCount / endpoint.pageSize);
 
   if (totalCount === 0 && firstItems.length === 0) {
-    // Ngày không có data → vẫn đánh dấu done (empty hash) để skip lần sau
+    // Upstream trả 0 items — kiểm tra xem DB đã có data chưa trước khi lock "empty"
+    // Tránh race condition: stream khác đã insert data, nhưng stream này thấy 0 → ghi đè lock
     if (markDone) {
-      await markDateDone(app, endpoint.table, agent.id, date, 0, "empty");
+      const { dbCount } = await verifyUpsert(app.prisma, endpoint.table, agent.id, date, 0);
+      if (dbCount === 0) {
+        await markDateDone(app, endpoint.table, agent.id, date, 0, "empty");
+      } else {
+        // DB đã có data → upstream trả rỗng có thể do session/lỗi tạm → KHÔNG lock empty
+        logger.warn("[Sync] Upstream returned 0 but DB has data — skipping empty lock", {
+          agent: agent.name,
+          table: endpoint.table,
+          date,
+          dbCount,
+        });
+        // Vẫn đánh dấu done với count thực tế từ DB
+        await markDateDone(app, endpoint.table, agent.id, date, dbCount, `count:${dbCount}`);
+      }
     }
     return;
   }

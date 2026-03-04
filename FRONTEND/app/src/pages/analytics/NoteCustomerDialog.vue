@@ -62,7 +62,7 @@ const depositInputs = ref<Record<number, string>>({});
 function getDepositDisplay(item: ParsedCustomer, idx: number): string {
   if (idx in depositInputs.value) return depositInputs.value[idx];
   if (item.firstDeposit === null) return "";
-  return item.firstDeposit.toLocaleString("vi-VN");
+  return item.firstDeposit.toLocaleString("en-US");
 }
 
 function onDepositInput(idx: number, val: string) {
@@ -85,7 +85,7 @@ const hasData = computed(() => parsedList.value.length > 0);
 
 function fmtDeposit(v: number | null): string {
   if (v === null || v === undefined) return "—";
-  return v.toLocaleString("vi-VN");
+  return v.toLocaleString("en-US");
 }
 
 async function handleSubmit() {

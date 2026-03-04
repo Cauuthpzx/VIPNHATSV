@@ -91,7 +91,7 @@ function fmtDep(v: number | string | null): string {
   if (v === null || v === undefined || v === "") return "\u2014";
   const n = typeof v === "string" ? parseFloat(v) : v;
   if (isNaN(n)) return "\u2014";
-  return n.toLocaleString("vi-VN");
+  return n.toLocaleString("en-US");
 }
 
 function recent3(months: CalendarMonth[]): CalendarMonth[] {

@@ -17,19 +17,14 @@ const data = ref<RevenueSummaryResult | null>(null);
 const now = new Date();
 const selectedMonth = ref(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`);
 
-// Format number with locale and sign
+// Format number with comma separators
 function fmtNum(v: number): string {
-  return v.toLocaleString("vi-VN", { maximumFractionDigits: 2 });
+  return v.toLocaleString("en-US", { maximumFractionDigits: 2 });
 }
 
-// Format large money values with abbreviation
+// Format money values — full number with comma separators
 function fmtMoney(v: number): string {
-  const abs = Math.abs(v);
-  const sign = v < 0 ? "-" : "";
-  if (abs >= 1_000_000_000) return sign + (abs / 1_000_000_000).toFixed(1) + "B";
-  if (abs >= 1_000_000) return sign + (abs / 1_000_000).toFixed(1) + "M";
-  if (abs >= 1_000) return sign + (abs / 1_000).toFixed(1) + "K";
-  return v.toLocaleString("vi-VN");
+  return v.toLocaleString("en-US");
 }
 
 async function loadData() {

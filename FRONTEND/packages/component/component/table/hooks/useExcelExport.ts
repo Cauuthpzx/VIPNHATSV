@@ -103,20 +103,30 @@ function pxToCharWidth(px: string | undefined): number | null {
   if (!px) return null;
   const match = px.match(/^(\d+)/);
   if (!match) return null;
-  return Math.max(6, Math.round(Number(match[1]) / 7));
+  return Math.max(8, Math.round(Number(match[1]) / 7));
+}
+
+/** Estimate display length of a formatted number (with thousands separators) */
+function formattedNumLength(val: any): number {
+  if (val == null || val === "") return 0;
+  const num = Number(val);
+  if (isNaN(num)) return String(val).length;
+  // Approximate: the number + commas + possible decimal
+  const formatted = num.toLocaleString("en-US", { maximumFractionDigits: 2 });
+  return formatted.length;
 }
 
 /** Auto-calculate column width from data */
-function calcAutoWidth(title: string, data: any[], key: string | undefined): number {
+function calcAutoWidth(title: string, data: any[], key: string | undefined, isNumeric = false): number {
   let maxLen = title.length;
   if (key) {
     for (const row of data.slice(0, 100)) {
       const val = row[key];
-      const len = val != null ? String(val).length : 0;
+      const len = isNumeric ? formattedNumLength(val) : (val != null ? String(val).length : 0);
       if (len > maxLen) maxLen = len;
     }
   }
-  return Math.min(40, Math.max(8, Math.round(maxLen * 1.3) + 3));
+  return Math.min(50, Math.max(8, Math.round(maxLen * 1.2) + 3));
 }
 
 /** Kiểm tra customSlot có phải dạng số không */
@@ -214,11 +224,19 @@ export async function exportToXlsx(
   // ======= HEADER ROWS =======
   const merges: string[] = [];
   let headerRowCount = 0;
+  const totalHeaderLevels = hierarchicalColumns.length;
 
-  for (let rowIdx = 0; rowIdx < hierarchicalColumns.length; rowIdx++) {
+  // Track which Excel columns are already occupied by merged cells from previous rows
+  // occupiedCols[excelRow][excelCol] = true if that cell is part of a merge from above
+  const occupiedCols: Map<number, Set<number>> = new Map();
+
+  for (let rowIdx = 0; rowIdx < totalHeaderLevels; rowIdx++) {
     const headerRow = ws.addRow([]);
     headerRow.height = HEADER_ROW_HEIGHT;
     headerRowCount++;
+
+    const excelRowNum = rowIdx + 1;
+    if (!occupiedCols.has(excelRowNum)) occupiedCols.set(excelRowNum, new Set());
 
     let colPos = 1;
 
@@ -229,6 +247,11 @@ export async function exportToXlsx(
       const colspan = getColSpan ? getColSpan(col) : 1;
       const rowspan = getRowSpan ? getRowSpan(col) : 1;
 
+      // Skip past columns occupied by merged cells from previous rows
+      while (occupiedCols.get(excelRowNum)?.has(colPos)) {
+        colPos++;
+      }
+
       const cell = headerRow.getCell(colPos);
       cell.value = getExportTitle(col);
       cell.font = HEADER_FONT;
@@ -237,12 +260,21 @@ export async function exportToXlsx(
       cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
 
       if (colspan > 1 || rowspan > 1) {
-        const startRow = rowIdx + 1;
+        const startRow = excelRowNum;
         const endRow = startRow + rowspan - 1;
         const startCol = colPos;
         const endCol = colPos + colspan - 1;
         if (endRow > startRow || endCol > startCol) {
           merges.push(`${getCellRef(startRow, startCol)}:${getCellRef(endRow, endCol)}`);
+        }
+        // Mark occupied cells for subsequent rows
+        for (let r = startRow; r <= endRow; r++) {
+          if (!occupiedCols.has(r)) occupiedCols.set(r, new Set());
+          for (let c = startCol; c <= endCol; c++) {
+            if (r !== excelRowNum) { // Don't mark current row (we handle colPos ourselves)
+              occupiedCols.get(r)!.add(c);
+            }
+          }
         }
       }
 
@@ -337,10 +369,16 @@ export async function exportToXlsx(
     const excelCol = ws.getColumn(idx + 1);
     const fromPx = pxToCharWidth(col.width || col.minWidth);
     const title = getExportTitle(col);
-    if (fromPx) {
+    const numeric = isNumericSlot(col.customSlot) || col.exportCellType === "number";
+    const autoW = calcAutoWidth(title, dataSource, col.key, numeric);
+
+    if (numeric) {
+      // Số cần đủ rộng: lấy max giữa px-based và data-based
+      excelCol.width = Math.max(fromPx ?? 8, autoW);
+    } else if (fromPx) {
       excelCol.width = fromPx;
     } else {
-      excelCol.width = calcAutoWidth(title, dataSource, col.key);
+      excelCol.width = autoW;
     }
   });
 

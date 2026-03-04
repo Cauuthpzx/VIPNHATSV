@@ -28,10 +28,7 @@ export function registerCharts() {
 }
 
 export function formatMoney(v: number): string {
-  if (v >= 1_000_000_000) return (v / 1_000_000_000).toFixed(1) + "B";
-  if (v >= 1_000_000) return (v / 1_000_000).toFixed(1) + "M";
-  if (v >= 1_000) return (v / 1_000).toFixed(1) + "K";
-  return v.toLocaleString("vi-VN");
+  return v.toLocaleString("en-US");
 }
 
 export function shortDate(dateStr: string): string {
@@ -41,7 +38,7 @@ export function shortDate(dateStr: string): string {
 export function tooltipFormatter(params: any[]): string {
   let s = `<div style="font-size:13px;font-weight:600;margin-bottom:6px">${params[0].name}</div>`;
   for (const p of params) {
-    s += `<div style="line-height:22px;padding:2px 0">${p.marker} ${p.seriesName}: <b>${Number(p.value).toLocaleString("vi-VN")}</b></div>`;
+    s += `<div style="line-height:22px;padding:2px 0">${p.marker} ${p.seriesName}: <b>${Number(p.value).toLocaleString("en-US")}</b></div>`;
   }
   return s;
 }
@@ -66,7 +63,19 @@ export const COLORS = {
 };
 
 export const PALETTE = [
-  "#009688", "#1e9fff", "#ffb800", "#ff5722", "#a855f7",
-  "#06b6d4", "#f97316", "#ec4899", "#84cc16", "#6366f1",
-  "#14b8a6", "#f43f5e", "#8b5cf6", "#22d3ee", "#f59e0b",
+  "#009688",
+  "#1e9fff",
+  "#ffb800",
+  "#ff5722",
+  "#a855f7",
+  "#06b6d4",
+  "#f97316",
+  "#ec4899",
+  "#84cc16",
+  "#6366f1",
+  "#14b8a6",
+  "#f43f5e",
+  "#8b5cf6",
+  "#22d3ee",
+  "#f59e0b",
 ];

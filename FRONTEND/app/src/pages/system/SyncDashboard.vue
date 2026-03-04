@@ -329,7 +329,10 @@ async function loadStatus() {
 
       // Luôn cập nhật trạng thái syncing (nhẹ, không gây re-render bảng)
       isSyncing.value = d.isSyncing;
-      if (d.autoSyncEnabled !== undefined) autoSyncEnabled.value = d.autoSyncEnabled;
+      // Không ghi đè khi đang toggle (tránh nút nhảy về trạng thái cũ)
+      if (d.autoSyncEnabled !== undefined && !togglingAutoSync.value) {
+        autoSyncEnabled.value = d.autoSyncEnabled;
+      }
       intervalMs.value = d.intervalMs;
       if (d.intervals) intervals.value = d.intervals;
 
@@ -389,8 +392,8 @@ async function handleStopSync() {
   }
 }
 
-async function handleToggleAutoSync() {
-  const newState = !autoSyncEnabled.value;
+async function handleToggleAutoSync(val: boolean | string) {
+  const newState = typeof val === "boolean" ? val : !autoSyncEnabled.value;
   togglingAutoSync.value = true;
   try {
     const res = await setAutoSync(newState);
@@ -670,11 +673,7 @@ onUnmounted(() => {
     <!-- ===== OVERVIEW: 1 CARD GỘP 4 THỐNG KÊ ===== -->
     <lay-card class="overview-card">
       <div class="overview-stats">
-        <div
-          class="overview-item"
-          :class="{ 'overview-item--syncing': isSyncing, clickable: canWrite }"
-          @click="canWrite && handleToggleAutoSync()"
-        >
+        <div class="overview-item" :class="{ 'overview-item--syncing': isSyncing }">
           <div
             class="overview-icon"
             :class="isSyncing ? 'bg-yellow pulse' : autoSyncEnabled ? 'bg-green' : 'bg-gray'"
@@ -682,13 +681,11 @@ onUnmounted(() => {
             <i
               class="layui-icon"
               :class="
-                togglingAutoSync
+                isSyncing
                   ? 'layui-icon-loading-1 spin'
-                  : isSyncing
-                    ? 'layui-icon-loading-1 spin'
-                    : autoSyncEnabled
-                      ? 'layui-icon-ok-circle'
-                      : 'layui-icon-pause'
+                  : autoSyncEnabled
+                    ? 'layui-icon-ok-circle'
+                    : 'layui-icon-pause'
               "
             />
           </div>
@@ -700,15 +697,27 @@ onUnmounted(() => {
               <lay-tag v-if="isSyncing" color="#ffb800" variant="light" size="sm" bordered>
                 {{ t("sync.syncing") }}
               </lay-tag>
-              <lay-tag
-                v-else
-                :color="autoSyncEnabled ? '#16baaa' : '#999'"
-                variant="light"
-                size="sm"
-                bordered
-              >
-                {{ autoSyncEnabled ? t("sync.autoSyncOn") : t("sync.autoSyncOff") }}
-              </lay-tag>
+              <template v-else>
+                <lay-switch
+                  v-if="canWrite"
+                  :model-value="autoSyncEnabled"
+                  :loading="togglingAutoSync"
+                  :disabled="togglingAutoSync"
+                  size="sm"
+                  :onswitch-text="t('sync.autoSyncOn')"
+                  :unswitch-text="t('sync.autoSyncOff')"
+                  @change="handleToggleAutoSync"
+                />
+                <lay-tag
+                  v-else
+                  :color="autoSyncEnabled ? '#16baaa' : '#999'"
+                  variant="light"
+                  size="sm"
+                  bordered
+                >
+                  {{ autoSyncEnabled ? t("sync.autoSyncOn") : t("sync.autoSyncOff") }}
+                </lay-tag>
+              </template>
             </div>
           </div>
         </div>
