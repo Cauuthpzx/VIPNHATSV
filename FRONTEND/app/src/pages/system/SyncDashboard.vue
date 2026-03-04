@@ -747,7 +747,15 @@ onUnmounted(() => {
                       :label="opt.label"
                     />
                   </lay-select>
-                  <lay-date-picker v-model="syncDateRange" type="date" range size="sm" style="width: 220px" />
+                  <lay-date-picker
+                    v-model="syncDateRange"
+                    range
+                    single-panel
+                    range-separator="-"
+                    :placeholder="[t('common.dateStart'), t('common.dateEnd')]"
+                    :allow-clear="true"
+                    size="sm"
+                  />
                 </div>
                 <template v-if="canWrite">
                   <lay-button size="sm" type="primary" @click="openCreateAgent">
