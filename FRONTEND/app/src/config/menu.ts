@@ -29,11 +29,42 @@ export const menuData: MenuItem[] = [
     titleKey: "menu.analytics",
     icon: "layui-icon-chart",
     children: [
-      { id: "analyticsFinance", titleKey: "menu.analyticsFinance", path: "/analytics/finance", permission: PERMISSIONS.ANALYTICS_READ },
-      { id: "analyticsBetting", titleKey: "menu.analyticsBetting", path: "/analytics/betting", permission: PERMISSIONS.ANALYTICS_READ },
-      { id: "analyticsMembers", titleKey: "menu.analyticsMembers", path: "/analytics/members", permission: PERMISSIONS.ANALYTICS_READ },
-      { id: "analyticsAgents", titleKey: "menu.analyticsAgents", path: "/analytics/agents", permission: PERMISSIONS.ANALYTICS_READ },
-      { id: "analyticsRevenue", titleKey: "menu.analyticsRevenue", path: "/analytics/revenue", permission: PERMISSIONS.ANALYTICS_READ },
+      {
+        id: "analyticsFinance",
+        titleKey: "menu.analyticsFinance",
+        path: "/analytics/finance",
+        permission: PERMISSIONS.ANALYTICS_READ,
+      },
+      {
+        id: "analyticsBetting",
+        titleKey: "menu.analyticsBetting",
+        path: "/analytics/betting",
+        permission: PERMISSIONS.ANALYTICS_READ,
+      },
+      {
+        id: "analyticsMembers",
+        titleKey: "menu.analyticsMembers",
+        path: "/analytics/members",
+        permission: PERMISSIONS.ANALYTICS_READ,
+      },
+      {
+        id: "analyticsAgents",
+        titleKey: "menu.analyticsAgents",
+        path: "/analytics/agents",
+        permission: PERMISSIONS.ANALYTICS_READ,
+      },
+      {
+        id: "analyticsRevenue",
+        titleKey: "menu.analyticsRevenue",
+        path: "/analytics/revenue",
+        permission: PERMISSIONS.ANALYTICS_READ,
+      },
+      {
+        id: "oldCustomers",
+        titleKey: "menu.oldCustomers",
+        path: "/system/old-customers",
+        permission: PERMISSIONS.ANALYTICS_READ,
+      },
     ],
   },
   {
@@ -49,7 +80,12 @@ export const menuData: MenuItem[] = [
     titleKey: "menu.invite",
     icon: "layui-icon-vercode",
     children: [
-      { id: "inviteList", titleKey: "menu.inviteList", path: "/agent/invite-list", permission: PERMISSIONS.INVITE_READ },
+      {
+        id: "inviteList",
+        titleKey: "menu.inviteList",
+        path: "/agent/invite-list",
+        permission: PERMISSIONS.INVITE_READ,
+      },
     ],
   },
   {
@@ -57,9 +93,24 @@ export const menuData: MenuItem[] = [
     titleKey: "menu.report",
     icon: "layui-icon-tabs",
     children: [
-      { id: "reportLottery", titleKey: "menu.reportLottery", path: "/agent/report-lottery", permission: PERMISSIONS.REPORT_READ },
-      { id: "reportFunds", titleKey: "menu.reportFunds", path: "/agent/report-funds", permission: PERMISSIONS.REPORT_READ },
-      { id: "reportThirdGame", titleKey: "menu.reportThirdGame", path: "/agent/report-third-game", permission: PERMISSIONS.REPORT_READ },
+      {
+        id: "reportLottery",
+        titleKey: "menu.reportLottery",
+        path: "/agent/report-lottery",
+        permission: PERMISSIONS.REPORT_READ,
+      },
+      {
+        id: "reportFunds",
+        titleKey: "menu.reportFunds",
+        path: "/agent/report-funds",
+        permission: PERMISSIONS.REPORT_READ,
+      },
+      {
+        id: "reportThirdGame",
+        titleKey: "menu.reportThirdGame",
+        path: "/agent/report-third-game",
+        permission: PERMISSIONS.REPORT_READ,
+      },
     ],
   },
   {
@@ -68,8 +119,18 @@ export const menuData: MenuItem[] = [
     icon: "layui-icon-dollar",
     children: [
       // { id: "bankList", titleKey: "menu.bankList", path: "/agent/bank-list", permission: PERMISSIONS.FINANCE_READ },
-      { id: "deposit", titleKey: "menu.deposit", path: "/agent/deposit", permission: PERMISSIONS.FINANCE_READ },
-      { id: "withdrawalsRecord", titleKey: "menu.withdrawalsRecord", path: "/agent/withdrawals-record", permission: PERMISSIONS.FINANCE_READ },
+      {
+        id: "deposit",
+        titleKey: "menu.deposit",
+        path: "/agent/deposit",
+        permission: PERMISSIONS.FINANCE_READ,
+      },
+      {
+        id: "withdrawalsRecord",
+        titleKey: "menu.withdrawalsRecord",
+        path: "/agent/withdrawals-record",
+        permission: PERMISSIONS.FINANCE_READ,
+      },
       // { id: "withdraw", titleKey: "menu.withdraw", path: "/agent/withdraw", permission: PERMISSIONS.FINANCE_READ },
     ],
   },
@@ -79,7 +140,12 @@ export const menuData: MenuItem[] = [
     icon: "layui-icon-chart-screen",
     children: [
       { id: "betList", titleKey: "menu.betList", path: "/agent/bet", permission: PERMISSIONS.BET_READ },
-      { id: "betOrder", titleKey: "menu.betOrder", path: "/agent/bet-order", permission: PERMISSIONS.BET_READ },
+      {
+        id: "betOrder",
+        titleKey: "menu.betOrder",
+        path: "/agent/bet-order",
+        permission: PERMISSIONS.BET_READ,
+      },
     ],
   },
   // {
@@ -104,10 +170,24 @@ export const menuData: MenuItem[] = [
     titleKey: "menu.system",
     icon: "layui-icon-set",
     children: [
-      { id: "oldCustomers", titleKey: "menu.oldCustomers", path: "/system/old-customers", permission: PERMISSIONS.ANALYTICS_READ },
-      { id: "systemUsers", titleKey: "menu.systemUsers", path: "/system/users", permission: PERMISSIONS.USERS_READ },
-      { id: "systemRoles", titleKey: "menu.systemRoles", path: "/system/roles", permission: PERMISSIONS.ROLES_READ },
-      { id: "syncDashboard", titleKey: "menu.syncDashboard", path: "/system/sync", permission: PERMISSIONS.SYNC_READ },
+      {
+        id: "systemUsers",
+        titleKey: "menu.systemUsers",
+        path: "/system/users",
+        permission: PERMISSIONS.USERS_READ,
+      },
+      {
+        id: "systemRoles",
+        titleKey: "menu.systemRoles",
+        path: "/system/roles",
+        permission: PERMISSIONS.ROLES_READ,
+      },
+      {
+        id: "syncDashboard",
+        titleKey: "menu.syncDashboard",
+        path: "/system/sync",
+        permission: PERMISSIONS.SYNC_READ,
+      },
     ],
   },
 ];
